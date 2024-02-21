@@ -1,4 +1,4 @@
-# BioDM
+# BioDM
 
 Proof of concept for an extended purpose biology data management API 
 
@@ -9,13 +9,13 @@ Python
 ```{bash}
 pip3 install starlette 
 pip3 install uvicorn
-pip3 install jsonschema
+pip3 install marshmallow
 pip3 install sqlalchemy[asyncio]
 pip3 install psycopg2
 pip3 install asyncpg
 ```
 
-## Setup database
+## Setup database
 
 ```
 docker pull postgres:16-bookworm
