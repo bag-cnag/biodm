@@ -3,6 +3,7 @@ from abc import ABC, ABCMeta, abstractmethod
 from typing import List
 
 from sqlalchemy import insert, Result
+from sqlalchemy.sql import Delete
 
 from exceptions import MissingDB, FailedRead, FailedDelete, FailedUpdate
 from model import Base
@@ -16,9 +17,10 @@ class Singleton(ABCMeta):
 
 
 class BaseService(ABC):
-    def __init__(self, app):
+    def __init__(self, app, table: Base):
         self.logger = app.logger
         self.app = app
+        self.table = table
 
 
 class DatabaseService(BaseService, metaclass=Singleton):
@@ -29,11 +31,11 @@ class DatabaseService(BaseService, metaclass=Singleton):
 
         return self.app.db.session()
 
-    async def _create(self, table, data):
+    async def _create(self, data: dict):
         """Insert into database."""
         async with self.db_session as s:
             row = await s.scalar(
-                insert(table).values(**data).returning(table)
+                insert(self.table).values(**data).returning(self.table)
             )
         return row
 
@@ -54,16 +56,16 @@ class DatabaseService(BaseService, metaclass=Singleton):
             if result: return result
         raise FailedUpdate("Query updated no result.")
 
-    async def _merge(self, table: Base, id: int, data: dict):
+    async def _merge(self, id: int, data: dict):
         """Use session.merge feature: sync local object with one from db."""
         item = None
         async with self.db_session as s:
-            item = table(id=id, **data)
+            item = self.table(id=id, **data)
             item = await s.merge(item)
         if item: return item
         raise FailedUpdate("Query updated no result.")
 
-    async def _delete(self, stmt) -> None:
+    async def _delete(self, stmt: Delete) -> None:
         """Delete database entry."""
         async with self.db_session as s:
             result = await s.execute(stmt)

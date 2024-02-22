@@ -16,10 +16,6 @@ from controllers import Controller, TagController # , HttpMethod
 from exceptions import RequestError
 from errors import onerror
 
-# from controllers import schemas
-# from model.tables import group, user, dataset, tag
-# from model.tables import group
-
 
 class Api(Starlette):
     logger = logging.getLogger(__name__)
@@ -27,18 +23,14 @@ class Api(Starlette):
     def __init__(self, controllers=[], routes=[], *args, **kwargs):
         self.db = DatabaseManager()
         self.controllers = []
-        # self.controllers = controllers if controllers else []
-        ctrl_routes = self.adopt_controllers(controllers)
-        routes.extend(ctrl_routes)
+        routes.extend(self.adopt_controllers(controllers))
         super(Api, self).__init__(routes=routes, *args, **kwargs)
 
         # Set up CORS
         self.add_middleware(
             CORSMiddleware,
-            allow_origins=["*"],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
+            allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+            allow_credentials=True
         )
 
         # Event handlers
@@ -58,37 +50,15 @@ class Api(Starlette):
             c = controller.init(app=self)
             # Fetch and add routes.
             routes.append(c.routes())
+            # Keep Track of controllers.
             self.controllers.append(c)
         return routes
-            # for part_uri, method, coroutine in routes:
-            #     print(ressource + part_uri)
-            #     self.routes.append(
-            #         Route(
-            #             ressource + part_uri,
-            #             coroutine,
-            #             [method.value]
-            #         )
-            #     )
-                # self.add_route(
-                #     ressource + part_uri,
-                #     coroutine,
-                #     [method.value]
-                # )
-
-            # Keep Track of controllers.
-
 
     async def onstart(self) -> None:
         if config.DEV:
             """Dev mode: drop all and create tables."""
             await self.db.init_db()
 
-
-# async def main():
-#     await app.db.init_db()
-#     # await test_entities()
-#     # await test_2(proj)
-    # await uvicorn.run(app)
 
 def main():
     app = Api(
@@ -101,12 +71,12 @@ def main():
     app.add_middleware(SessionMiddleware, secret_key="r4nD0m_p455")
     return app
 
+
 if __name__ == "__main__":
     uvicorn.run(
         f"{__name__}:main",
         factory=True,
-        # TODO:
-        # host=
-        # port=
+        host=config.SERVER_HOST,
+        port=config.SERVER_PORT,
         log_level="debug" if config.DEBUG else "info"
     )

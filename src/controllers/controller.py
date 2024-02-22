@@ -7,6 +7,8 @@ from starlette.responses import Response
 from starlette.routing import Mount, Route
 from sqlalchemy.engine import ScalarResult
 
+import config
+
 
 class HttpMethod(Enum):
     GET = "GET"
@@ -18,16 +20,14 @@ class HttpMethod(Enum):
 
 class Controller(ABC):
     @classmethod
-    def init(cls, app):
+    def init(cls, app) -> None:
         cls.app = app
         return cls()
 
-    # @classmethod
-    def routes(self):
-        # https://restfulapi.net/http-methods/
-        prefix = ("/" + 
-                  self.__class__.__name__.split("Controller")[0].lower()
-                  + 's')
+    # https://restfulapi.net/http-methods/
+    def routes(self) -> Mount:
+        prefix = self.__class__.__name__.split("Controller")[0]
+        prefix = '/' + prefix.lower() + 's'
         return Mount(prefix, routes=[
             Route('/',     self.find_all,      methods=[HttpMethod.GET.value]),
             Route('/',     self.create,        methods=[HttpMethod.POST.value]),
@@ -36,19 +36,13 @@ class Controller(ABC):
             Route('/{id}', self.update,        methods=[HttpMethod.PATCH.value]),
             Route('/{id}', self.read,          methods=[HttpMethod.GET.value]),
         ])
-        # return cls.__name__.split("Controller")[0].lower() + 's', [
-        #     ("/",     HttpMethod.GET,    cls.read),
-        #     ("/",     HttpMethod.POST,   cls.create),
-        #     ("/{id}", HttpMethod.DELETE, cls.delete),
-        #     ("/{id}", HttpMethod.PUT,    cls.create_or_update),
-        #     ("/{id}", HttpMethod.PATCH,  cls.update),
-        #     ("/{id}", HttpMethod.GET,    cls.read)
-        # ]
 
     @staticmethod
-    def deserialize(data: Any, schema: Type[Schema]):
+    def deserialize(data: Any, 
+                    schema: Type[Schema]) -> (Any | list | dict | None):
         try:
-            return schema(unknown=EXCLUDE).loads(data.decode()) # .decode()
+            return schema(unknown=EXCLUDE).loads(data.decode())
+        # TODO: Finer error handling
         # except ValidationError as e:
         #     raise PayloadValidationError(e.messages)
         # except JSONDecodeError as e:
@@ -57,10 +51,10 @@ class Controller(ABC):
             raise e
 
     @staticmethod
-    def serialize(data: Any, schema: Type[Schema], many: bool):
-        return schema(many=many).dumps(data, indent=2)
+    def serialize(data: Any, schema: Type[Schema], many: bool) -> (str | Any):
+        return schema(many=many).dumps(data, indent=config.INDENT)
 
-    def json_response(self, data, status, schema=None):
+    def json_response(self, data, status, schema=None) -> Response:
         content = (
             self.serialize(data, schema, many=isinstance(data, ScalarResult))
             if schema

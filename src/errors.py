@@ -8,6 +8,9 @@ from exceptions import (
     FailedDelete
 )
 
+import config
+
+
 class Error:
     def __init__(self, status, detail=None):
         self.status = status
@@ -21,7 +24,10 @@ class Error:
     @property
     def response(self):
         return Response(
-            content=json.dumps(self.__dict__, indent=2), status_code=self.status
+            content=json.dumps(
+                self.__dict__, 
+                indent=config.INDENT
+            ), status_code=self.status
         )
 
 

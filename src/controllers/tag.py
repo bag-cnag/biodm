@@ -1,14 +1,14 @@
 from controllers import Controller
 from controllers.schemas import TagSchema
 from model.services import TagService
-
+from model.tables import Tag
 # import pdb
 # pdb.set_trace()
 
 
 class TagController(Controller):
     def __init__(self):
-        self.svc = TagService(self.app)
+        self.svc = TagService(self.app, Tag)
 
     async def create(self, request):
         body = await request.body()
