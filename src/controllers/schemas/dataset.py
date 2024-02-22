@@ -31,4 +31,4 @@ class DatasetSchema(Schema):
 
     group = Nested('GroupSchema')
     contact = Nested('UserSchema')
-    tags = List(Nested('TagSchema'))
+    # tags = List(Nested('TagSchema'))

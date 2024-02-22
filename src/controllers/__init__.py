@@ -1,2 +1,2 @@
-from .controller import Controller
+from .controller import Controller, HttpMethod
 from .tag import TagController

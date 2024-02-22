@@ -50,10 +50,10 @@ class Dataset(Base):
     group:   Mapped["Group"] = relationship(back_populates="datasets")  
     # project: Mapped[Project]       = relationship(back_populates="datasets")
     contact: Mapped["User"]  = relationship(foreign_keys=[id_user_contact])
-    tags:    Mapped[List["Tag"]]     = relationship(
-        secondary=asso_dataset_tag, 
-        back_populates="datasets"
-    )
+    # tags:    Mapped[List["Tag"]]     = relationship(
+    #     secondary=asso_dataset_tag, 
+    #     back_populates="datasets"
+    # )
     # files:   Mapped[List["File"]]  = relationship(back_populates="dataset") 
     # permission_lv2: Mapped["Permission_lv2"] = relationship()
 

@@ -4,9 +4,8 @@ from typing import List
 
 from sqlalchemy import insert, Result
 
-from app import Api
-from exceptions import MissingDB, FailedRead, FailedDelete
-
+from exceptions import MissingDB, FailedRead, FailedDelete, FailedUpdate
+from model import Base
 
 class Singleton(ABCMeta):
     _instances = {}
@@ -17,7 +16,7 @@ class Singleton(ABCMeta):
 
 
 class BaseService(ABC):
-    def __init__(self, app: Api):
+    def __init__(self, app):
         self.logger = app.logger
         self.app = app
 
@@ -40,41 +39,39 @@ class DatabaseService(BaseService, metaclass=Singleton):
 
     async def _create_list(self, table, data: List) -> None:
         raise NotImplementedError
-        # for d in data:
-        async with self.db_session as s:
-            s.add_all(data)
-        
+
     async def _read(self, stmt):
         """Select 1 from database."""
         async with self.db_session as s:
             result = (await s.execute(stmt)).scalar()
-            if not result:
-                raise FailedRead("Query returned no result.")
+            if result: return result
+        raise FailedRead("Query returned no result.")
 
-            return result
-    
     async def _update(self, stmt):
-        """Update database entry TODO:"""
-        raise NotImplementedError
+        """Update database entry."""
         async with self.db_session as s:
             result = (await s.execute(stmt)).scalar()
-            if not result:
-                raise FailedRead("Query returned no result.")
+            if result: return result
+        raise FailedUpdate("Query updated no result.")
 
-            return result
-
-    async def _delete(self, stmt):
-        """Delete database entry."""
-        raise NotImplementedError
+    async def _merge(self, table: Base, id: int, data: dict):
+        """Use session.merge feature: sync local object with one from db."""
+        item = None
         async with self.db_session as s:
-            async with s.begin():
-                result = await s.execute(stmt)
-                if result.rowcount == 0:
-                    raise FailedDelete("Query deleted no rows.")
+            item = table(id=id, **data)
+            item = await s.merge(item)
+        if item: return item
+        raise FailedUpdate("Query updated no result.")
 
-    async def _find_all(self, stmt):
+    async def _delete(self, stmt) -> None:
+        """Delete database entry."""
+        async with self.db_session as s:
+            result = await s.execute(stmt)
+            if result.rowcount == 0:
+                raise FailedDelete("Query deleted no rows.")
+
+    async def _find_all(self, stmt) -> List:
         """Select all from database."""
-        raise NotImplementedError
         async with self.db_session as s:
             return (await s.execute(stmt)).scalars().unique()
 
@@ -91,6 +88,11 @@ class DatabaseService(BaseService, metaclass=Singleton):
     @abstractmethod
     async def update(self, **kwargs):
         """UPDATE."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def create_update(self, **kwargs):
+        """CREATE UPDATE."""
         raise NotImplementedError
 
     @abstractmethod

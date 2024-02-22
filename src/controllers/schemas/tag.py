@@ -13,4 +13,4 @@ class TagSchema(Schema):
     id = Integer()
     name = String(required=True)
 
-    datasets = List(Nested(DatasetSchema))
+    # datasets = List(Nested(DatasetSchema))

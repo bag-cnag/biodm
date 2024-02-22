@@ -45,7 +45,6 @@ class DatabaseManager():
 
 # from sqlalchemy.orm import sessionmaker
 
-
 # engine = create_async_engine(
 #     async_database_url(),
 #     echo=True,
