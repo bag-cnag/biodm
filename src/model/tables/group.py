@@ -17,7 +17,8 @@ class Group(Base):
     # relationships
     users: Mapped[List["User"]] = relationship(
         secondary=asso_user_group, 
-        back_populates="groups"
+        back_populates="groups",
+        # init=False,
     )
 
     children: Mapped[List["Group"]] = relationship(
@@ -27,12 +28,13 @@ class Group(Base):
         # repr=False,
     )
     parent: Mapped[Optional["Group"]] = relationship(
-        back_populates="children", remote_side=name #, default=None
+        back_populates="children", remote_side=name, #, default=None
+        # init=False,
     )
     # projects: Mapped[List["Project"]] = relationship(
     #     secondary=asso_project_group, back_populates="groups"
     # )
-    datasets: Mapped[List["Dataset"]] = relationship(back_populates="group")
+    # datasets: Mapped[List["Dataset"]] = relationship(back_populates="group")
 
     def __repr__(self):
         return f"<Group(name={self.name}, parent={str(self.parent)})>"

@@ -16,6 +16,7 @@ DEV = config('DEV', cast=bool, default=True)
 ## Server info
 SERVER_HOST = config("SERVER_HOST", cast=str, default="127.0.0.1")
 SERVER_PORT = config("SERVER_PORT", cast=int, default=8000)
+SECRET_KEY = config("SECRET_KEY", cast=str, default="r4nD0m_p455")
 
 # Indentation level when returning json.
 INDENT = config('INDENT', cast=int, default=2)

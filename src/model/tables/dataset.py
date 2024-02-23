@@ -47,7 +47,7 @@ class Dataset(Base):
     # id_project:      Mapped[int] = Column(ForeignKey("PROJECT.id"), nullable=False)
 
     # relationships
-    group:   Mapped["Group"] = relationship(back_populates="datasets")  
+    # group:   Mapped["Group"] = relationship(back_populates="datasets")  
     # project: Mapped[Project]       = relationship(back_populates="datasets")
     contact: Mapped["User"]  = relationship(foreign_keys=[id_user_contact])
     # tags:    Mapped[List["Tag"]]     = relationship(

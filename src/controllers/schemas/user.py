@@ -11,4 +11,4 @@ class UserSchema(Schema):
         model = User
 
     id = UUID(required=True)
-    groups = List(Nested('GroupSchema'))
+    groups = List(Nested('GroupSchema'), load_only=True)

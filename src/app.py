@@ -12,7 +12,7 @@ from starlette.routing import Route, Router
 import config
 from api.routes import routes
 from model import DatabaseManager
-from controllers import Controller, TagController # , HttpMethod
+from controllers import Controller, TagController, UserController, GroupController # , HttpMethod
 from exceptions import RequestError
 from errors import onerror
 
@@ -61,14 +61,19 @@ class Api(Starlette):
 
 
 def main():
+    ## Instanciate app with a controller for 
     app = Api(
         debug=config.DEBUG, 
         routes=routes,
-        controllers=[TagController]
+        controllers=[
+            TagController, 
+            UserController,
+            GroupController,
+        ]
     )
     ## Middlewares
     # app.add_middleware(AuthenticationMiddleware, callback_url="http://localhost:8000/kc/callback", redirect_uri="/howdy", logout_uri="/logout")
-    app.add_middleware(SessionMiddleware, secret_key="r4nD0m_p455")
+    app.add_middleware(SessionMiddleware, secret_key=config.SECRET_KEY)
     return app
 
 
