@@ -12,7 +12,14 @@ from starlette.routing import Route, Router
 import config
 from api.routes import routes
 from model import DatabaseManager
-from controllers import Controller, TagController, UserController, GroupController # , HttpMethod
+from controllers import (
+    Controller, 
+    TagController, 
+    UserController, 
+    GroupController,
+    DatasetController
+)
+# , HttpMethod
 from exceptions import RequestError
 from errors import onerror
 
@@ -28,9 +35,8 @@ class Api(Starlette):
 
         # Set up CORS
         self.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
-            allow_credentials=True
+            CORSMiddleware, allow_credentials=True,
+            allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
         )
 
         # Event handlers
@@ -61,7 +67,7 @@ class Api(Starlette):
 
 
 def main():
-    ## Instanciate app with a controller for 
+    ## Instanciate app with a controller for each entity
     app = Api(
         debug=config.DEBUG, 
         routes=routes,
@@ -69,6 +75,7 @@ def main():
             TagController, 
             UserController,
             GroupController,
+            DatasetController,
         ]
     )
     ## Middlewares

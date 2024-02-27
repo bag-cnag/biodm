@@ -23,4 +23,4 @@ class GroupSchema(Schema):
 
     parent = Nested('GroupSchema', load_only=True)
     users = List(Nested(UserSchema), load_only=True)
-    datasets = List(Nested(DatasetSchema, required=False))
+    datasets = List(Nested(DatasetSchema), required=False, load_only=True)

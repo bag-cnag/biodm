@@ -1,5 +1,6 @@
 import io
 import json
+import asyncio
 from abc import ABC, abstractmethod
 from typing import Any
 from enum import Enum
@@ -11,7 +12,7 @@ from sqlalchemy.engine import ScalarResult
 
 import config
 from model import Base, UnaryEntityService
-# import pdb
+import pdb
 
 
 class HttpMethod(Enum):
@@ -35,12 +36,13 @@ class Controller(ABC):
         prefix = self.__class__.__name__.split("Controller")[0]
         prefix = '/' + prefix.lower() + 's'
         return Mount(prefix, routes=[
-            Route('/',     self.find_all,      methods=[HttpMethod.GET.value]),
-            Route('/',     self.create,        methods=[HttpMethod.POST.value]),
-            Route('/{id}', self.delete,        methods=[HttpMethod.DELETE.value]),
-            Route('/{id}', self.create_update, methods=[HttpMethod.PUT.value]),
-            Route('/{id}', self.update,        methods=[HttpMethod.PATCH.value]),
-            Route('/{id}', self.read,          methods=[HttpMethod.GET.value]),
+            Route('/',     self.find_all,        methods=[HttpMethod.GET.value]),
+            Route('/',     self.create,          methods=[HttpMethod.POST.value]),
+            Route('/{id}', self.delete,          methods=[HttpMethod.DELETE.value]),
+            Route('/{id}', self.create_update,   methods=[HttpMethod.PUT.value]),
+            Route('/{id}', self.update,          methods=[HttpMethod.PATCH.value]),
+            Route('/{id}', self.read,            methods=[HttpMethod.GET.value]),
+            Route('/search/{query}', self.query, methods=[HttpMethod.GET.value]),
         ])
 
     @staticmethod
@@ -73,14 +75,23 @@ class Controller(ABC):
         """Serialize through an instanciated controller."""
         return self.serialize(data=data, schema=self.schema, many=many)
 
+    async def session_serialize(self, data: Any, schema: Schema, many: bool) -> (str | Any):
+        async with self.app.db.session() as s:
+            return self.serialize(data=data, schema=schema, many=many)
+
     def json_response(self, data: Any, status: int, schema=None) -> Response:
-        content = (
-            self.serialize(data, schema,
-                           many=isinstance(data, ScalarResult))
-            if schema
-            else data
-        )
-        return Response(str(content) + "\n", status_code=status, media_type="application/json")
+            content = (
+                # asyncio.ensure_future(
+                self.serialize(
+                    data, 
+                    schema, 
+                    many=isinstance(data, ScalarResult)
+                )
+                # )
+                if schema
+                else data
+            )
+            return Response(str(content) + "\n", status_code=status, media_type="application/json")
 
     # CRUD operations
     @abstractmethod
@@ -107,6 +118,10 @@ class Controller(ABC):
     def find_all(self, request):
         raise NotImplementedError
 
+    @abstractmethod
+    def query(self, request):
+        raise NotImplementedError
+
 
 class UnaryEntityController(Controller):
     """Generic Service class for non-composite entities with atomic primary_key."""
@@ -122,7 +137,7 @@ class UnaryEntityController(Controller):
     async def create(self, request):
         body = await request.body()
         validated = self.inst_deserialize(body)
-
+        # pdb.set_trace()
         return self.json_response(
             (await self.svc.create_many(validated)
              if isinstance(validated, list)
@@ -134,7 +149,6 @@ class UnaryEntityController(Controller):
     async def read(self, request):
         id = request.path_params.get("id")
         item = await self.svc.read(id=id)
-
         return self.json_response(item, status=200, schema=self.schema)
 
     async def find_all(self, _):
@@ -159,3 +173,8 @@ class UnaryEntityController(Controller):
         body = await request.body()
         item = await self.svc.create_update(id, self.inst_deserialize(body))
         return self.json_response(item, status=200, schema=self.schema)
+
+    async def query(self, request):
+        # TODO: Implement search
+        # q = request.path_params.get("query")
+        raise NotImplementedError

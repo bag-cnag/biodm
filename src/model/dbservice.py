@@ -1,16 +1,27 @@
 import logging
+import importlib
 from abc import ABC, ABCMeta, abstractmethod
 from typing import List, Any
 
-from sqlalchemy import insert, select, update, delete, Result
+from sqlalchemy import (
+    insert, 
+    select, 
+    update, 
+    delete, 
+    Result,
+    inspect
+)
 from sqlalchemy.sql import Insert, Select, Update, Delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from exceptions import MissingDB, FailedRead, FailedDelete, FailedUpdate
 from model import Base
+import model
 import pdb
 
+
 class Singleton(ABCMeta):
+    """Singleton pattern as metaclass."""
     _instances = {}
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
@@ -37,12 +48,23 @@ class DatabaseService(BaseService, metaclass=Singleton):
         async with self.db_session as s:
             row = await s.scalar(stmt)
         if row: return row
-    
+
     async def _insert_many(self, stmt: Insert) -> List[Any]:
         """INSERT many into database."""
         async with self.db_session as s:
             rows = await s.scalars(stmt)
         return rows
+    
+    async def _insert_nested(self, tpl: tuple[Insert, List[Insert]]) -> (Any | None):
+        """Insert one row and associated nested relationships rows."""
+        s_item, ls_nested = tpl
+        async with self.db_session as s:
+            # Insert all dependencies: important to await.
+            for sub in ls_nested:
+                await s.scalar(sub)
+            # Insert item
+            row = await s.scalar(s_item)
+        if row: return row
 
     async def _select(self, stmt: Select) -> (Any | None):
         """SELECT one from database."""
@@ -115,7 +137,7 @@ class DatabaseService(BaseService, metaclass=Singleton):
 
 class UnaryEntityService(DatabaseService):
     """Generic Service class for non-composite entities with atomic primary_key."""
-    def __init__(self, app, table: Base, id="id", *args, **kwargs):
+    def __init__(self, app, table: Base, id: str="id", *args, **kwargs):
         self._table = table
 
         # Set and verify id
@@ -132,6 +154,7 @@ class UnaryEntityService(DatabaseService):
 
     async def create(self, data, stmt_only=False) -> table:
         """CREATE one row. data: schema validation result."""
+        # pdb.set_trace()
         stmt = insert(self.table).values(**data).returning(self.table)
         return stmt if stmt_only else await self._insert(stmt)
 
@@ -167,3 +190,36 @@ class UnaryEntityService(DatabaseService):
         """DELETE."""
         stmt = delete(self.table).where(self.table.id == self.id_type(id))
         return await self._delete(stmt)
+
+
+class CompositeEntityService(UnaryEntityService):
+    @property
+    def table(self) -> Base:
+        """Return"""
+        return self._table
+
+    async def create(self, data, stmt_only=False) -> table:
+        """CREATE one row, accounting for nested entitites."""
+        stmts = []
+        mapper = inspect(self.table).mapper
+        rels = mapper.relationships
+
+        # For all table relationships, check whether data contains that item.
+        for key in rels.keys():
+            sub = data.get(key)
+            if sub:
+                # Retrieve associated service.
+                target_table = rels[key].target
+                svc = target_table.name.capitalize() + "Service"
+                svc = getattr(getattr(model, "services"), svc)()
+
+                # Build statements for nested entities.
+                nested_stmt = await svc.create(sub, stmt_only=True)
+                stmts.append(nested_stmt)
+
+                # Remove from data dict to avoid errors in item stmt.
+                del data[key]
+
+        # Statement for original item.
+        stmt = insert(self.table).values(**data).returning(self.table)
+        return stmts if stmt_only else await self._insert_nested((stmt, stmts))
