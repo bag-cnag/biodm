@@ -14,12 +14,12 @@ class DatabaseManager():
         self.database_url = DATABASE_URL if sync else self.async_database_url()
         self.engine = create_async_engine(
             self.database_url,
-            echo=DEBUG
+            echo=DEBUG,
         )
         self.async_session = async_sessionmaker(
             self.engine, 
             class_=AsyncSession,
-            expire_on_commit=False
+            expire_on_commit=False,
         )
 
     @staticmethod
@@ -42,42 +42,6 @@ class DatabaseManager():
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
-
-# from sqlalchemy.orm import sessionmaker
-
-# engine = create_async_engine(
-#     async_database_url(),
-#     echo=True,
-# )
-# , autoflush=False, autocommit=False
-# async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-# async_session = async_sessionmaker(engine)
-
-
-# from typing import AsyncGenerator
-# from sqlalchemy.ext.asyncio import AsyncSession
-# from model.session import async_session
-# from contextlib import asynccontextmanager
-
-
-# # async def db() -> AsyncGenerator[AsyncSession, None]:
-# #     async with async_session() as session:
-# #         yield session
-# #         await session.commit()
-
-
-# @asynccontextmanager
-# async def get_db():
-#     try:
-#         async with async_session() as session:
-#             yield session
-#             await session.commit()
-#     except:
-#         await session.rollback()
-#         raise
-#     finally:
-#         await session.close()
-
 
 # ## Snippet for version In case needed one day:
 # # SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

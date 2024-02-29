@@ -29,12 +29,12 @@ class DatasetSchema(Schema):
         # )
     )
 
-    group = Nested('GroupSchema', load_only=True)
-    contact = Nested('UserSchema', load_only=True)
-    # tags = List(Nested('TagSchema'))
+    group = Nested('GroupSchema', only=('name',))
+    contact = Nested('UserSchema', only=('id',))
+    tags = List(Nested('TagSchema'), only=('name', ))
 
     @pre_load
-    def pre_load_process(self, data, many, **kwargs): # **kwargs
+    def pre_load_process(self, data, many, **kwargs):
         ret = data
 
         id_uc = data.get('id_user_contact')

@@ -1,15 +1,10 @@
 import logging
-import importlib
 from abc import ABC, ABCMeta, abstractmethod
-from typing import List, Any
+from typing import List, Any, overload, Tuple
 
 from sqlalchemy import (
-    insert, 
-    select, 
-    update, 
-    delete, 
-    Result,
-    inspect
+    insert, select, update,
+    delete, Result, inspect
 )
 from sqlalchemy.sql import Insert, Select, Update, Delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from exceptions import MissingDB, FailedRead, FailedDelete, FailedUpdate
 from model import Base
 import model
+from utils.utils import unevalled_all, to_it
 import pdb
 
 
@@ -55,17 +51,6 @@ class DatabaseService(BaseService, metaclass=Singleton):
             rows = await s.scalars(stmt)
         return rows
     
-    async def _insert_nested(self, tpl: tuple[Insert, List[Insert]]) -> (Any | None):
-        """Insert one row and associated nested relationships rows."""
-        s_item, ls_nested = tpl
-        async with self.db_session as s:
-            # Insert all dependencies: important to await.
-            for sub in ls_nested:
-                await s.scalar(sub)
-            # Insert item
-            row = await s.scalar(s_item)
-        if row: return row
-
     async def _select(self, stmt: Select) -> (Any | None):
         """SELECT one from database."""
         async with self.db_session as s:
@@ -85,7 +70,7 @@ class DatabaseService(BaseService, metaclass=Singleton):
         if result: return result
         raise FailedUpdate("Query updated no result.")
 
-    async def _merge(self, item: Any):
+    async def _merge(self, item: Base) -> Base:
         """Use session.merge feature: sync local object with one from db."""
         async with self.db_session as s:
             item = await s.merge(item)
@@ -102,11 +87,6 @@ class DatabaseService(BaseService, metaclass=Singleton):
     @abstractmethod
     async def create(self, stmt_only=False, **kwargs):
         """CREATE one row."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def create_many(self, stmt_only=False, **kwargs):
-        """CREATE many rows."""
         raise NotImplementedError
 
     @abstractmethod
@@ -136,15 +116,17 @@ class DatabaseService(BaseService, metaclass=Singleton):
 
 
 class UnaryEntityService(DatabaseService):
-    """Generic Service class for non-composite entities with atomic primary_key."""
-    def __init__(self, app, table: Base, id: str="id", *args, **kwargs):
+    """Generic Service class for non-composite entities."""
+    def __init__(self, app, table: Base, id: (str | Tuple[str, ...])="id", *args, **kwargs):
         self._table = table
+        # TODO: Change id to pk
 
-        # Set and verify id
-        self.id = table.__dict__[id]
-        assert(self.id.primary_key)
-        self.id_type = self.id.type.python_type
-
+        # Set and verify id: possible composite primary key.
+        self.id = tuple(table.__dict__[i] for i in to_it(id))
+        assert(i.primary_key for i in self.id)
+        self.id_type = tuple(i.type.python_type for i in self.id)
+        self.id_name = to_it(id)
+ 
         super(UnaryEntityService, self).__init__(app=app, *args, **kwargs)
 
     @property
@@ -152,20 +134,41 @@ class UnaryEntityService(DatabaseService):
         """Return"""
         return self._table
 
-    async def create(self, data, stmt_only=False) -> table:
-        """CREATE one row. data: schema validation result."""
-        # pdb.set_trace()
-        stmt = insert(self.table).values(**data).returning(self.table)
-        return stmt if stmt_only else await self._insert(stmt)
+    @overload
+    async def create(self, data, stmt_only: True) -> Insert:
+        """..."""
 
-    async def create_many(self, data, stmt_only=False) -> List[table]:
-        """CREATE many rows."""
-        stmt = insert(self.table).values(data).returning(self.table)
-        return stmt if stmt_only else await self._insert_many(stmt)
+    async def create(self, data, stmt_only: False) -> table | List[table]:
+        """CREATE one or many rows. data: schema validation result."""
+        if isinstance(data, list):
+            stmt = insert(self.table).values(data).returning(self.table)
+            return stmt if stmt_only else await self._insert_many(stmt)
+        else:
+            stmt = insert(self.table).values(**data).returning(self.table)
+            return stmt if stmt_only else await self._insert(stmt)
+
+    def gen_cond(self, values):
+        """Generates WHERE condition from pk definition and values."""
+        return unevalled_all((
+                pk == cast(val)
+                for pk, cast, val in zip(
+                    self.id,
+                    self.id_type,
+                    to_it(values)
+                )
+            ))
 
     async def create_update(self, id, data) -> table:
         """CREATE or UPDATE one row."""
-        item = self.table(**{self.id: self.id_type(id)}, **data)
+        kw = {
+            id: id_type(value) 
+            for id, id_type, value in zip(
+                self.id_name, 
+                self.id_type, 
+                to_it(id)
+            )
+        }
+        item = self.table(**kw, **data)
         return await self._merge(item)
 
     async def find_all(self) -> List[table]:
@@ -175,21 +178,29 @@ class UnaryEntityService(DatabaseService):
 
     async def read(self, id) -> table:
         """READ one row."""
-        stmt = select(self.table).where(self.id == self.id_type(id))
+        stmt = select(self.table).where(self.gen_cond(id))
         return await self._select(stmt)
 
     async def update(self, id, data) -> table:
         """UPDATE one row."""
         stmt = update(self.table
-                ).where(self.id == self.id_type(id)
+                ).where(self.gen_cond(id)
                     ).values(**data
                         ).returning(self.table)
         return await self._update(stmt)
 
     async def delete(self, id):
         """DELETE."""
-        stmt = delete(self.table).where(self.table.id == self.id_type(id))
+        stmt = delete(self.table).where(self.gen_cond(id))
         return await self._delete(stmt)
+
+
+class CompositeInsert(object):
+    """Class to manage composite entities insertions."""
+    def __init__(self, item: Insert, nested: List[Insert]=[], delayed: dict={}) -> None:
+        self.item = item
+        self.nested = nested
+        self.delayed = delayed
 
 
 class CompositeEntityService(UnaryEntityService):
@@ -198,28 +209,69 @@ class CompositeEntityService(UnaryEntityService):
         """Return"""
         return self._table
 
-    async def create(self, data, stmt_only=False) -> table:
-        """CREATE one row, accounting for nested entitites."""
+    async def _insert(self, stmt: (Insert| CompositeInsert)) -> Any | None:
+        """Redirect in case of composite insert."""
+        if isinstance(stmt, CompositeInsert):
+            return self._insert_composite(stmt)
+        else:
+            await super()._insert(stmt)
+
+    # async def _insert_many(self, stmt: Insert) -> List[Any]:
+    #     return await super()._insert_many(stmt)
+
+    async def _insert_composite(self, composite: CompositeInsert) -> (Any | None):
+        """Insert a composite entity."""
+        # TODO: take out session for all _statement execution functions.
+        async with self.db_session as s:
+            # Insert all nested objects (await !)
+            for sub in composite.nested:
+                # TODO: handle nested composites
+                # if isinstance(sub, CompositeInsert):
+                #     await 
+                await s.scalar(sub)
+            # Insert item
+            item = await s.scalar(composite.item)
+            # Populate with delayed lists
+            for key in composite.delayed.keys():
+                # TODO: handle list of composites
+                items = await s.scalars(composite.delayed[key])
+                getattr(item, key).update(items)
+        if item: return item
+
+    async def create(self, data, stmt_only=False) -> Base | CompositeInsert:
+        """CREATE, accounting for nested entitites."""
         stmts = []
-        mapper = inspect(self.table).mapper
-        rels = mapper.relationships
+        delayed = {}
+        rels = inspect(self.table).mapper.relationships
 
         # For all table relationships, check whether data contains that item.
         for key in rels.keys():
+            rel = rels[key]
             sub = data.get(key)
-            if sub:
-                # Retrieve associated service.
-                target_table = rels[key].target
-                svc = target_table.name.capitalize() + "Service"
-                svc = getattr(getattr(model, "services"), svc)()
+            if not sub: continue
 
-                # Build statements for nested entities.
-                nested_stmt = await svc.create(sub, stmt_only=True)
-                stmts.append(nested_stmt)
+            # Retrieve associated service.
+            target_table = rel.target
+            svc = target_table.name.capitalize() + "Service"
+            svc = getattr(getattr(model, "services"), svc)()
 
-                # Remove from data dict to avoid errors in item stmt.
-                del data[key]
+            # Get statement(s) for nested entity:
+            nested_stmt = await svc.create(sub, stmt_only=True)
+
+            # Single nested entity.
+            if isinstance(sub, dict):
+                stmts += [nested_stmt]
+            # List of entities: one - to - many relationship.
+            elif isinstance(sub, list):
+                delayed[key] = nested_stmt
+            else:
+                raise ValueError("Expecting nested entities to be either passed as dict or list.")
+            # Remove from data dict to avoid errors on building item statement.
+            del data[key]
 
         # Statement for original item.
         stmt = insert(self.table).values(**data).returning(self.table)
-        return stmts if stmt_only else await self._insert_nested((stmt, stmts))
+        # Pack.
+        composite = CompositeInsert(item=stmt, nested=stmts, delayed=delayed)
+
+        return composite if stmt_only else await self._insert_composite(composite)

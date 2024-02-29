@@ -2,7 +2,7 @@ import io
 import json
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Tuple
 from enum import Enum
 
 from marshmallow.schema import Schema, EXCLUDE
@@ -75,19 +75,12 @@ class Controller(ABC):
         """Serialize through an instanciated controller."""
         return self.serialize(data=data, schema=self.schema, many=many)
 
-    async def session_serialize(self, data: Any, schema: Schema, many: bool) -> (str | Any):
-        async with self.app.db.session() as s:
-            return self.serialize(data=data, schema=schema, many=many)
-
     def json_response(self, data: Any, status: int, schema=None) -> Response:
             content = (
-                # asyncio.ensure_future(
                 self.serialize(
-                    data, 
-                    schema, 
+                    data, schema, 
                     many=isinstance(data, ScalarResult)
                 )
-                # )
                 if schema
                 else data
             )
@@ -129,7 +122,7 @@ class UnaryEntityController(Controller):
                  svc: UnaryEntityService,
                  table: Base,
                  schema: Schema,
-                 id: str="id"):
+                 id: (str | Tuple[str, ...])="id"):
         self.id = id
         self.svc = svc(app=self.app, table=table, id=self.id)
         self.schema = schema()
@@ -139,9 +132,7 @@ class UnaryEntityController(Controller):
         validated = self.inst_deserialize(body)
         # pdb.set_trace()
         return self.json_response(
-            (await self.svc.create_many(validated)
-             if isinstance(validated, list)
-             else await self.svc.create(validated)),
+            await self.svc.create(validated, stmt_only=False),
             status = 201,
             schema=self.schema
         )

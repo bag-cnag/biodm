@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List # Optional, 
+from typing import TYPE_CHECKING, List, Set # Optional, 
 
 from sqlalchemy import Column, Integer, SmallInteger, ForeignKey, String
 from sqlalchemy.orm import Mapped, relationship
@@ -47,13 +47,11 @@ class Dataset(Base):
     # id_project:      Mapped[int] = Column(ForeignKey("PROJECT.id"), nullable=False)
 
     # relationships
-    group:   Mapped["Group"] = relationship(back_populates="datasets")
+    group:   Mapped["Group"]     = relationship(back_populates="datasets", lazy="immediate")
+    contact: Mapped["User"]      = relationship(foreign_keys=[id_user_contact], lazy="immediate")
+    tags:    Mapped[Set["Tag"]]  = relationship(secondary=asso_dataset_tag, lazy="immediate", uselist=True)
     # project: Mapped[Project]       = relationship(back_populates="datasets")
-    contact: Mapped["User"]  = relationship(foreign_keys=[id_user_contact])
-    # tags:    Mapped[List["Tag"]]     = relationship(
-    #     secondary=asso_dataset_tag, 
-    #     back_populates="datasets"
-    # )
+
     # files:   Mapped[List["File"]]  = relationship(back_populates="dataset") 
     # permission_lv2: Mapped["Permission_lv2"] = relationship()
 
