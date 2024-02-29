@@ -12,6 +12,7 @@ from sqlalchemy.engine import ScalarResult
 
 import config
 from model import Base, UnaryEntityService
+from utils.utils import to_it
 import pdb
 
 
@@ -28,21 +29,26 @@ class Controller(ABC):
     def init(cls, app) -> None:
         cls.app = app
         # default id: should be overriden by child __init__ if not the case.
-        cls.id = 'id'
+        cls.id = ('id',)
         return cls()
 
     # https://restfulapi.net/http-methods/
     def routes(self) -> Mount:
         prefix = self.__class__.__name__.split("Controller")[0]
-        prefix = '/' + prefix.lower() + 's'
+        prefix = '/' + prefix.lower() + 's'       
+
+        id_params = "{"+ f"{self.id[-1]}" +"}"
+        for id in self.id[:-1]:
+            id_params = "{"+id+"}_" + id_params
+
         return Mount(prefix, routes=[
-            Route('/',     self.find_all,        methods=[HttpMethod.GET.value]),
-            Route('/',     self.create,          methods=[HttpMethod.POST.value]),
-            Route('/{id}', self.delete,          methods=[HttpMethod.DELETE.value]),
-            Route('/{id}', self.create_update,   methods=[HttpMethod.PUT.value]),
-            Route('/{id}', self.update,          methods=[HttpMethod.PATCH.value]),
-            Route('/{id}', self.read,            methods=[HttpMethod.GET.value]),
-            Route('/search/{query}', self.query, methods=[HttpMethod.GET.value]),
+            Route('/',               self.find_all,        methods=[HttpMethod.GET.value]),
+            Route('/',               self.create,          methods=[HttpMethod.POST.value]),
+            Route(f'/{id_params}',   self.delete,          methods=[HttpMethod.DELETE.value]),
+            Route(f'/{id_params}',   self.create_update,   methods=[HttpMethod.PUT.value]),
+            Route(f'/{id_params}',   self.update,          methods=[HttpMethod.PATCH.value]),
+            Route(f'/{id_params}',   self.read,            methods=[HttpMethod.GET.value]),
+            Route('/search/{query}', self.query,           methods=[HttpMethod.GET.value]),
         ])
 
     @staticmethod
@@ -123,7 +129,7 @@ class UnaryEntityController(Controller):
                  table: Base,
                  schema: Schema,
                  id: (str | Tuple[str, ...])="id"):
-        self.id = id
+        self.id = to_it(id)
         self.svc = svc(app=self.app, table=table, id=self.id)
         self.schema = schema()
 
@@ -138,7 +144,7 @@ class UnaryEntityController(Controller):
         )
 
     async def read(self, request):
-        id = request.path_params.get("id")
+        id = [request.path_params.get(i) for i in self.id]
         item = await self.svc.read(id=id)
         return self.json_response(item, status=200, schema=self.schema)
 
@@ -151,14 +157,16 @@ class UnaryEntityController(Controller):
         raise NotImplementedError
 
     async def delete(self, request):
-        id = request.path_params.get("id")
+        # id = request.path_params.get("id")
+        id = [request.path_params.get(i) for i in self.id]
         if not id:
             return self.json_response("Method not allowed on a collection.", status=405)
         await self.svc.delete(id)
         return self.json_response("Deleted.", status=200)
 
     async def create_update(self, request):
-        id = request.path_params.get("id")
+        # id = request.path_params.get("id")
+        id = [request.path_params.get(i) for i in self.id]
         if not id:
             return self.json_response("Method not allowed on a collection.", status=405)
         body = await request.body()

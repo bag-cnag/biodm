@@ -245,13 +245,12 @@ class CompositeEntityService(UnaryEntityService):
             return [await self._insert_composite(composite, session) for composite in stmt]
 
     @DatabaseService.in_session
-    async def _insert_composite(self, composite: CompositeInsert, 
-                                session: AsyncSession=None) -> (Any | None):
+    async def _insert_composite(self, composite: CompositeInsert, session: AsyncSession) -> (Any | None):
         """Insert a composite entity."""
-        # Insert all nested objects + item (last)
+        # Insert all nested objects + item (last).
         for sub in composite.nested + [composite.item]:
             item = await self._insert(sub, session)
-        # Populate item with delayed lists
+        # Populate item with delayed lists.
         for key in composite.delayed.keys():
             items = await self._insert_many(composite.delayed[key], session)
             getattr(item, key).update(items)
