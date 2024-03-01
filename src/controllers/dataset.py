@@ -9,5 +9,4 @@ class DatasetController(UnaryEntityController):
         super().__init__(
             svc=DatasetService,
             table=Dataset,
-            schema=DatasetSchema,
-            id=('id', 'version'))
+            schema=DatasetSchema)

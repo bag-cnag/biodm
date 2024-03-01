@@ -43,7 +43,7 @@ class DatasetSchema(Schema):
             assert(id_uc == contact_id)
         elif contact_id and not id_uc:
             ret["id_user_contact"] = contact_id
-        else:
+        elif not id_uc:
             raise ValidationError("Need one of id_user_contact or contact fields.")
 
         name_group = data.get('name_group')
@@ -52,7 +52,7 @@ class DatasetSchema(Schema):
             assert(name_group == group_name)
         elif group_name and not name_group:
             ret["name_group"] = group_name
-        else:
+        elif not name_group:
             raise ValidationError("Need one of name_group or group fields.")
 
         return ret

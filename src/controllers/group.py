@@ -9,5 +9,4 @@ class GroupController(UnaryEntityController):
         super().__init__(
             svc=GroupService,
             table=Group,
-            schema=GroupSchema,
-            id="name")
+            schema=GroupSchema)

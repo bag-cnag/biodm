@@ -38,7 +38,7 @@ class BaseService(ABC):
 
 class DatabaseService(BaseService, metaclass=Singleton):
     def in_session(db_exec):
-        """Decorator to that ensures that db_exec receives a session.
+        """Decorator that ensures db_exec receives a session.
 
         session object is either passed as an argument (from nested obj creation)
             or a new context manager is opened.
@@ -70,14 +70,13 @@ class DatabaseService(BaseService, metaclass=Singleton):
     @in_session
     async def _insert_many(self, stmt: Insert, session: AsyncSession) -> List[Any]:
         """INSERT many into database."""
-        rows = await session.scalars(stmt)
-        return rows
+        return await session.scalars(stmt)
 
     @in_session
     async def _select(self, stmt: Select, session: AsyncSession) -> (Any | None):
         """SELECT one from database."""
-        result = (await session.execute(stmt)).scalar()
-        if result: return result
+        row = await session.scalar(stmt)
+        if row: return row
         raise FailedRead("Query returned no result.")
 
     @in_session
@@ -88,7 +87,8 @@ class DatabaseService(BaseService, metaclass=Singleton):
     @in_session
     async def _update(self, stmt: Update, session: AsyncSession):
         """UPDATE database entry."""
-        result = (await session.execute(stmt)).scalar()
+        result = await session.scalar(stmt)
+        # result = (await session.execute(stmt)).scalar()
         if result: return result
         raise FailedUpdate("Query updated no result.")
 
@@ -139,16 +139,12 @@ class DatabaseService(BaseService, metaclass=Singleton):
 
 class UnaryEntityService(DatabaseService):
     """Generic Service class for non-composite entities."""
-    def __init__(self, app, table: Base, id: (str | Tuple[str, ...])="id", *args, **kwargs):
+    def __init__(self, app, table: Base, pk: Tuple[str, ...], *args, **kwargs):
+        # Entity info.
         self._table = table
-        # TODO: Change id to pk
+        self.pk = tuple(table.__dict__[key] for key in pk)
+        self.relationships = inspect(table).mapper.relationships
 
-        # Set and verify id: possible composite primary key.
-        self.id = tuple(table.__dict__[i] for i in to_it(id))
-        assert(i.primary_key for i in self.id)
-        self.id_type = tuple(i.type.python_type for i in self.id)
-        self.id_name = to_it(id)
- 
         super(UnaryEntityService, self).__init__(app=app, *args, **kwargs)
 
     @property
@@ -172,23 +168,15 @@ class UnaryEntityService(DatabaseService):
     def gen_cond(self, values):
         """Generates WHERE condition from pk definition and values."""
         return unevalled_all((
-                pk == cast(val)
-                for pk, cast, val in zip(
-                    self.id,
-                    self.id_type,
-                    to_it(values)
-                )
+                pk == pk.type.python_type(val)
+                for pk, val in zip(self.pk, to_it(values))
             ))
 
     async def create_update(self, id, data) -> table:
         """CREATE or UPDATE one row."""
         kw = {
-            i: id_type(value)
-            for i, id_type, value in zip(
-                self.id_name, 
-                self.id_type, 
-                to_it(id)
-            )
+            pk.name: pk.type.python_type(value)
+            for pk, value in zip(self.pk, to_it(id))
         }
         item = self.table(**kw, **data)
         return await self._merge(item)
@@ -260,11 +248,10 @@ class CompositeEntityService(UnaryEntityService):
         """CREATE, accounting for nested entitites."""
         stmts = []
         delayed = {}
-        rels = inspect(self.table).mapper.relationships
 
         # For all table relationships, check whether data contains that item.
-        for key in rels.keys():
-            rel = rels[key]
+        for key in self.relationships.keys():
+            rel = self.relationships[key]
             sub = data.get(key)
             if not sub: continue
 

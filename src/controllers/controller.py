@@ -11,7 +11,7 @@ from starlette.routing import Mount, Route
 from sqlalchemy.engine import ScalarResult
 
 import config
-from model import Base, UnaryEntityService
+from model import Base, UnaryEntityService, DatabaseService
 from utils.utils import to_it
 import pdb
 
@@ -28,17 +28,17 @@ class Controller(ABC):
     @classmethod
     def init(cls, app) -> None:
         cls.app = app
-        # default id: should be overriden by child __init__ if not the case.
-        cls.id = ('id',)
+        # default pk: should be overriden by child __init__ if not the case.
+        cls.pk = ('id',)
         return cls()
 
     # https://restfulapi.net/http-methods/
     def routes(self) -> Mount:
         prefix = self.__class__.__name__.split("Controller")[0]
-        prefix = '/' + prefix.lower() + 's'       
+        prefix = '/' + prefix.lower() + 's'
 
-        id_params = "{"+ f"{self.id[-1]}" +"}"
-        for id in self.id[:-1]:
+        id_params = "{"+ f"{self.pk[-1]}" +"}"
+        for id in self.pk[:-1]:
             id_params = "{"+id+"}_" + id_params
 
         return Mount(prefix, routes=[
@@ -127,16 +127,21 @@ class UnaryEntityController(Controller):
     def __init__(self,
                  svc: UnaryEntityService,
                  table: Base,
-                 schema: Schema,
-                 id: (str | Tuple[str, ...])="id"):
-        self.id = to_it(id)
-        self.svc = svc(app=self.app, table=table, id=self.id)
-        self.schema = schema()
+                 schema: Schema):
+        self.table = table
+        self.pk: Tuple[str, ...] = tuple(
+            str(x).split('.')[-1] 
+            for x in table.__table__.primary_key.columns
+        )
+
+        self.svc:    DatabaseService = svc(app=self.app, 
+                                           table=self.table, 
+                                           pk=self.pk)
+        self.schema: Schema          = schema()
 
     async def create(self, request):
         body = await request.body()
         validated = self.inst_deserialize(body)
-        # pdb.set_trace()
         return self.json_response(
             await self.svc.create(validated, stmt_only=False),
             status = 201,
@@ -144,7 +149,7 @@ class UnaryEntityController(Controller):
         )
 
     async def read(self, request):
-        id = [request.path_params.get(i) for i in self.id]
+        id = [request.path_params.get(k) for k in self.pk]
         item = await self.svc.read(id=id)
         return self.json_response(item, status=200, schema=self.schema)
 
@@ -158,7 +163,7 @@ class UnaryEntityController(Controller):
 
     async def delete(self, request):
         # id = request.path_params.get("id")
-        id = [request.path_params.get(i) for i in self.id]
+        id = [request.path_params.get(k) for k in self.pk]
         if not id:
             return self.json_response("Method not allowed on a collection.", status=405)
         await self.svc.delete(id)
@@ -166,7 +171,7 @@ class UnaryEntityController(Controller):
 
     async def create_update(self, request):
         # id = request.path_params.get("id")
-        id = [request.path_params.get(i) for i in self.id]
+        id = [request.path_params.get(k) for k in self.pk]
         if not id:
             return self.json_response("Method not allowed on a collection.", status=405)
         body = await request.body()
