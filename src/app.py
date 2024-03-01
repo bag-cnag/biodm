@@ -14,7 +14,7 @@ from api.routes import routes
 from model import DatabaseManager
 from controllers import (
     Controller, 
-    TagController, 
+    TagController,
     UserController, 
     GroupController,
     DatasetController
@@ -72,7 +72,7 @@ def main():
         debug=config.DEBUG, 
         routes=routes,
         controllers=[
-            TagController, 
+            TagController,
             UserController,
             GroupController,
             DatasetController,

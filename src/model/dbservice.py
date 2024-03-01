@@ -14,7 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.sql import Insert, Select, Update, Delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from exceptions import MissingDB, FailedRead, FailedDelete, FailedUpdate
+from exceptions import MissingDB, FailedRead, FailedDelete, FailedUpdate, MissingService
 from model import Base
 import model
 from utils.utils import unevalled_all, to_it
@@ -175,8 +175,8 @@ class UnaryEntityService(DatabaseService):
     async def create_update(self, id, data) -> table:
         """CREATE or UPDATE one row."""
         kw = {
-            pk.name: pk.type.python_type(value)
-            for pk, value in zip(self.pk, to_it(id))
+            pk.name: pk.type.python_type(val)
+            for pk, val in zip(self.pk, to_it(id))
         }
         item = self.table(**kw, **data)
         return await self._merge(item)
@@ -248,6 +248,8 @@ class CompositeEntityService(UnaryEntityService):
         """CREATE, accounting for nested entitites."""
         stmts = []
         delayed = {}
+        pdb.set_trace()
+        # TODO: manage in case nested entitites exist already.
 
         # For all table relationships, check whether data contains that item.
         for key in self.relationships.keys():
@@ -257,8 +259,14 @@ class CompositeEntityService(UnaryEntityService):
 
             # Retrieve associated service.
             target_table = rel.target
-            svc = target_table.name.capitalize() + "Service"
-            svc = getattr(getattr(model, "services"), svc)()
+            svc_name = target_table.name.capitalize() + "Service"
+            svc = getattr(getattr(model, "services"), svc_name, None)
+            if not svc:
+                raise MissingService(
+                    f"Service {type(self).__name__} expected {svc_name} in model"
+                    f" to insert nested entity."
+                )
+            svc = svc()
 
             # Get statement(s) for nested entity:
             nested_stmt = await svc.create(sub, stmt_only=True)

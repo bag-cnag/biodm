@@ -130,10 +130,9 @@ class UnaryEntityController(Controller):
                  schema: Schema):
         self.table = table
         self.pk: Tuple[str, ...] = tuple(
-            str(x).split('.')[-1] 
-            for x in table.__table__.primary_key.columns
+            str(pk).split('.')[-1] 
+            for pk in table.__table__.primary_key.columns
         )
-
         self.svc:    DatabaseService = svc(app=self.app, 
                                            table=self.table, 
                                            pk=self.pk)
