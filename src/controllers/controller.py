@@ -48,7 +48,7 @@ class Controller(ABC):
             Route(f'/{id_params}',   self.create_update,   methods=[HttpMethod.PUT.value]),
             Route(f'/{id_params}',   self.update,          methods=[HttpMethod.PATCH.value]),
             Route(f'/{id_params}',   self.read,            methods=[HttpMethod.GET.value]),
-            Route('/search/{query}', self.query,           methods=[HttpMethod.GET.value]),
+            Route('/search',         self.query,           methods=[HttpMethod.GET.value]),
         ])
 
     @staticmethod
@@ -178,6 +178,28 @@ class UnaryEntityController(Controller):
         return self.json_response(item, status=200, schema=self.schema)
 
     async def query(self, request):
+        """ Query
+
+        Parses a querystring on the route /ressources/search?{querystring}
+        querystring shape:
+            prop1=val1: query for entries where prop1 = val1
+            prop2=valx,valy: query for entries where prop2 = valx or arg2 = valy
+            prop3.propx=vala: query for entries where nested entity prop3 has property propx = vala
+
+            all at once - separate using '&':
+                ?prop1=val1&prop2=valx,valy&prop3.propx=vala 
+        """
+        qp = request.query_params
+        # Check that passed parametes are table columns
+        # Split on '.' for nested entities 
+        for key in qp: 
+            assert(key.split('.')[0] in self.table.__dict__.keys());
+        items = await self.svc.filter(qp)
+        return self.json_response(items, status=200, schema=self.schema)
+
+        # pdb.set_trace()
+        # self.svc.search()
+        # else raise InvalidQuery()
         # TODO: Implement search
         # q = request.path_params.get("query")
         raise NotImplementedError

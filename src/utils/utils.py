@@ -11,3 +11,7 @@ def to_it(x: Any) -> (tuple | list):
 def unevalled_all(ls: List[Any]):
     """Build (ls[0] and ls[1] ... ls[n]) but does not evaluate like all() does."""
     return reduce(operator.and_, ls)
+
+def unevalled_or(ls: List[Any]):
+    """Build (ls[0] or ls[1] ... ls[n]) but does not evaluate like or() does."""
+    return reduce(operator.or_, ls)

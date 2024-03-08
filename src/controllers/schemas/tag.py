@@ -10,7 +10,7 @@ class TagSchema(Schema):
     class Meta:
         model = Tag
 
-    id = Integer()
+    # id = Integer()
     name = String(required=True)
 
     # datasets = List(Nested(DatasetSchema))

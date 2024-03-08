@@ -10,8 +10,8 @@ if TYPE_CHECKING:
 
 
 class Tag(Base):
-    id = Column(Integer, nullable=False, primary_key=True)
-    name = Column(String, nullable=False)
+    # id = Column(Integer, nullable=False, primary_key=True)
+    name = Column(String, nullable=False, primary_key=True)
 
     # relationships
     # datasets: Mapped[List["Dataset"]] = relationship(

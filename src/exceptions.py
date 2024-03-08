@@ -1,5 +1,5 @@
 class MissingService(RuntimeError):
-    """Raised when a controller expects a service that is not present"""
+    """Raised when a controller expects a service that is not present."""
 
 class RequestError(RuntimeError):
     detail = None

@@ -8,16 +8,18 @@ from typing import List, Any, overload, Tuple
 
 
 from sqlalchemy import (
-    insert, select, update,
+    select, update,
     delete, Result, inspect
 )
 from sqlalchemy.sql import Insert, Select, Update, Delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.dialects.postgresql import insert
+from starlette.datastructures import QueryParams
 
 from exceptions import MissingDB, FailedRead, FailedDelete, FailedUpdate, MissingService
 from model import Base
 import model
-from utils.utils import unevalled_all, to_it
+from utils.utils import unevalled_all, unevalled_or, to_it
 import pdb
 
 
@@ -54,11 +56,11 @@ class DatabaseService(BaseService, metaclass=Singleton):
         )))
         assert('session' in argspec.args)
 
-        async def wrapper(self, stmt, session: AsyncSession=None):
+        async def wrapper(self, arg, session: AsyncSession=None):
             async with AsyncExitStack() as stack:
-                if not session:
-                    session = await stack.enter_async_context(self.app.db.session())
-                return await db_exec(self, stmt, session)
+                session = session if session else (
+                    await stack.enter_async_context(self.app.db.session()))
+                return await db_exec(self, arg, session)
         return wrapper
 
     @in_session
@@ -158,11 +160,22 @@ class UnaryEntityService(DatabaseService):
 
     async def create(self, data, stmt_only: False) -> table | List[table]:
         """CREATE one or many rows. data: schema validation result."""
+        idx_elm = [k.name for k in self.pk]
+        # pdb.set_trace()
         if isinstance(data, list):
             stmt = insert(self.table).values(data).returning(self.table)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=idx_elm,
+                set_={
+                    key: getattr(stmt.excluded, key)
+                    for key in stmt.excluded.keys()
+                }
+            )
             return stmt if stmt_only else await self._insert_many(stmt)
         else:
-            stmt = insert(self.table).values(**data).returning(self.table)
+            stmt = insert(self.table).values(**data).returning(self.table
+                    ).on_conflict_do_update(index_elements=idx_elm,
+                                            set_=data)
             return stmt if stmt_only else await self._insert(stmt)
 
     def gen_cond(self, values):
@@ -184,6 +197,45 @@ class UnaryEntityService(DatabaseService):
     async def find_all(self) -> List[table]:
         """READ all rows."""
         stmt = select(self.table)
+        return await self._select_many(stmt)
+
+    async def filter(self, query_params: QueryParams) -> List[table]:
+        """READ rows filted on query parameters."""
+        # TODO: clean a bit
+        stmt = select(self.table)
+        col = lambda k: self.table.__dict__[k]
+        pytype = lambda k: col(k).type.python_type
+
+        filter = []
+        for key in query_params.keys():
+            attr = key.split('.')
+            val = query_params[key].split(',')
+
+            # Simple attribute case
+            if len(attr) == 1:
+                attr = attr[0]
+                clause = unevalled_or((
+                    col(attr) == pytype(attr)(v)
+                    for v in val
+                ))
+                filter.append(clause)
+
+            # Nested entity case
+            elif len(attr) == 2:
+                attr, jfield = attr[0], attr[1]
+                jtable = col(attr).property.target
+                jcol = jtable.c[jfield]
+
+                stmt = stmt.join(jtable, unevalled_or(
+                    jcol == jcol.type.python_type(v)
+                    for v in val
+                ))
+            else:
+                # TODO: ?, Support deeper queries
+                raise NotImplementedError("Search is only supported on immediately nested entities.")
+
+        filter = unevalled_all(filter)
+        stmt = stmt.where(filter)
         return await self._select_many(stmt)
 
     async def read(self, id) -> table:
@@ -230,7 +282,7 @@ class CompositeEntityService(UnaryEntityService):
         if isinstance(stmt, Insert):
             return await super()._insert_many(stmt, session)
         else:
-            return [await self._insert_composite(composite, session) for composite in stmt]
+            return [await self._insert(composite, session) for composite in stmt]
 
     @DatabaseService.in_session
     async def _insert_composite(self, composite: CompositeInsert, session: AsyncSession) -> (Any | None):
@@ -248,8 +300,7 @@ class CompositeEntityService(UnaryEntityService):
         """CREATE, accounting for nested entitites."""
         stmts = []
         delayed = {}
-        pdb.set_trace()
-        # TODO: manage in case nested entitites exist already.
+        # pdb.set_trace()
 
         # For all table relationships, check whether data contains that item.
         for key in self.relationships.keys():
