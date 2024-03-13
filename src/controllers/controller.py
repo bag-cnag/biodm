@@ -13,7 +13,6 @@ from sqlalchemy.engine import ScalarResult
 import config
 from model import Base, UnaryEntityService, DatabaseService
 from utils.utils import to_it
-import pdb
 
 
 class HttpMethod(Enum):
@@ -193,13 +192,6 @@ class UnaryEntityController(Controller):
         # Check that passed parametes are table columns
         # Split on '.' for nested entities 
         for key in qp: 
-            assert(key.split('.')[0] in self.table.__dict__.keys());
+            assert(key.split('.')[0] in self.table.__dict__.keys())
         items = await self.svc.filter(qp)
         return self.json_response(items, status=200, schema=self.schema)
-
-        # pdb.set_trace()
-        # self.svc.search()
-        # else raise InvalidQuery()
-        # TODO: Implement search
-        # q = request.path_params.get("query")
-        raise NotImplementedError

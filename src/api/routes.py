@@ -5,5 +5,5 @@ async def live(_):
     return PlainTextResponse("live\n")
 
 routes = [
-    Route("/", endpoint=live),    
+    Route("/", endpoint=live),
 ]

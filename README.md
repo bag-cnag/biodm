@@ -17,14 +17,18 @@ pip3 install asyncpg
 pip3 install authlib
 ```
 
-## Setup database
+## Setup services dependencies
 
+### Postgres DB
 ```bash
 docker pull postgres:16-bookworm
+docker run --name biodm-pg -e POSTGRES_PASSWORD=pass -d postgres:16-bookworm
 ```
 
+### Keycloak
 ```bash
-docker run --name biodm-pg -e POSTGRES_PASSWORD=pass -d postgres:16-bookworm
+docker pull jboss/keycloak:16.0.0
+docker run --name local_keycloak -e KEYCLOAK_USER=admin -e KEYCLOAK_PASSWORD=admin -p 8443:8080 jboss/keycloak:16.0.0
 ```
 
 ## Quickstart
@@ -42,6 +46,21 @@ Furthermore, Controllers are leveraging services to communicate with the databas
 Then Controllers are inheriting from the following methods. 
 
 TODO: user manual
+
+## Authentication
+Hitting the login endpoint i.e.
+
+```bash
+http://127.0.0.1:8000/login
+```
+
+will return an url towards keycloak login page e.g.
+
+```bash
+http://127.0.0.1:8443/auth/realms/3TR/protocol/openid-connect/auth?scope=openid&response_type=code&client_id=submission_client&redirect_uri=http://127.0.0.1:8000/syn_ack
+```
+
+visiting this webpage and authenticating lets you recover your token `ey...SomeVeryLongString` that you may use to authenticate actions on protected resources.
 
 
 ## Standard Requests examples
@@ -101,11 +120,11 @@ In the future we may hopefully support more complex searches for example:
 
 E.g. `/datasets/search?id={id}&group.admin.email_address=john@doe.com`
 
-- Support some operators
+- int fields: Support operators
 
 E.g `/datasets/search?sample_size.gt(5000)` 
 to query for datasets with a sample_size field greater than 5000
 
+- string fields: Support wildcards
 
-
-
+E.g `/datasets/search?name=3TR_*`

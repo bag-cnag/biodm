@@ -46,15 +46,21 @@ class DatabaseService(BaseService, metaclass=Singleton):
             or a new context manager is opened.
         contextlib.AsyncExitStack() below allows for conditional context management.
         """
-        argspec = getfullargspec(db_exec)
         # Restrict decorator on functions that looks like this.
+        argspec = getfullargspec(db_exec)
         assert('self' in argspec.args)
         assert(any((
             'stmt'      in argspec.args,
             'item'      in argspec.args,
             'composite' in argspec.args
         )))
+        # TODO: debug
+        # assert(argspec.annotations[argspec.args[1]] in (
+        #     Insert, Delete, Select, Update, Base, 
+        #     # CompositeEntityService.CompositeInsert
+        #     ))
         assert('session' in argspec.args)
+        #
 
         async def wrapper(self, arg, session: AsyncSession=None):
             async with AsyncExitStack() as stack:
@@ -214,10 +220,10 @@ class UnaryEntityService(DatabaseService):
             # Simple attribute case
             if len(attr) == 1:
                 attr = attr[0]
-                clause = unevalled_or((
+                clause = unevalled_or(
                     col(attr) == pytype(attr)(v)
                     for v in val
-                ))
+                )
                 filter.append(clause)
 
             # Nested entity case
@@ -226,10 +232,12 @@ class UnaryEntityService(DatabaseService):
                 jtable = col(attr).property.target
                 jcol = jtable.c[jfield]
 
-                stmt = stmt.join(jtable, unevalled_or(
+                stmt = stmt.join(jtable)
+                clause = unevalled_or(
                     jcol == jcol.type.python_type(v)
                     for v in val
-                ))
+                )
+                filter.append(clause)
             else:
                 # TODO: ?, Support deeper queries
                 raise NotImplementedError("Search is only supported on immediately nested entities.")

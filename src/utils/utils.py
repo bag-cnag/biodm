@@ -1,6 +1,7 @@
 import operator
 from typing import Any, List
 from functools import reduce
+import uuid
 
 
 def to_it(x: Any) -> (tuple | list):
@@ -15,3 +16,7 @@ def unevalled_all(ls: List[Any]):
 def unevalled_or(ls: List[Any]):
     """Build (ls[0] or ls[1] ... ls[n]) but does not evaluate like or() does."""
     return reduce(operator.or_, ls)
+
+def nonce():
+    return ""
+    return uuid.uuid4().hex

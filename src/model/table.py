@@ -15,6 +15,9 @@ class Base(DeclarativeBase, AsyncAttrs):
     #                 kw[key] = mapper.relationships[key].entity.class_(**kw[key])
     #     super().__init__(**kw)
 
+    # def col(self, key):
+    #     return self.__dict__[key]
+
     @declared_attr
     def __tablename__(cls) -> str:
         """Generate tablename."""
