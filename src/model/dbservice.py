@@ -14,6 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.sql import Insert, Select, Update, Delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy_utils import get_class_by_table
 from starlette.datastructures import QueryParams
 
 from exceptions import MissingDB, FailedRead, FailedDelete, FailedUpdate, MissingService
@@ -150,6 +151,8 @@ class UnaryEntityService(DatabaseService):
     def __init__(self, app, table: Base, pk: Tuple[str, ...], *args, **kwargs):
         # Entity info.
         self._table = table
+        # Enable entity - service linkage.
+        table.svc = self
         self.pk = tuple(table.__dict__[key] for key in pk)
         self.relationships = inspect(table).mapper.relationships
 
@@ -167,7 +170,7 @@ class UnaryEntityService(DatabaseService):
     async def create(self, data, stmt_only: False) -> table | List[table]:
         """CREATE one or many rows. data: schema validation result."""
         idx_elm = [k.name for k in self.pk]
-        # pdb.set_trace()
+
         if isinstance(data, list):
             stmt = insert(self.table).values(data).returning(self.table)
             stmt = stmt.on_conflict_do_update(
@@ -308,24 +311,14 @@ class CompositeEntityService(UnaryEntityService):
         """CREATE, accounting for nested entitites."""
         stmts = []
         delayed = {}
-        # pdb.set_trace()
 
         # For all table relationships, check whether data contains that item.
-        for key in self.relationships.keys():
-            rel = self.relationships[key]
+        for key, rel in self.relationships.items():
             sub = data.get(key)
             if not sub: continue
 
             # Retrieve associated service.
-            target_table = rel.target
-            svc_name = target_table.name.capitalize() + "Service"
-            svc = getattr(getattr(model, "services"), svc_name, None)
-            if not svc:
-                raise MissingService(
-                    f"Service {type(self).__name__} expected {svc_name} in model"
-                    f" to insert nested entity."
-                )
-            svc = svc()
+            svc = get_class_by_table(Base, rel.target).svc
 
             # Get statement(s) for nested entity:
             nested_stmt = await svc.create(sub, stmt_only=True)

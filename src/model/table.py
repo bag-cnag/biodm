@@ -17,6 +17,8 @@ class Base(DeclarativeBase, AsyncAttrs):
 
     # def col(self, key):
     #     return self.__dict__[key]
+    """Enable entity - service linkage."""
+    svc = None
 
     @declared_attr
     def __tablename__(cls) -> str:

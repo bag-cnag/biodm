@@ -15,6 +15,7 @@ from starlette.responses import PlainTextResponse, RedirectResponse
 from starlette.routing import Route, Router
 
 import config
+from security import login_required
 from api.routes import routes
 from model import DatabaseManager
 from controllers import (
@@ -108,26 +109,24 @@ def main():
             }
         )
         if r.status_code != 200:
-            raise RuntimeError(f"keycloak token handshake failed: {r.text}")
+            raise RuntimeError(f"keycloak token handshake failed: {r.text} {r.status_code}")
 
         return PlainTextResponse(json.loads(r.text)['access_token'] + '\n')
 
 
-    # from security import login_required
-
-    # @login_required
-    # async def authentication_success(userid, groups, projects):
-    #     print(userid, groups, projects)
+    @login_required
+    async def authenticated(userid, groups, projects):
+        return PlainTextResponse(f"{userid}, {groups}, {projects}\n")
 
 
-    async def logout(_):
-        return PlainTextResponse("User logged out!")
-
+    # async def logout(_):
+    #     return PlainTextResponse("User logged out!")
 
     routes.append(Route("/login", endpoint=login))
     routes.append(Route("/syn_ack", endpoint=syn_ack))
-    routes.append(Route("/logout", endpoint=logout))
-    
+    routes.append(Route("/authenticated", endpoint=authenticated))
+    # routes.append(Route("/logout", endpoint=logout))
+
     ## Instanciate app with a controller for each entity
     app = Api(
         debug=config.DEBUG, 
@@ -140,12 +139,9 @@ def main():
         ]
     )
     ## Middlewares
-    # TODO: take from config
     # app.add_middleware(AuthenticationMiddleware, callback_url=callback, login_redirect_uri="/get_token", logout_uri="/logout")
     app.add_middleware(SessionMiddleware, secret_key=config.SECRET_KEY)
-    # config.CLIENT_SECRET : zgE0gBnHy0jHSUo9PDNbdG3OC6V8Zkd8
     return app
-
 
 
 if __name__ == "__main__":

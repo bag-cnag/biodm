@@ -9,12 +9,13 @@ Python
 ```bash
 pip3 install uvicorn[uvloop]
 pip3 install sqlalchemy[asyncio]
+pip3 install sqlalchemy_utils
 pip3 install starlette
 pip3 install requests
 pip3 install marshmallow
 pip3 install psycopg2
 pip3 install asyncpg
-pip3 install authlib
+pip3 install pyjwt
 ```
 
 ## Setup services dependencies
@@ -60,8 +61,17 @@ will return an url towards keycloak login page e.g.
 http://127.0.0.1:8443/auth/realms/3TR/protocol/openid-connect/auth?scope=openid&response_type=code&client_id=submission_client&redirect_uri=http://127.0.0.1:8000/syn_ack
 ```
 
-visiting this webpage and authenticating lets you recover your token `ey...SomeVeryLongString` that you may use to authenticate actions on protected resources.
+visiting this webpage and authenticating lets you recover your token `ey...SomeVeryLongString` that you may use to authenticate actions on protected resources by passing it in `Authorization` header. E.g.
 
+```bash
+export token=ey....
+curl -S 'http://127.0.0.1:8000/authenticated' -H "Authorization: Bearer ${token}"
+```
+
+this route checks your token validity and return some user informations. E.g.
+```bash
+test, ['no_groups'], ['no_project']
+```
 
 ## Standard Requests examples
 **E.g.** curl requests for `Tag` ressource.
@@ -106,7 +116,7 @@ Each controlled entity supports a `/search` endpoint expecting QueryStrings form
 
 E.g. 
 
-_Note:_ when querying with `curl`, don't forget to escape the `&`, else your scripting language will intepret it as several commands.  
+_Note:_ when querying with `curl`, don't forget to escape the `&` or encore the whole url in quotes, else your scripting language will intepret it as several commands.s
 
 ```bash
 curl -X DELETE http://127.0.0.1:8000/datasets/search?id={id}\&name={name1},{name2},...,{namen}\&group.name={group}
