@@ -210,43 +210,65 @@ class UnaryEntityService(DatabaseService):
 
     async def filter(self, query_params: QueryParams) -> List[table]:
         """READ rows filted on query parameters."""
-        # TODO: clean a bit
         stmt = select(self.table)
-        col = lambda k: self.table.__dict__[k]
-        pytype = lambda k: col(k).type.python_type
+        for dskey, csval in query_params.items():
+            attr = dskey.split('.')
+            values = csval.split(',')
 
-        filter = []
-        for key in query_params.keys():
-            attr = key.split('.')
-            val = query_params[key].split(',')
+            # In case no value is associated we should be in the case of a numerical operator.
+            operator = None
+            if not csval:
+                input_op = attr.pop()
+                match input_op.strip(')').split('('):
+                    case ['gt', arg]: # >
+                        operator = ('gt', arg)
+                    case ['ge', arg]: # >=
+                        operator = ('ge', arg)
+                    case ['lt', arg]: # <
+                        operator = ('lt', arg)
+                    case ['le', arg]: # <=
+                        operator = ('le', arg)
+                    case _:
+                        raise ValueError(
+                            f"Expecting either 'field=v1,v2' pairs or integrer"
+                            " operators 'field.op(v)' op in ['gt', 'ge', 'lt', 'le']")
 
-            # Simple attribute case
-            if len(attr) == 1:
-                attr = attr[0]
-                clause = unevalled_or(
-                    col(attr) == pytype(attr)(v)
-                    for v in val
-                )
-                filter.append(clause)
-
-            # Nested entity case
-            elif len(attr) == 2:
-                attr, jfield = attr[0], attr[1]
-                jtable = col(attr).property.target
-                jcol = jtable.c[jfield]
-
+            # For every nested entity of the attribute, join table.
+            table = self.table
+            for nested in attr[:-1]:
+                jtable = get_class_by_table(Base, 
+                                            table.col(nested).property.target)
                 stmt = stmt.join(jtable)
-                clause = unevalled_or(
-                    jcol == jcol.type.python_type(v)
-                    for v in val
-                )
-                filter.append(clause)
-            else:
-                # TODO: ?, Support deeper queries
-                raise NotImplementedError("Search is only supported on immediately nested entities.")
+                table = jtable
 
-        filter = unevalled_all(filter)
-        stmt = stmt.where(filter)
+            # Get field info from last joined table.
+            col, ctype = table.colinfo(attr[-1])
+
+            # Numerical operators.
+            if operator:
+                if ctype not in (int, float):
+                    raise ValueError(
+                        f"Using operators methods 'gt, ge, lt, le' in /search is"
+                        " only allowed for numerical fields."
+                    )
+                op, val = operator
+                op = col.__getattr__(f"__{op}__")
+                stmt = stmt.where(op(ctype(val)))
+
+            # Wildcards.
+            wildcards = [v for v in values if '*' in v]
+            if ctype is not str and len(wildcards) > 0:
+                raise ValueError(
+                    f"Using wildcards '*' in /search is only allowed"
+                     " for text fields."
+                )
+            for w in wildcards:
+                stmt = stmt.where(col.like(str(w).replace("*", "%")))
+
+            # Regular equality conditions.
+            values = [v for v in values if v not in wildcards] 
+            for v in values:
+                stmt = stmt.where(col == ctype(v)) if v != '' else stmt
         return await self._select_many(stmt)
 
     async def read(self, id) -> table:

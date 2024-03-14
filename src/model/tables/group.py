@@ -1,6 +1,6 @@
 from typing import Optional, List, TYPE_CHECKING
 
-from sqlalchemy import Column, String, ForeignKey
+from sqlalchemy import Column, String, Integer, ForeignKey
 from sqlalchemy.orm import Mapped, relationship
 
 from ..table import Base
@@ -12,6 +12,8 @@ if TYPE_CHECKING:
 
 class Group(Base):
     name: Mapped[str] = Column(String(100), primary_key=True)
+    # test
+    n_members: Mapped[int] = Column(Integer, nullable=True)
     name_parent: Mapped[Optional[int]] = Column(ForeignKey("GROUP.name"), nullable=True)
 
     # relationships

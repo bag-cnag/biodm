@@ -29,7 +29,7 @@ class DatasetSchema(Schema):
         # )
     )
 
-    group = Nested('GroupSchema', only=('name',))
+    group = Nested('GroupSchema', only=('name', 'n_members'))
     contact = Nested('UserSchema', only=('id',))
     tags = List(Nested('TagSchema'), only=('name', ))
 

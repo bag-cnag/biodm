@@ -119,18 +119,18 @@ E.g.
 _Note:_ when querying with `curl`, don't forget to escape the `&` or encore the whole url in quotes, else your scripting language will intepret it as several commands.s
 
 ```bash
-curl -X DELETE http://127.0.0.1:8000/datasets/search?id={id}\&name={name1},{name2},...,{namen}\&group.name={group}
+curl http://127.0.0.1:8000/datasets/search?id={id}\&name={name1},{name2},...,{namen}\&group.name={group}
 ```
 
-#### TODO: More complex queries
+#### More complex queries
 
-In the future we may hopefully support more complex searches for example:
+We also support more complex searches for example:
 
-- Support deeper nested entity querying
+- deeper nested entity querying
 
 E.g. `/datasets/search?id={id}&group.admin.email_address=john@doe.com`
 
-- int fields: Support operators
+- int fields: Support operators in ['gt', 'ge', 'lt', 'le']
 
 E.g `/datasets/search?sample_size.gt(5000)` 
 to query for datasets with a sample_size field greater than 5000
