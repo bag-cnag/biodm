@@ -217,21 +217,26 @@ class UnaryEntityService(DatabaseService):
 
             # In case no value is associated we should be in the case of a numerical operator.
             operator = None
+            SUPPORTED_OPERATORS = ('gt', 'ge', 'lt', 'le')
             if not csval:
                 input_op = attr.pop()
                 match input_op.strip(')').split('('):
-                    case ['gt', arg]: # >
-                        operator = ('gt', arg)
-                    case ['ge', arg]: # >=
-                        operator = ('ge', arg)
-                    case ['lt', arg]: # <
-                        operator = ('lt', arg)
-                    case ['le', arg]: # <=
-                        operator = ('le', arg)
+                    case [('gt'| 'ge' | 'lt' | 'le') as op, arg]:
+                        operator = (op, arg)
+                    # case ['gt', arg]: # >
+                    #     operator = ('gt', arg)
+                    # case ['ge', arg]: # >=
+                    #     operator = ('ge', arg)
+                    # case ['lt', arg]: # <
+                    #     operator = ('lt', arg)
+                    # case ['le', arg]: # <=
+                    #     operator = ('le', arg)
                     case _:
                         raise ValueError(
                             f"Expecting either 'field=v1,v2' pairs or integrer"
-                            " operators 'field.op(v)' op in ['gt', 'ge', 'lt', 'le']")
+                            f" operators 'field.op(v)' op in {SUPPORTED_OPERATORS}")
+            elif any(op in dskey for op in SUPPORTED_OPERATORS):
+                raise ValueError("'field.op()=value' type of query is not yet supported.")
 
             # For every nested entity of the attribute, join table.
             table = self.table
@@ -255,20 +260,28 @@ class UnaryEntityService(DatabaseService):
                 op = col.__getattr__(f"__{op}__")
                 stmt = stmt.where(op(ctype(val)))
 
-            # Wildcards.
             wildcards = [v for v in values if '*' in v]
+            values = [v for v in values if v not in wildcards and v != '']
+            # Wildcards.
             if ctype is not str and len(wildcards) > 0:
                 raise ValueError(
                     f"Using wildcards '*' in /search is only allowed"
                      " for text fields."
                 )
-            for w in wildcards:
-                stmt = stmt.where(col.like(str(w).replace("*", "%")))
+            stmt = stmt.where(
+                unevalled_or(
+                    col.like(str(w).replace("*", "%"))
+                    for w in wildcards
+                )
+            ) if wildcards else stmt
 
             # Regular equality conditions.
-            values = [v for v in values if v not in wildcards] 
-            for v in values:
-                stmt = stmt.where(col == ctype(v)) if v != '' else stmt
+            stmt = stmt.where(
+                unevalled_or(
+                    col == ctype(v)
+                    for v in values
+                )
+            ) if values else stmt
         return await self._select_many(stmt)
 
     async def read(self, id) -> table:

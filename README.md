@@ -133,8 +133,19 @@ E.g. `/datasets/search?id={id}&group.admin.email_address=john@doe.com`
 - int fields: Support operators in ['gt', 'ge', 'lt', 'le']
 
 E.g `/datasets/search?sample_size.gt(5000)` 
+
 to query for datasets with a sample_size field greater than 5000
+
+  - Ideas:
+
+  We could support 'avg', 'mean', and 'std_dev' as well like:
+  `search?numerical_field.avg().gt('32.5')`
+
+  If relevant case arises we could support `field.operator()=value` operation
+  `search?numerical_field.op()=val`
 
 - string fields: Support wildcards
 
 E.g `/datasets/search?name=3TR_*`
+
+  
