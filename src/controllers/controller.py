@@ -41,13 +41,13 @@ class Controller(ABC):
             id_params = "{"+id+"}_" + id_params
 
         return Mount(prefix, routes=[
-            Route('/',               self.find_all,        methods=[HttpMethod.GET.value]),
-            Route('/',               self.create,          methods=[HttpMethod.POST.value]),
-            Route(f'/{id_params}',   self.delete,          methods=[HttpMethod.DELETE.value]),
-            Route(f'/{id_params}',   self.create_update,   methods=[HttpMethod.PUT.value]),
-            Route(f'/{id_params}',   self.update,          methods=[HttpMethod.PATCH.value]),
-            Route(f'/{id_params}',   self.read,            methods=[HttpMethod.GET.value]),
-            Route('/search',         self.query,           methods=[HttpMethod.GET.value]),
+            Route('/',             self.query,         methods=[HttpMethod.GET.value]),
+            Route('/search',       self.query,         methods=[HttpMethod.GET.value]),
+            Route('/',             self.create,        methods=[HttpMethod.POST.value]),
+            Route(f'/{id_params}', self.delete,        methods=[HttpMethod.DELETE.value]),
+            Route(f'/{id_params}', self.create_update, methods=[HttpMethod.PUT.value]),
+            Route(f'/{id_params}', self.update,        methods=[HttpMethod.PATCH.value]),
+            Route(f'/{id_params}', self.read,          methods=[HttpMethod.GET.value]),
         ])
 
     @staticmethod
@@ -113,16 +113,12 @@ class Controller(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def find_all(self, request):
-        raise NotImplementedError
-
-    @abstractmethod
     def query(self, request):
         raise NotImplementedError
 
 
-class UnaryEntityController(Controller):
-    """Generic Service class for non-composite entities with atomic primary_key."""
+class ActiveController(Controller):
+    """Generic class controllers."""
     def __init__(self,
                  svc: UnaryEntityService,
                  table: Base,
@@ -143,24 +139,22 @@ class UnaryEntityController(Controller):
         return self.json_response(
             await self.svc.create(validated, stmt_only=False),
             status = 201,
-            schema=self.schema
+            schema = self.schema
         )
 
     async def read(self, request):
         id = [request.path_params.get(k) for k in self.pk]
-        item = await self.svc.read(id=id)
-        return self.json_response(item, status=200, schema=self.schema)
-
-    async def find_all(self, _):
-        items = await self.svc.find_all()
-        return self.json_response(items, status=200, schema=self.schema)
+        return self.json_response(
+            await self.svc.read(id=id), 
+            status=200, 
+            schema=self.schema
+        )
 
     async def update(self, request):
-        # TODO: Implement PATCH
+        # TODO: Implement PATCH ?
         raise NotImplementedError
 
     async def delete(self, request):
-        # id = request.path_params.get("id")
         id = [request.path_params.get(k) for k in self.pk]
         if not id:
             return self.json_response("Method not allowed on a collection.", status=405)
@@ -168,7 +162,6 @@ class UnaryEntityController(Controller):
         return self.json_response("Deleted.", status=200)
 
     async def create_update(self, request):
-        # id = request.path_params.get("id")
         id = [request.path_params.get(k) for k in self.pk]
         if not id:
             return self.json_response("Method not allowed on a collection.", status=405)
@@ -184,14 +177,13 @@ class UnaryEntityController(Controller):
             prop1=val1: query for entries where prop1 = val1
             prop2=valx,valy: query for entries where prop2 = valx or arg2 = valy
             prop3.propx=vala: query for entries where nested entity prop3 has property propx = vala
+            prop4.[lt|gt|le|ge](valu): query for numerical comparison operators
+            prop5=foo*: wildcard symbol '*' for string search 
 
             all at once - separate using '&':
                 ?prop1=val1&prop2=valx,valy&prop3.propx=vala 
+        if querystring is empty -> return all
+        -> /ressource/search <==> /ressource/
         """
-        qp = request.query_params
-        # Check that passed parametes are table columns
-        # Split on '.' for nested entities 
-        for key in qp: 
-            assert(key.split('.')[0] in self.table.__dict__.keys())
-        items = await self.svc.filter(qp)
+        items = await self.svc.filter(request.query_params)
         return self.json_response(items, status=200, schema=self.schema)

@@ -1,24 +1,24 @@
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
-import pdb
+from sqlalchemy.orm.relationships import Relationship
+from sqlalchemy import inspect
 
 
 class Base(DeclarativeBase, AsyncAttrs):
-    # def __init__(self, **kw):
-    #     """Allow instanciating with nested entities."""
-    #     pdb.set_trace()
-    #     mapper = self.__dict__.get('__mapper__')
-    #     if mapper:
-    #         for key in mapper.relationships:
-    #             if key in kw:
-    #                 kw[key] = mapper.relationships[key].entity.class_(**kw[key])
-    #     super().__init__(**kw)
-
-    # def col(self, key):
-    #     return self.__dict__[key]
-    """Enable entity - service linkage."""
+    """Base class for ORM declarative Tables."""
+    # Enable entity - service linkage.
     svc = None
+
+    @classmethod
+    def relationships(cls):
+        return inspect(cls).mapper.relationships
+
+    @classmethod
+    def target_table(cls, name):
+        """Returns target table of a property."""
+        c = cls.col(name).property
+        return c.target if isinstance(c, Relationship) else None
 
     @classmethod
     def col(cls, name):

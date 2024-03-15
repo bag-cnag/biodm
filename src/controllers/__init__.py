@@ -1,4 +1,4 @@
-from .controller import Controller, UnaryEntityController, HttpMethod
+from .controller import Controller, ActiveController, HttpMethod
 from .tag import TagController
 from .user import UserController
 from .group import GroupController

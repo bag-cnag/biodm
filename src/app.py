@@ -40,7 +40,8 @@ class Api(Starlette):
         # Set up CORS
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
-            allow_origins=["*, http://127.0.0.1"], allow_methods=["*"], allow_headers=["*"]
+            allow_origins=[config.SERVER_HOST, config.KC_HOST, "*"], 
+            allow_methods=["*"], allow_headers=["*"]
         )
 
         # Event handlers
@@ -70,9 +71,9 @@ class Api(Starlette):
             await self.db.init_db()
 
 def main():
-    handshake = "http://127.0.0.1:8000/syn_ack"
-
     # Setup some basic auth system:
+    handshake = f"{config.SERVER_HOST}:{config.SERVER_PORT}/syn_ack"
+
     async def login(_):
         """Returns the url for keycloak login page."""
         login_url = (
@@ -116,16 +117,12 @@ def main():
 
     @login_required
     async def authenticated(userid, groups, projects):
+        """Route to check token validity."""
         return PlainTextResponse(f"{userid}, {groups}, {projects}\n")
-
-
-    # async def logout(_):
-    #     return PlainTextResponse("User logged out!")
 
     routes.append(Route("/login", endpoint=login))
     routes.append(Route("/syn_ack", endpoint=syn_ack))
     routes.append(Route("/authenticated", endpoint=authenticated))
-    # routes.append(Route("/logout", endpoint=logout))
 
     ## Instanciate app with a controller for each entity
     app = Api(
@@ -139,7 +136,6 @@ def main():
         ]
     )
     ## Middlewares
-    # app.add_middleware(AuthenticationMiddleware, callback_url=callback, login_redirect_uri="/get_token", logout_uri="/logout")
     app.add_middleware(SessionMiddleware, secret_key=config.SECRET_KEY)
     return app
 

@@ -47,6 +47,7 @@ class Dataset(Base):
     # id_project:      Mapped[int] = Column(ForeignKey("PROJECT.id"), nullable=False)
 
     # relationships
+    # TODO: figure out policy - cascade="save-update, merge"
     group:   Mapped["Group"]     = relationship(back_populates="datasets", lazy="immediate")
     contact: Mapped["User"]      = relationship(foreign_keys=[id_user_contact], lazy="immediate")
     tags:    Mapped[Set["Tag"]]  = relationship(secondary=asso_dataset_tag, lazy="immediate", uselist=True)
