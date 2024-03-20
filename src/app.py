@@ -82,7 +82,7 @@ def main():
     async def login(_):
         """Returns the url for keycloak login page."""
         login_url = (
-            f"{config.KC_HOST}/auth/realms/{config.KC_REALM}/"
+            f"{config.KC_HOST}/realms/{config.KC_REALM}/"
             "protocol/openid-connect/auth?"
             "scope=openid"
             "&response_type=code"
@@ -100,7 +100,7 @@ def main():
         code = request.query_params["code"]
 
         kc_token_url = (
-            f"{config.KC_HOST}/auth/realms/{config.KC_REALM}/"
+            f"{config.KC_HOST}/realms/{config.KC_REALM}/"
             "protocol/openid-connect/token?"
         )
         r = requests.post(
