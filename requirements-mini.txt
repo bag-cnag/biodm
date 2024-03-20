@@ -1,0 +1,11 @@
+uvicorn==0.29.0
+SQLAlchemy==2.0.28
+SQLAlchemy-Utils==0.41.1
+starlette==0.37.2
+requests==2.31.0
+marshmallow==3.21.1
+psycopg2-binary==2.9.9
+asyncpg==0.29.0
+PyJWT==2.8.0
+itsdangerous==2.1.2
+keycloak==3.1.4
