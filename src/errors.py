@@ -2,13 +2,11 @@ import json
 from http import HTTPStatus
 
 from starlette.responses import Response
-# from sqlalchemy.exc import DatabaseError
-from exceptions import (
-    RequestError,
-    FailedDelete
-)
 
-import config
+# from sqlalchemy.exc import DatabaseError
+from exceptions import RequestError, FailedDelete
+
+import config_cnag as config
 
 
 class Error:
@@ -24,10 +22,8 @@ class Error:
     @property
     def response(self):
         return Response(
-            content=json.dumps(
-                self.__dict__, 
-                indent=config.INDENT
-            ), status_code=self.status
+            content=json.dumps(self.__dict__, indent=config.INDENT),
+            status_code=self.status,
         )
 
 

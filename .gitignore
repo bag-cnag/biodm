@@ -4,3 +4,4 @@
 __pycache__
 build/
 venv/
+src/config_cnag.py

@@ -1,14 +1,16 @@
 from functools import wraps
+
 # from phenostore_server.run import app,db
 # from flask import request
 
 import datetime
 import jwt
+
 # from phenostore_server.model import History
 # from flask import g
 import logging
 import json
-import config
+import config_cnag as config
 
 idrsa = config.IDRSA
 options = config.JWT_OPTIONS
@@ -16,37 +18,49 @@ public_key = f"-----BEGIN PUBLIC KEY-----\n {idrsa} \n-----END PUBLIC KEY-----"
 
 
 def extract_items(token, name):
-	n = token.get(name, [])
-	return [s.replace("/", "") for s in n]
+    n = token.get(name, [])
+    return [s.replace("/", "") for s in n]
 
 
-#decoded = jwt.decode(token, public_key2, audience={'aud' : 'myapp'} ,algorithms='RS256', options=options)
+# decoded = jwt.decode(token, public_key2, audience={'aud' : 'myapp'} ,algorithms='RS256', options=options)
 def login_required(f):
-	"""Docorator for function expecting header 'Authorization: Bearer <token>'"""
-	@wraps(f)
-	async def decorated_function(request, *args, **kwargs):
-		token = request.headers['Authorization']
-		token = (token.split('Bearer')[-1] if 'Bearer' in token else token).strip()
-		groups = []
+    """Docorator for function expecting header 'Authorization: Bearer <token>'"""
 
-		try:
-			decoded = jwt.decode(token, public_key, algorithms='RS256', options=options)
-			groups = [s.replace("/","") for s in decoded.get('group', groups)]
-		except Exception as e:
-				raise RuntimeError(f"Something went wrong: {str(e)}")
-		
-		userid = decoded.get('preferred_username')
-		groups = extract_items(decoded, 'group')
-		projects = extract_items(decoded, 'group_projects')
+    @wraps(f)
+    async def decorated_function(request, *args, **kwargs):
+        token = request.headers["Authorization"]
+        token = (token.split("Bearer")[-1] if "Bearer" in token else token).strip()
+        groups = []
 
-		groups = ['no_groups'] if len(groups) == 0 else groups
-		projects = ['no_project'] if len(projects) == 0 else projects
+        try:
+            decoded = jwt.decode(token, public_key, algorithms="RS256", options=options)
+            groups = [s.replace("/", "") for s in decoded.get("group", groups)]
+        except Exception as e:
+            raise RuntimeError(f"Something went wrong: {str(e)}")
 
-		timestamp = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
+        userid = decoded.get("preferred_username")
+        groups = extract_items(decoded, "group")
+        projects = extract_items(decoded, "group_projects")
 
-		print(timestamp + "\t" + userid + "\t" + ",".join(groups) + "\t" + str(request.url) + "-" + request.method)
-		return await f(userid=userid, groups=groups, projects=projects, *args, **kwargs)
-	return decorated_function
+        groups = ["no_groups"] if len(groups) == 0 else groups
+        projects = ["no_project"] if len(projects) == 0 else projects
+
+        timestamp = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
+
+        print(
+            timestamp
+            + "\t"
+            + userid
+            + "\t"
+            + ",".join(groups)
+            + "\t"
+            + str(request.url)
+            + "-"
+            + request.method
+        )
+        return await f(userid=userid, groups=groups, projects=projects, *args, **kwargs)
+
+    return decorated_function
 
 
 # @app.after_request

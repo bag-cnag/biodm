@@ -1,15 +1,13 @@
 from typing import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from sqlalchemy.ext.asyncio import (
-    AsyncSession, create_async_engine, async_sessionmaker
-)
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
-from config import DATABASE_URL, DEBUG
+from config_cnag import DATABASE_URL, DEBUG
 from .table import Base
 
 
-class DatabaseManager():
+class DatabaseManager:
     def __init__(self, sync=False) -> None:
         self.database_url = DATABASE_URL if sync else self.async_database_url()
         self.engine = create_async_engine(
@@ -17,7 +15,7 @@ class DatabaseManager():
             echo=DEBUG,
         )
         self.async_session = async_sessionmaker(
-            self.engine, 
+            self.engine,
             class_=AsyncSession,
             expire_on_commit=False,
         )
@@ -42,6 +40,7 @@ class DatabaseManager():
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
+
 
 # ## Snippet for version In case needed one day:
 # # SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
