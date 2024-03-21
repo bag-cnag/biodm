@@ -1,6 +1,29 @@
 # BioDM
 
-Proof of concept for an extended purpose biology data management API 
+Proof of concept for an extended purpose biology data management framework _DWARF galaxy_ standing for "Data Warehouse _FRAme/emARF_" and referencing [galaxy](https://usegalaxy.org/) project. However, we are **not** afiliated **nor** partnering with them **nor** reusing their codebase in any way **nor** aiming at providing matching functionalities. In fact the name _DWARF galaxy_ should hint the reader about the philosophy of this project which is to keep things simple, provide essential and efficient data management core functionalities and give developers the freedom to expand on it. 
+
+BioDM is the current name of the RESTful and stateless API part of the framework. Target functionalities:
+- set up standards HTTP REST-to-CRUD endpoints for JSON communication -> Done for standard entities
+  - Leverages metadata table definitions **provided by the developper**:
+    - SQLAlchemy ORM Table definition for DB communication
+      - Columns definition (_a.k.a_ the _easy_ part)
+      - Relationships, lazy field loading policy, fine tune some `primaryjoin`, and so on (_a.k.a_ the _not so easy_ part which explains why we are not trying to fully automatize this step and simply accept a list of `key=type` pairs for table definition).
+    - matching Marshmallow Schema for input validation and serialization
+      - Column definition, which simply derives from the ORM
+      - Nested field, loading policy, dumping policy,... the counterpart of relationships for the schema and equally requires fine grained configuration depending on your needs.
+    - Connect appropriate **service** and **controller** classes to each entity
+    - TODO: let you choose by entity/by method authentication levels on routes 
+    - ... everything else is automatically setup !
+- connect to external services
+  - KeyCloak -> Done
+    - /login endpoint returns keycloak login page
+      - Upon login the user may access his token
+      - This token has to be provided for all methods decorated with `@login_required` 
+    - In progress: Design reasonable permission system with respect to desired 'by method authentication level' feature.
+      - decorator taking groups as arguments ??
+  - AWS S3 bucket -> In progress
+    - Link file entities with `S3Service` and `S3Controller` classes
+    - On file creation order the app returns boto generated `presigned_url`s that can be followed by the user or client to directly upload files. 
 
 ## API Dependencies
 
@@ -29,7 +52,9 @@ You may start all services using
 docker compose up -d
 ```
 
-This bundles those services in a local subnet **i.e.** `biodm-dev` by default located at `10.10.0.1/16` for an easy quick setup it is advised to add the following lines to your `/etc/hosts` file as they are matching default config settings.
+_Note_: You still need to perform keycloak realm and client configuration on the UI.
+
+It bundles those services in a local subnet **i.e.** `biodm-dev` by default located at `10.10.0.1/16` for an easy quick setup it is advised to add the following lines to your `/etc/hosts` file as they are matching default config settings.
 
 ```bash
 sudo su
@@ -58,6 +83,29 @@ docker exec -u postgres biodm-pg createdb biodm
 docker pull jboss/keycloak:16.0.0
 docker run --name local_keycloak -e KEYCLOAK_USER=admin -e KEYCLOAK_PASSWORD=admin -p 8443:8080 jboss/keycloak:16.0.0
 ```
+
+#### Configuration
+Once keycloak is running you need to configure a realm and a client for the app to log in.
+Default values are:
+
+```env
+KC_REALM="3TR"
+CLIENT_ID="submission_client"
+```
+
+Once you've created the realm, create the client. Then 
+- set its `Access Type` to confidential 
+- `Inplicit Flow Enabled` to true.
+- Add Valid Redirect Uri:
+  - **dev**: `http://*` and `https://*`
+  - **prod**: provide the url of the login callback `{SERVER_HOST}/syn_ack`.
+
+Finally you should provide the server with the `SECRET` field located in the `Credentials` tab, that appears **after** you changed access type and the realm public key located at `{KC_HOST}auth/realms/{KC_REALM}/`
+```env
+CLIENT_SECRET={SECRET}
+KC_PUBLIC_KEY={public_key}
+```
+
 
 ### S3Mock
 ```bash

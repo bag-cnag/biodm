@@ -211,8 +211,7 @@ class UnaryEntityService(DatabaseService):
         """READ rows filted on query parameters."""
         stmt = select(self.table)
         for dskey, csval in query_params.items():
-            attr = dskey.split('.')
-            values = csval.split(',')
+            attr, values = dskey.split('.'), csval.split(',')
             # exclude = False
             # if attr == 'exclude' and values == 'True':
             #     exclude = True
