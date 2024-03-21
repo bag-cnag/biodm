@@ -1,19 +1,12 @@
-import logging
-
 from contextlib import AsyncExitStack
 from inspect import getfullargspec
-from functools import wraps
 from abc import ABC, ABCMeta, abstractmethod
 from typing import List, Any, overload, Tuple
 
-
-from sqlalchemy import (
-    select, update,
-    delete, Result, inspect
-)
-from sqlalchemy.sql import Insert, Select, Update, Delete
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import Select, Insert, Update, Delete
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import select, update, delete
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy_utils import get_class_by_table
 from starlette.datastructures import QueryParams
 
@@ -38,6 +31,8 @@ class BaseService(ABC):
 
 
 class DatabaseService(BaseService, metaclass=Singleton):
+    """Root Service class: manages database transactions for entities."""
+
     def in_session(db_exec):
         """Decorator that ensures db_exec receives a session.
 
@@ -129,11 +124,6 @@ class DatabaseService(BaseService, metaclass=Singleton):
         raise NotImplementedError
 
     @abstractmethod
-    async def find_all(self, **kwargs):
-        """READ all rows."""
-        raise NotImplementedError
-
-    @abstractmethod
     async def create_update(self, **kwargs):
         """CREATE UPDATE."""
         raise NotImplementedError
@@ -141,6 +131,11 @@ class DatabaseService(BaseService, metaclass=Singleton):
     @abstractmethod
     async def delete(self, **kwargs):
         """DELETE."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def filter(self, **kwargs):
+        """FILTER."""
         raise NotImplementedError
 
 
@@ -212,17 +207,15 @@ class UnaryEntityService(DatabaseService):
         item = self.table(**kw, **data)
         return await self._merge(item)
 
-    async def find_all(self) -> List[table]:
-        """READ all rows."""
-        stmt = select(self.table)
-        return await self._select_many(stmt)
-
     async def filter(self, query_params: QueryParams) -> List[Base]:
         """READ rows filted on query parameters."""
         stmt = select(self.table)
         for dskey, csval in query_params.items():
             attr = dskey.split('.')
             values = csval.split(',')
+            # exclude = False
+            # if attr == 'exclude' and values == 'True':
+            #     exclude = True
 
             # In case no value is associated we should be in the case of a numerical operator.
             operator = None
@@ -244,7 +237,7 @@ class UnaryEntityService(DatabaseService):
             for nested in attr[:-1]:
                 jtn = table.target_table(nested)
                 if jtn is None:
-                    raise ValueError("Invalid nested entity name {nested}.")
+                    raise ValueError(f"Invalid nested entity name {nested}.")
                 jtable = get_class_by_table(Base, jtn)
                 stmt = stmt.join(jtable)
                 table = jtable
@@ -263,31 +256,34 @@ class UnaryEntityService(DatabaseService):
                 op = col.__getattr__(f"__{op}__")
                 stmt = stmt.where(op(ctype(val)))
 
-            wildcards, equalities = [], []
-            for v in values:
-                if v == '': continue
-                (equalities, wildcards)['*' in v].append(v)
-
             # Wildcards.
+            wildcards = []
+            for i, v in enumerate(values):
+                if '*' in v:
+                    wildcards.append(values.pop(i))
+                elif v == '':
+                    values.pop(i)
+
             if len(wildcards) > 0 and ctype is not str:
                 raise ValueError(
                     f"Using wildcards '*' in /search is only allowed"
-                     " for text fields."
-                )
+                     " for text fields.")
+
             stmt = stmt.where(
                 unevalled_or(
                     col.like(str(w).replace("*", "%"))
                     for w in wildcards
-                )
-            ) if wildcards else stmt
+            )) if wildcards else stmt
 
             # Regular equality conditions.
             stmt = stmt.where(
                 unevalled_or(
                     col == ctype(v)
-                    for v in equalities
-                )
-            ) if equalities else stmt
+                    for v in values
+            )) if values else stmt
+
+            # if exclude:
+            #     stmt = select(self.table.not_in(stmt))
         return await self._select_many(stmt)
 
     async def read(self, id) -> Base:
@@ -338,7 +334,7 @@ class CompositeEntityService(UnaryEntityService):
 
     @DatabaseService.in_session
     async def _insert_composite(self, composite: CompositeInsert, session: AsyncSession) -> (Base | None):
-        """Insert a composite entity."""
+        """INSERT composite entity."""
         # Insert all nested objects + item (last).
         for sub in composite.nested + [composite.item]:
             item = await self._insert(sub, session)
