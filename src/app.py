@@ -82,12 +82,12 @@ class Api(Starlette):
 
 def main():
     # Setup some basic auth system:
-    handshake = f"{config.SERVER_HOST}:{config.SERVER_PORT}/syn_ack"
+    handshake = f"http://{config.SERVER_HOST}:{config.SERVER_PORT}/syn_ack"
 
     async def login(_):
         """Returns the url for keycloak login page."""
         login_url = (
-            f"{config.KC_HOST}/auth/realms/{config.KC_REALM}/"
+            f"{config.KC_HOST}/realms/{config.KC_REALM}/"
             "protocol/openid-connect/auth?"
             "scope=openid" "&response_type=code"
             f"&client_id={config.CLIENT_ID}"
@@ -105,7 +105,7 @@ def main():
         code = request.query_params['code']
 
         kc_token_url = (
-            f"{config.KC_HOST}/auth/realms/{config.KC_REALM}/"
+            f"{config.KC_HOST}/realms/{config.KC_REALM}/"
             "protocol/openid-connect/token?"
         )
         r = requests.post(kc_token_url,

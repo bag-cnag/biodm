@@ -40,7 +40,7 @@ def login_required(f):
 		projects = extract_items(decoded, 'group_projects')
 
 		groups = ['no_groups'] if len(groups) == 0 else groups
-		projects = ['no_project'] if len(projects) == 0 else projects
+		projects = ['no_projects'] if len(projects) == 0 else projects
 
 		timestamp = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
 
