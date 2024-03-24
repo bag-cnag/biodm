@@ -8,7 +8,6 @@ services:
     tty: true
     networks:
       biodm-dev:
-        ipv4_address: 10.10.0.2
   keycloak: # Start page: https://keycloak.local:8443/auth/
     image: jboss/keycloak:16.0.0
     environment:
@@ -19,7 +18,6 @@ services:
     hostname: keycloak.local
     networks:
       biodm-dev:
-        ipv4_address: 10.10.0.3
   s3: # Check status: aws s3 ls --endpoint-url http://s3.local:9090/3trdevopal/
     image: adobe/s3mock:3.5.2
     ports:
@@ -31,12 +29,7 @@ services:
       - debug=true 
     networks:
       biodm-dev:
-        ipv4_address: 10.10.0.4
 
 networks:
   biodm-dev:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 10.10.0.0/16
-          gateway: 10.10.0.1

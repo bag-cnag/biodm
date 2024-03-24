@@ -10,7 +10,7 @@ import jwt
 # from flask import g
 import logging
 import json
-import config_cnag as config
+import config
 
 idrsa = config.KC_PUBLIC_KEY
 options = config.JWT_OPTIONS

@@ -6,7 +6,7 @@ from starlette.responses import Response
 # from sqlalchemy.exc import DatabaseError
 from exceptions import RequestError, FailedDelete
 
-import config_cnag as config
+import config
 
 
 class Error:

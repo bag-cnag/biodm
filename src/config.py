@@ -5,7 +5,7 @@ config = Config() # ".env"
 ## DB
 PG_USER="postgres"
 PG_PASS="pass"
-PG_HOST="postgres.local:5432"
+PG_HOST="10.10.0.1:5432"
 PG_DB="biodm"
 DATABASE_URL = config('DATABASE_URL', default=f"postgresql://{PG_USER}:{PG_PASS}@{PG_HOST}/{PG_DB}")
 
@@ -33,7 +33,7 @@ INDENT = config('INDENT', cast=int, default=2)
 # Dev
 # KC_HOST = config("KC_HOST", cast=str, default="http://keycloak.local:8443/auth")
 # Integration
-# KC_HOST = config("KC_HOST", cast=str, default="https://sso.gpapdev.cnag.eu")
+KC_HOST = config("KC_HOST", cast=str, default="https://sso.gpapdev.cnag.eu")
 
 KC_REALM = config("KC_REALM", cast=str, default="3TR")
 KC_PUBLIC_KEY = config("KC_PUBLIC_KEY", cast=str, default="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsqorQlOlUkshsdM/nT5oFD8admSqtYJreJTF8IbE71z78iEyW+A6f4/VrHvo5ID2mmVWYfnG69YFdcZsmRxBlKMI99iNg5woReTSqWNDkoXVHQ0EzuF9DTLEjrZWRAkz3okdMGlAVhzHTwfi7LWJk6dzDoL23CghYdEiQ8n6+bcPjRsCJwVx5GTJuoy4BPzdKC3p6hO5shjUHgKY+i+jPi6VtFya2i/F800LoKxeiRKMmyALf9o9rw7OI7moVaAJDpTZuY9Q9cG6henkGJgNNIZu1Xe00yX+74vpUtzCmhkpB+kipHhKArY1MGaEY1l1caY6ykTcVuy58D5g9DN1PwIDAQAB")
@@ -41,7 +41,7 @@ CLIENT_ID = config("CLIENT_ID", cast=str, default="submission_client")
 # Dev
 # CLIENT_SECRET = config("CLIENT_SECRET", cast=str, default="wwXKNV95KkxOvyK22AltRi7dnfmPvWWm")
 # Integration
-CLIENT_SECRET = config("CLIENT_SECRET", cast=str, default="")
+CLIENT_SECRET = config("CLIENT_SECRET", cast=str, default="N55vAIyl56RpAEg376nb9ruuHFe1CFRB")
 
 
 JWT_OPTIONS = config("JWT_OPTIONS", cast=dict, default={'verify_exp': False,'verify_aud':False})

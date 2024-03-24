@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
-from config_cnag import DATABASE_URL, DEBUG
+from config import DATABASE_URL, DEBUG
 from .table import Base
 
 
