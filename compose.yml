@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-bookworm
+    environment:
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=biodm
+    stdin_open: true
+    tty: true
+    networks:
+      biodm-dev:
+        ipv4_address: 10.10.0.2
+  keycloak: # Start page: https://keycloak.local:8443/auth/
+    image: jboss/keycloak:16.0.0
+    environment:
+      - KEYCLOAK_USER=admin 
+      - KEYCLOAK_PASSWORD=admin
+    ports: 
+      - 8443:8080
+    hostname: keycloak.local
+    networks:
+      biodm-dev:
+        ipv4_address: 10.10.0.3
+  s3: # Check status: aws s3 ls --endpoint-url http://s3.local:9090/3trdevopal/
+    image: adobe/s3mock:3.5.2
+    ports:
+      - 9090:9090 
+      - 9191:9191
+    tty: True
+    environment:
+      - initialBuckets=3trdevopal
+      - debug=true 
+    networks:
+      biodm-dev:
+        ipv4_address: 10.10.0.4
+
+networks:
+  biodm-dev:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.0.0/16
+          gateway: 10.10.0.1

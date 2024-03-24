@@ -1,33 +1,42 @@
 #!/usr/bin/env python
+import asyncio
+import json
 import logging
-
-# from asyncio import run as arun
 from typing import List
 import requests
-import json
 
 
 import uvicorn
+from keycloak.extensions.starlette import AuthenticationMiddleware
 from starlette.applications import Starlette
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from keycloak.extensions.starlette import AuthenticationMiddleware
-from starlette.responses import PlainTextResponse, RedirectResponse
+from starlette.responses import PlainTextResponse, HTMLResponse, RedirectResponse
 from starlette.routing import Route, Router
 
-import config_cnag as config
+
+
+import config
 from security import login_required
 from api.routes import routes
 from model import DatabaseManager
 from controllers import (
-    Controller,
-    TagController,
-    UserController,
-    GroupController,
-    DatasetController,
+    Controller, TagController, UserController, 
+    GroupController, DatasetController, FileController
 )
 from exceptions import RequestError
 from errors import onerror
+
+
+class TimeoutMiddleware(BaseHTTPMiddleware):
+    """Emit timeout signals in production."""
+    async def dispatch(self, request, call_next):
+        try:
+            response = await asyncio.wait_for(call_next(request), timeout=30)
+        except asyncio.TimeoutError:
+            return HTMLResponse("Request reached timeout.", status_code=504)
+        return response
 
 
 class Api(Starlette):
@@ -76,8 +85,8 @@ class Api(Starlette):
 
 
 def main():
-    # Setup some basic auth system:
-    handshake = f"{config.SERVER_HOST}:{config.SERVER_PORT}/syn_ack"
+    # Setup some basic auth system:
+    handshake = f"http://{config.SERVER_HOST}:{config.SERVER_PORT}/syn_ack"
 
     async def login(_):
         """Returns the url for keycloak login page."""
@@ -140,10 +149,13 @@ def main():
             UserController,
             GroupController,
             DatasetController,
-        ],
+            FileController,
+        ]
     )
     ## Middlewares
     app.add_middleware(SessionMiddleware, secret_key=config.SECRET_KEY)
+    if not config.DEV:
+        app.add_middleware(TimeoutMiddleware)
     return app
 
 

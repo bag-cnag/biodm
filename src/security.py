@@ -12,7 +12,7 @@ import logging
 import json
 import config_cnag as config
 
-idrsa = config.IDRSA
+idrsa = config.KC_PUBLIC_KEY
 options = config.JWT_OPTIONS
 public_key = f"-----BEGIN PUBLIC KEY-----\n {idrsa} \n-----END PUBLIC KEY-----"
 

@@ -1,6 +1,6 @@
 import io
 import json
-import asyncio
+from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import Any, Tuple
 from enum import Enum
@@ -10,8 +10,8 @@ from starlette.responses import Response
 from starlette.routing import Mount, Route
 from sqlalchemy.engine import ScalarResult
 
-import config_cnag as config
-from model import Base, UnaryEntityService, DatabaseService
+import config
+from model import Base, UnaryEntityService, CompositeEntityService, S3Service
 from utils.utils import to_it
 
 
@@ -34,26 +34,19 @@ class Controller(ABC):
     # https://restfulapi.net/http-methods/
     def routes(self) -> Mount:
         prefix = self.__class__.__name__.split("Controller")[0]
-        prefix = "/" + prefix.lower() + "s"
+        self.prefix = '/' + prefix.lower() + 's'
 
-        id_params = "{" + f"{self.pk[-1]}" + "}"
-        for id in self.pk[:-1]:
-            id_params = "{" + id + "}_" + id_params
+        id_params = "".join(["{" + id + "}_" for id in self.pk])[:-1]
 
-        return Mount(
-            prefix,
-            routes=[
-                Route("/", self.query, methods=[HttpMethod.GET.value]),
-                Route("/search", self.query, methods=[HttpMethod.GET.value]),
-                Route("/", self.create, methods=[HttpMethod.POST.value]),
-                Route(f"/{id_params}", self.delete, methods=[HttpMethod.DELETE.value]),
-                Route(
-                    f"/{id_params}", self.create_update, methods=[HttpMethod.PUT.value]
-                ),
-                Route(f"/{id_params}", self.update, methods=[HttpMethod.PATCH.value]),
-                Route(f"/{id_params}", self.read, methods=[HttpMethod.GET.value]),
-            ],
-        )
+        return Mount(self.prefix, routes=[
+            Route('/',             self.query,         methods=[HttpMethod.GET.value]),
+            Route('/search',       self.query,         methods=[HttpMethod.GET.value]),
+            Route('/',             self.create,        methods=[HttpMethod.POST.value]),
+            Route(f'/{id_params}', self.delete,        methods=[HttpMethod.DELETE.value]),
+            Route(f'/{id_params}', self.create_update, methods=[HttpMethod.PUT.value]),
+            Route(f'/{id_params}', self.update,        methods=[HttpMethod.PATCH.value]),
+            Route(f'/{id_params}', self.read,          methods=[HttpMethod.GET.value]),
+        ])
 
     @staticmethod
     def deserialize(data: Any, schema: Schema) -> Any | list | dict | None:
@@ -122,15 +115,19 @@ class Controller(ABC):
 
 
 class ActiveController(Controller):
-    """Generic class controllers."""
-
-    def __init__(self, svc: UnaryEntityService, table: Base, schema: Schema):
+    """Basic class for controllers. Implements the interface CRUD methods."""
+    def __init__(self,
+                 svc: UnaryEntityService | CompositeEntityService,
+                 table: Base,
+                 schema: Schema):
         self.table = table
         self.pk: Tuple[str, ...] = tuple(
             str(pk).split(".")[-1] for pk in table.__table__.primary_key.columns
         )
-        self.svc: DatabaseService = svc(app=self.app, table=self.table, pk=self.pk)
-        self.schema: Schema = schema()
+        self.svc = svc(app=self.app, 
+                       table=self.table, 
+                       pk=self.pk)
+        self.schema = schema()
 
     async def create(self, request):
         body = await request.body()
@@ -184,3 +181,34 @@ class ActiveController(Controller):
         """
         items = await self.svc.filter(request.query_params)
         return self.json_response(items, status=200, schema=self.schema)
+
+
+class S3Controller(ActiveController):
+    """Controller for entities involving file management leveraging a model.S3Service ."""
+    def __init__(self,
+                 svc: S3Service,
+                 *args,
+                 **kwargs):
+        super().__init__(svc=svc, *args, **kwargs)
+    
+    def routes(self) -> Mount:
+        """Add an endpoint for successful file uploads."""
+        routes = super().routes()
+        # TODO: check if POST or PUT
+        upload_callback = Route('/upload_success', 
+                                self.file_upload_success, 
+                                methods=[HttpMethod.POST.value])
+        self._route_upload_callback = Path(self.prefix,  upload_callback.path)
+        routes.routes.append(upload_callback)
+        return routes
+
+    async def file_upload_success(self, request):
+        """ Used as a callback in the s3 presigned urls that are emitted.
+            The response.
+            Uppon receival, update entity status in the DB."""
+
+        # 1. read request
+            # -> get path ? 
+        # 2. self.svc.file_ready() -> set ready state (and update path ?  
+        pass
+
