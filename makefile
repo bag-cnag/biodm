@@ -27,7 +27,12 @@ stop:
 kc-admin:
 	carbonyl "$(KC_ADMIN)"
 
-login:
+manual-login:
 	@echo "LOGIN URL:"
 	@echo "$(GET_LOGIN_URL)"
 	carbonyl "$(GET_LOGIN_URL)"
+
+automated-login:
+	python3 automated_login.py
+	@echo "-----------"
+	@echo "token saved in kc.env file"
