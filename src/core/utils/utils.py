@@ -2,7 +2,7 @@ import operator
 from typing import Any, List
 from functools import reduce
 import uuid
-
+from abc import ABCMeta
 
 def to_it(x: Any) -> (tuple | list):
     """Return identity list/tuple or pack atomic value in a tuple."""
@@ -21,3 +21,11 @@ def unevalled_or(ls: List[Any]):
 
 def nonce():
     return uuid.uuid4().hex
+
+class Singleton(ABCMeta):
+    """Singleton pattern as metaclass."""
+    _instances = {}
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]

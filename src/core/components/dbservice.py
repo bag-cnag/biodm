@@ -1,6 +1,6 @@
 from contextlib import AsyncExitStack
 from inspect import getfullargspec
-from abc import ABC, ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from typing import List, Any, overload, Tuple
 
 from sqlalchemy.sql import Select, Insert, Update, Delete
@@ -15,23 +15,11 @@ from core.components import Base
 from core.utils.utils import unevalled_all, unevalled_or, to_it
 
 
-class Singleton(ABCMeta):
-    """Singleton pattern as metaclass."""
-    _instances = {}
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-
-
-class BaseService(ABC):
+class DatabaseService(ABC):
+    """Root Service class: manages database transactions for entities."""
     def __init__(self, app):
         self.logger = app.logger
         self.app = app
-
-
-class DatabaseService(BaseService, metaclass=Singleton):
-    """Root Service class: manages database transactions for entities."""
 
     def in_session(db_exec):
         """Decorator that ensures db_exec receives a session.
@@ -150,6 +138,9 @@ class UnaryEntityService(DatabaseService):
         self.relationships = table.relationships()
 
         super(UnaryEntityService, self).__init__(app=app, *args, **kwargs)
+
+    def __repr__(self) -> str:
+        return("{}({!r})".format(self.__class__.__name__, self._table.__name__))
 
     @property
     def table(self) -> Base:

@@ -10,9 +10,8 @@ from starlette.responses import Response
 from starlette.routing import Mount, Route
 from sqlalchemy.engine import ScalarResult
 
-# from core.components import UnaryEntityService, CompositeEntityService, S3Service
 from .table import Base
-from .dbservice import UnaryEntityService, CompositeEntityService
+from .dbservice import DatabaseService, UnaryEntityService, CompositeEntityService
 from .s3service import S3Service
 from instance import config
 
@@ -120,18 +119,25 @@ class Controller(ABC):
 class ActiveController(Controller):
     """Basic class for controllers. Implements the interface CRUD methods."""
     def __init__(self,
-                 svc: UnaryEntityService | CompositeEntityService,
                  table: Base,
-                 schema: Schema):
+                 schema: Schema, svc=None):
         self.table = table
         self.pk: Tuple[str, ...] = tuple(
             str(pk).split('.')[-1] 
             for pk in table.__table__.primary_key.columns
         )
-        self.svc = svc(app=self.app, 
-                       table=self.table, 
-                       pk=self.pk)
+        self.svc = self._infer_svc()
         self.schema = schema()
+
+    def _infer_svc(self) -> DatabaseService:
+        if isinstance(self, S3Controller): # Files -> S3
+            svc = S3Service
+        elif len(self.table.relationships()) == 0: # No relationships -> unary
+            svc = UnaryEntityService
+        else:
+            svc = CompositeEntityService
+
+        return svc(app=self.app, table=self.table, pk=self.pk)
 
     async def create(self, request):
         body = await request.body()
@@ -192,11 +198,10 @@ class ActiveController(Controller):
 class S3Controller(ActiveController):
     """Controller for entities involving file management leveraging a model.S3Service ."""
     def __init__(self,
-                 svc: S3Service,
                  *args,
                  **kwargs):
-        super().__init__(svc=svc, *args, **kwargs)
-    
+        super().__init__(*args, **kwargs)
+
     def routes(self) -> Mount:
         """Add an endpoint for successful file uploads."""
         routes = super().routes()
