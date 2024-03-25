@@ -25,6 +25,8 @@ BioDM is the current name of the RESTful and stateless API part of the framework
     - Link file entities with `S3Service` and `S3Controller` classes
     - On file creation order the app returns boto generated `presigned_url`s that can be followed by the user or client to directly upload files. 
 
+-> Technical [presentation](https://www.overleaf.com/read/wxpdnptnkpsy) 
+
 ## API Dependencies
 
 Python
@@ -94,18 +96,19 @@ CLIENT_ID="submission_client"
 ```
 
 Once you've created the realm, create the client. Then 
-- set its `Access Type` to confidential 
-- `Inplicit Flow Enabled` to true.
+- set `Access Type` to confidential 
+- set `Inplicit Flow Enabled` to `True`.
 - Add Valid Redirect Uri:
   - **dev**: `http://*` and `https://*`
   - **prod**: provide the url of the login callback `{SERVER_HOST}/syn_ack`.
 
-Finally you should provide the server with the `SECRET` field located in the `Credentials` tab, that appears **after** you changed access type and the realm public key located at `{KC_HOST}auth/realms/{KC_REALM}/`
+_Note_: depending on your keycloak version or running instance `SERVER_HOST` may have to be appended with `/auth` 
+
+Finally you should provide the server with the `SECRET` field located in the `Credentials` tab, that appears **after** you changed access type and the realm public key located at `{KC_HOST}[auth/]realms/{KC_REALM}/`
 ```env
-CLIENT_SECRET={SECRET}
+CLIENT_SECRET={SECRET}a
 KC_PUBLIC_KEY={public_key}
 ```
-
 
 ### S3Mock
 ```bash
@@ -217,20 +220,22 @@ We also support more complex searches for example:
 
 to query for datasets with a sample_size field greater than 5000
 
-  - Ideas:
-
-  We could support 'avg', 'mean', and 'std_dev':
-  `search?numerical_field.avg().gt(32.5)`
-
-  and
-  `field.operator()=value` operation: `search?numerical_field.op()=val`
-
-  and
-  `reverse=True` flag that would return the exclusion set
-
-  and
-  '-' operator for string search
+- string fields: Support wildcards through '*' symbol
 
 **e.g.** `/datasets/search?name=3TR_*`
+
+- More Ideas:
+
+We could support 'avg', 'mean', and 'std_dev':
+`search?numerical_field.avg().gt(32.5)`
+
+and
+`field.operator()=value` operation: `search?numerical_field.op()=val`
+
+and
+`reverse=True` flag that would return the exclusion set
+
+and
+'-' operator for string search
 
   

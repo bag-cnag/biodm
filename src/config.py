@@ -1,6 +1,6 @@
 from starlette.config import Config
 
-config = Config() # ".env"
+config = Config(".env")
 
 ## DB
 PG_USER="postgres"
@@ -20,6 +20,7 @@ DEBUG = config('DEBUG', cast=bool, default=True)
 DEV = config('DEV', cast=bool, default=True)
 
 ## Server info
+SERVER_SCHEME = config("SERVER_SCHEME", cast=str, default="http://")
 SERVER_HOST = config("SERVER_HOST", cast=str, default="127.0.0.1")
 SERVER_PORT = config("SERVER_PORT", cast=int, default=8000)
 SECRET_KEY = config("SECRET_KEY", cast=str, default="r4nD0m_p455")
@@ -29,19 +30,10 @@ INDENT = config('INDENT', cast=int, default=2)
 
 ## Keycloak
 # https://keycloak.local:8443/auth/realms/3TR/.well-known/openid-configuration
-# Warning: Add '/auth' if your keycloak instance requires it
-# Dev
-# KC_HOST = config("KC_HOST", cast=str, default="http://keycloak.local:8443/auth")
-# Integration
-# KC_HOST = config("KC_HOST", cast=str, default="https://sso.gpapdev.cnag.eu")
-
+# Warning: Mind the '/auth' if your keycloak instance requires it or not
+KC_HOST = config("KC_HOST", cast=str, default="http://keycloak.local:8443/auth")
 KC_REALM = config("KC_REALM", cast=str, default="3TR")
 KC_PUBLIC_KEY = config("KC_PUBLIC_KEY", cast=str, default="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsqorQlOlUkshsdM/nT5oFD8admSqtYJreJTF8IbE71z78iEyW+A6f4/VrHvo5ID2mmVWYfnG69YFdcZsmRxBlKMI99iNg5woReTSqWNDkoXVHQ0EzuF9DTLEjrZWRAkz3okdMGlAVhzHTwfi7LWJk6dzDoL23CghYdEiQ8n6+bcPjRsCJwVx5GTJuoy4BPzdKC3p6hO5shjUHgKY+i+jPi6VtFya2i/F800LoKxeiRKMmyALf9o9rw7OI7moVaAJDpTZuY9Q9cG6henkGJgNNIZu1Xe00yX+74vpUtzCmhkpB+kipHhKArY1MGaEY1l1caY6ykTcVuy58D5g9DN1PwIDAQAB")
 CLIENT_ID = config("CLIENT_ID", cast=str, default="submission_client")
-# Dev
-# CLIENT_SECRET = config("CLIENT_SECRET", cast=str, default="wwXKNV95KkxOvyK22AltRi7dnfmPvWWm")
-# Integration
-CLIENT_SECRET = config("CLIENT_SECRET", cast=str, default="")
-
-
+CLIENT_SECRET = config("CLIENT_SECRET", cast=str, default="wwXKNV95KkxOvyK22AltRi7dnfmPvWWm")
 JWT_OPTIONS = config("JWT_OPTIONS", cast=dict, default={'verify_exp': False,'verify_aud':False})

@@ -1,11 +1,9 @@
 from functools import wraps
-# from phenostore_server.run import app,db
-# from flask import request
+# from app import app
 
 import datetime
 import jwt
-# from phenostore_server.model import History
-# from flask import g
+# from model import History
 import logging
 import json
 import config

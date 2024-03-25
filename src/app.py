@@ -32,10 +32,9 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
     """Emit timeout signals in production."""
     async def dispatch(self, request, call_next):
         try:
-            response = await asyncio.wait_for(call_next(request), timeout=30)
+            return await asyncio.wait_for(call_next(request), timeout=30)
         except asyncio.TimeoutError:
             return HTMLResponse("Request reached timeout.", status_code=504)
-        return response
 
 
 class Api(Starlette):
@@ -82,7 +81,9 @@ class Api(Starlette):
 
 def main():
     # Setup some basic auth system:
-    handshake = f"http://{config.SERVER_HOST}:{config.SERVER_PORT}/syn_ack"
+    handshake = (f"{config.SERVER_SCHEME}{config.SERVER_HOST}:"
+                 f"{config.SERVER_PORT}/syn_ack")
+
 
     async def login(_):
         """Returns the url for keycloak login page."""
