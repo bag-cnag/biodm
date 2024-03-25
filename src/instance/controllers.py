@@ -6,10 +6,12 @@ from .entities.schemas import (
 )
 
 # E.g. on how to overload inferred tables/schemas names:
-#    # def __init__(self):
-#    #     super().__init__(
-#    #         table=Dataset,
-#    #         schema=DatasetSchema)
+#    # class D4ta5setController(ActiveController):
+#    #    # def __init__(self):
+#    #    #     super().__init__(
+#    #    #         entity="Dataset"
+#    #    #         table=Dataset,
+#    #    #         schema=DatasetSchema)
 
 
 class DatasetController(ActiveController):
