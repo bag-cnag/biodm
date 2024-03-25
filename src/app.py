@@ -1,156 +1,17 @@
 #!/usr/bin/env python
-import asyncio
-import json
-import logging
-from typing import List
-import requests
-
-
 import uvicorn
-from keycloak.extensions.starlette import AuthenticationMiddleware
-from starlette.applications import Starlette
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.middleware.cors import CORSMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import PlainTextResponse, HTMLResponse, RedirectResponse
-from starlette.routing import Route, Router
 
+from core.api import Api
+from core.basics.routes import routes
+from instance import config, CONTROLLERS
 
-import config
-from security import login_required
-from api.routes import routes
-from model import DatabaseManager
-from controllers import (
-    Controller, TagController, UserController, 
-    GroupController, DatasetController, FileController
-)
-from exceptions import RequestError
-from errors import onerror
-
-
-class TimeoutMiddleware(BaseHTTPMiddleware):
-    """Emit timeout signals in production."""
-    async def dispatch(self, request, call_next):
-        try:
-            return await asyncio.wait_for(call_next(request), timeout=30)
-        except asyncio.TimeoutError:
-            return HTMLResponse("Request reached timeout.", status_code=504)
-
-
-class Api(Starlette):
-    logger = logging.getLogger(__name__)
-
-    def __init__(self, controllers=[], routes=[], *args, **kwargs):
-        self.db = DatabaseManager()
-        self.controllers = []
-        routes.extend(self.adopt_controllers(controllers))
-        super(Api, self).__init__(routes=routes, *args, **kwargs)
-
-        # Set up CORS
-        self.add_middleware(
-            CORSMiddleware, allow_credentials=True,
-            allow_origins=[config.SERVER_HOST, config.KC_HOST, "*"], 
-            allow_methods=["*"], allow_headers=["*"]
-        )
-
-        # Event handlers
-        self.add_event_handler("startup", self.onstart)
-        # self.add_event_handler("shutdown", self.on_app_stop)
-
-        # Error handlers
-        self.add_exception_handler(RequestError, onerror)
-        # self.add_exception_handler(DatabaseError, on_error)
-        # self.add_exception_handler(Exception, on_error)
-
-    def adopt_controllers(self, controllers: List[Controller]) -> None:
-        """Adopts controllers, and their associated routes."""
-        routes = []
-        for controller in controllers:
-            # Instanciate.
-            c = controller.init(app=self)
-            # Fetch and add routes.
-            routes.append(c.routes())
-            # Keep Track of controllers.
-            self.controllers.append(c)
-        return routes
-
-    async def onstart(self) -> None:
-        if config.DEV:
-            """Dev mode: drop all and create tables."""
-            await self.db.init_db()
 
 def main():
-    # Setup some basic auth system:
-    handshake = (f"{config.SERVER_SCHEME}{config.SERVER_HOST}:"
-                 f"{config.SERVER_PORT}/syn_ack")
-
-
-    async def login(_):
-        """Returns the url for keycloak login page."""
-        login_url = (
-            f"{config.KC_HOST}/realms/{config.KC_REALM}/"
-            "protocol/openid-connect/auth?"
-            "scope=openid" "&response_type=code"
-            f"&client_id={config.CLIENT_ID}"
-            f"&redirect_uri={handshake}"
-        )
-        return PlainTextResponse(login_url + "\n")
-
-
-    async def syn_ack(request):
-        """Login callback function when the user logs in through the browser.
-
-            We get an authorization code that we redeem to keycloak for a token.
-            This way the client_secret remains hidden to the user.
-        """
-        code = request.query_params['code']
-
-        kc_token_url = (
-            f"{config.KC_HOST}/realms/{config.KC_REALM}/"
-            "protocol/openid-connect/token?"
-        )
-        r = requests.post(kc_token_url,
-            headers={'Content-Type': 'application/x-www-form-urlencoded'},
-            data={
-                'grant_type': 'authorization_code',
-                'client_id': config.CLIENT_ID,
-                'client_secret': config.CLIENT_SECRET,
-                'code': code,
-                # !! Must be the same as in /login
-                'redirect_uri': f'{handshake}'
-            }
-        )
-        if r.status_code != 200:
-            raise RuntimeError(f"keycloak token handshake failed: {r.text} {r.status_code}")
-
-        return PlainTextResponse(json.loads(r.text)['access_token'] + '\n')
-
-
-    @login_required
-    async def authenticated(userid, groups, projects):
-        """Route to check token validity."""
-        return PlainTextResponse(f"{userid}, {groups}, {projects}\n")
-
-    routes.append(Route("/login", endpoint=login))
-    routes.append(Route("/syn_ack", endpoint=syn_ack))
-    routes.append(Route("/authenticated", endpoint=authenticated))
-
-    ## Instanciate app with a controller for each entity
     app = Api(
         debug=config.DEBUG, 
         routes=routes,
-        controllers=[
-            TagController,
-            UserController,
-            GroupController,
-            DatasetController,
-            FileController,
-        ]
+        controllers=CONTROLLERS,
     )
-    ## Middlewares
-    app.add_middleware(SessionMiddleware, secret_key=config.SECRET_KEY)
-    if not config.DEV:
-        app.add_middleware(TimeoutMiddleware)
     return app
 
 

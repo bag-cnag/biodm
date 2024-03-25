@@ -1,5 +1,3 @@
-import model
-import controllers
-import api
-import config
-import utils
+import core
+import instance
+import app
