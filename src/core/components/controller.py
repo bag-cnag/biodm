@@ -28,26 +28,7 @@ class Controller(ABC):
     @classmethod
     def init(cls, app) -> None:
         cls.app = app
-        # default pk: should be overriden by child __init__ if not the case.
-        cls.pk = ('id',)
         return cls()
-
-    # https://restfulapi.net/http-methods/
-    def routes(self) -> Mount:
-        prefix = self.__class__.__name__.split("Controller")[0]
-        self.prefix = '/' + prefix.lower() + 's'
-
-        id_params = "".join(["{" + id + "}_" for id in self.pk])[:-1]
-
-        return Mount(self.prefix, routes=[
-            Route('/',             self.query,         methods=[HttpMethod.GET.value]),
-            Route('/search',       self.query,         methods=[HttpMethod.GET.value]),
-            Route('/',             self.create,        methods=[HttpMethod.POST.value]),
-            Route(f'/{id_params}', self.delete,        methods=[HttpMethod.DELETE.value]),
-            Route(f'/{id_params}', self.create_update, methods=[HttpMethod.PUT.value]),
-            Route(f'/{id_params}', self.update,        methods=[HttpMethod.PATCH.value]),
-            Route(f'/{id_params}', self.read,          methods=[HttpMethod.GET.value]),
-        ])
 
     @staticmethod
     def deserialize(data: Any, schema: Schema) -> (Any | list | dict | None):
@@ -64,31 +45,12 @@ class Controller(ABC):
         #     raise PayloadDecodeError(e)
         except Exception as e:
             raise e
-    
-    def inst_deserialize(self, data: Any):
-        """Deserialize through an instanciated controller."""
-        return self.deserialize(data=data, schema=self.schema)
 
     @staticmethod
     def serialize(data: Any, schema: Schema, many: bool) -> (str | Any):
         """Serialize statically passing a schema."""
         schema.many = many
         return schema.dumps(data, indent=config.INDENT)
-
-    def inst_serialize(self, data: Any, many: bool) -> (str | Any):
-        """Serialize through an instanciated controller."""
-        return self.serialize(data=data, schema=self.schema, many=many)
-
-    def json_response(self, data: Any, status: int, schema=None) -> Response:
-            content = (
-                self.serialize(
-                    data, schema, 
-                    many=isinstance(data, ScalarResult)
-                )
-                if schema
-                else data
-            )
-            return Response(str(content) + "\n", status_code=status, media_type="application/json")
 
     # CRUD operations
     @abstractmethod
@@ -119,16 +81,21 @@ class Controller(ABC):
 class ActiveController(Controller):
     """Basic class for controllers. Implements the interface CRUD methods."""
     def __init__(self,
+                 entity: str=None,
                  table: Base=None,
                  schema: Schema=None):
+        # Setup dependencies. 
+        self.entity = entity if entity else self._infer_entity_name()
         self.table = table if table else self._infer_table()
-
         self.pk: Tuple[str, ...] = tuple(
             str(pk).split('.')[-1] 
             for pk in self.table.__table__.primary_key.columns
         )
         self.svc = self._infer_svc()
         self.schema = schema() if schema else self._infer_schema()
+
+    def _infer_entity_name(self) -> str:
+        return self.__class__.__name__.split("Controller")[0]
 
     def _infer_svc(self) -> DatabaseService:
         if isinstance(self, S3Controller): # Files -> S3
@@ -140,23 +107,18 @@ class ActiveController(Controller):
 
         return svc(app=self.app, table=self.table, pk=self.pk)
 
-    @property
-    def _infered_entity_name(self):
-        return self.__class__.__name__.split('Controller')[0]
-
     def _infer_table(self) -> Base:
-        ien = self._infered_entity_name
         try:
-            return entities.tables.__dict__[ien]
+            return entities.tables.__dict__[self.entity]
         except:
             raise ValueError(
-                f"{self.__class__.__name__} could not find {ien} Table. "
-                "Alternatively if you are following another naming convention "
+                f"{self.__class__.__name__} could not find {self.entity} Table."
+                " Alternatively if you are following another naming convention "
                 "you may provide it as table arg when creating a new controller"
             )
-    
+
     def _infer_schema(self) -> Schema:
-        isn = f"{self._infered_entity_name}Schema"
+        isn = f"{self.entity}Schema"
         try:
             return entities.schemas.__dict__[isn]()
         except:
@@ -165,6 +127,40 @@ class ActiveController(Controller):
                 "Alternatively if you are following another naming convention "
                 "you may provide it as schema arg when creating a new controller"
             )
+
+    def inst_serialize(self, data: Any, many: bool) -> (str | Any):
+        """Serialize through an instanciated controller."""
+        return self.serialize(data=data, schema=self.schema, many=many)
+
+    def inst_deserialize(self, data: Any):
+        """Deserialize through an instanciated controller."""
+        return self.deserialize(data=data, schema=self.schema)
+
+    def json_response(self, data: Any, status: int, schema=None) -> Response:
+        """Formats a Response object, serializing entities into JSON."""
+        return Response(str(self.serialize(
+                                    data, 
+                                    schema, 
+                                    many=isinstance(data, ScalarResult)
+                                ) if schema else data) + "\n", 
+                        status_code=status, 
+                        media_type="application/json")
+
+    # https://restfulapi.net/http-methods/
+    def routes(self) -> Mount:
+        self.prefix = '/' + self.entity.lower() + 's'
+
+        id_params = "".join(["{" + id + "}_" for id in self.pk])[:-1]
+
+        return Mount(self.prefix, routes=[
+            Route('/',             self.query,         methods=[HttpMethod.GET.value]),
+            Route('/search',       self.query,         methods=[HttpMethod.GET.value]),
+            Route('/',             self.create,        methods=[HttpMethod.POST.value]),
+            Route(f'/{id_params}', self.delete,        methods=[HttpMethod.DELETE.value]),
+            Route(f'/{id_params}', self.create_update, methods=[HttpMethod.PUT.value]),
+            Route(f'/{id_params}', self.update,        methods=[HttpMethod.PATCH.value]),
+            Route(f'/{id_params}', self.read,          methods=[HttpMethod.GET.value]),
+        ])
 
     async def create(self, request):
         body = await request.body()
@@ -232,7 +228,7 @@ class S3Controller(ActiveController):
     def routes(self) -> Mount:
         """Add an endpoint for successful file uploads."""
         routes = super().routes()
-        # TODO: check if POST or PUT
+        # TODO: check if POST or PUT, + associate by ID
         upload_callback = Route('/upload_success', 
                                 self.file_upload_success, 
                                 methods=[HttpMethod.POST.value])
