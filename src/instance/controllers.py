@@ -5,40 +5,31 @@ from .entities.schemas import (
     TagSchema, FileSchema, GroupSchema, UserSchema, DatasetSchema
 )
 
+# E.g. on how to overload inferred tables/schemas names:
+#    # def __init__(self):
+#    #     super().__init__(
+#    #         table=Dataset,
+#    #         schema=DatasetSchema)
+
 
 class DatasetController(ActiveController):
-    def __init__(self):
-        super().__init__(
-            table=Dataset,
-            schema=DatasetSchema)
+    pass
 
 
 class FileController(S3Controller):
-    def __init__(self):
-        super().__init__(
-            table=File,
-            schema=FileSchema)
+    pass
 
 
 class GroupController(ActiveController):
-    def __init__(self):
-        super().__init__(
-            table=Group,
-            schema=GroupSchema)
+    pass
 
 
 class TagController(ActiveController):
-    def __init__(self):
-        super().__init__(
-            table=Tag,
-            schema=TagSchema)
+    pass
 
 
 class UserController(ActiveController):
-    def __init__(self):
-        super().__init__(
-            table=User,
-            schema=UserSchema)
+    pass
 
 
 CONTROLLERS = [DatasetController, FileController, GroupController, 

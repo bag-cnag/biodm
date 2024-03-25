@@ -13,7 +13,7 @@ from sqlalchemy.engine import ScalarResult
 from .table import Base
 from .dbservice import DatabaseService, UnaryEntityService, CompositeEntityService
 from .s3service import S3Service
-from instance import config
+from instance import config, entities
 
 
 class HttpMethod(Enum):
@@ -119,15 +119,16 @@ class Controller(ABC):
 class ActiveController(Controller):
     """Basic class for controllers. Implements the interface CRUD methods."""
     def __init__(self,
-                 table: Base,
-                 schema: Schema, svc=None):
-        self.table = table
+                 table: Base=None,
+                 schema: Schema=None):
+        self.table = table if table else self._infer_table()
+
         self.pk: Tuple[str, ...] = tuple(
             str(pk).split('.')[-1] 
-            for pk in table.__table__.primary_key.columns
+            for pk in self.table.__table__.primary_key.columns
         )
         self.svc = self._infer_svc()
-        self.schema = schema()
+        self.schema = schema() if schema else self._infer_schema()
 
     def _infer_svc(self) -> DatabaseService:
         if isinstance(self, S3Controller): # Files -> S3
@@ -138,6 +139,32 @@ class ActiveController(Controller):
             svc = CompositeEntityService
 
         return svc(app=self.app, table=self.table, pk=self.pk)
+
+    @property
+    def _infered_entity_name(self):
+        return self.__class__.__name__.split('Controller')[0]
+
+    def _infer_table(self) -> Base:
+        ien = self._infered_entity_name
+        try:
+            return entities.tables.__dict__[ien]
+        except:
+            raise ValueError(
+                f"{self.__class__.__name__} could not find {ien} Table. "
+                "Alternatively if you are following another naming convention "
+                "you may provide it as table arg when creating a new controller"
+            )
+    
+    def _infer_schema(self) -> Schema:
+        isn = f"{self._infered_entity_name}Schema"
+        try:
+            return entities.schemas.__dict__[isn]()
+        except:
+            raise ValueError(
+                f"{self.__class__.__name__} could not find {isn} Schema. "
+                "Alternatively if you are following another naming convention "
+                "you may provide it as schema arg when creating a new controller"
+            )
 
     async def create(self, request):
         body = await request.body()
