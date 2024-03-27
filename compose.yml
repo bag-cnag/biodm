@@ -28,7 +28,7 @@ services:
     tty: True
     environment:
       - initialBuckets=3trdevopal
-      - debug=true 
+      - debug=true
     networks:
       biodm-dev:
         ipv4_address: 10.10.0.4

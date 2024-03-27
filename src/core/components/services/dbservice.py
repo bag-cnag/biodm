@@ -254,7 +254,7 @@ class UnaryEntityService(DatabaseService):
                 elif v == '':
                     values.pop(i)
 
-            if len(wildcards) > 0 and ctype is not str:
+            if wildcards and ctype is not str:
                 raise ValueError(
                     f"Using wildcards '*' in /search is only allowed"
                      " for text fields.")
@@ -289,7 +289,7 @@ class UnaryEntityService(DatabaseService):
                         ).returning(self.table)
         return await self._update(stmt)
 
-    async def delete(self, id):
+    async def delete(self, id) -> Any:
         """DELETE."""
         stmt = delete(self.table).where(self.gen_cond(id))
         return await self._delete(stmt)

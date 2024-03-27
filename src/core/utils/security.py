@@ -9,43 +9,45 @@ import logging
 import json
 from instance import config
 
-idrsa = config.KC_PUBLIC_KEY
-options = config.JWT_OPTIONS
-public_key = f"-----BEGIN PUBLIC KEY-----\n {idrsa} \n-----END PUBLIC KEY-----"
+
+def enclose_idrsa(idrsa) -> str:
+	return f"-----BEGIN PUBLIC KEY-----\n {idrsa} \n-----END PUBLIC KEY-----"
 
 
-def extract_items(token, name):
+def extract_items(token, name, default=""):
 	n = token.get(name, [])
-	return [s.replace("/", "") for s in n]
+	return [s.replace("/", "") for s in n] if n else [default]
 
 
-#decoded = jwt.decode(token, public_key2, audience={'aud' : 'myapp'} ,algorithms='RS256', options=options)
 def login_required(f):
 	"""Docorator for function expecting header 'Authorization: Bearer <token>'"""
 	@wraps(f)
 	async def decorated_function(request, *args, **kwargs):
 		token = request.headers['Authorization']
 		token = (token.split('Bearer')[-1] if 'Bearer' in token else token).strip()
-		groups = []
 
 		try:
-			decoded = jwt.decode(token, public_key, algorithms='RS256', options=options)
-			groups = [s.replace("/","") for s in decoded.get('group', groups)]
+			decoded = jwt.decode(jwt=token,
+								 key=enclose_idrsa(config.KC_PUBLIC_KEY),
+								 algorithms='RS256',
+								 options=config.JWT_OPTIONS)
 		except Exception as e:
-				raise RuntimeError(f"Something went wrong: {str(e)}")
-		
-		userid = decoded.get('preferred_username')
-		groups = extract_items(decoded, 'group')
-		projects = extract_items(decoded, 'group_projects')
+			raise RuntimeError(f"Something went wrong: {str(e)}")
 
-		groups = ['no_groups'] if len(groups) == 0 else groups
-		projects = ['no_projects'] if len(projects) == 0 else projects
+		userid = decoded.get('preferred_username')
+		groups = extract_items(decoded, 'group', 'no_groups')
+		projects = extract_items(decoded, 'group_projects', 'no_projects')
 
 		timestamp = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
+		print(f'{timestamp}\t{userid}\t{",".join(groups)}\t'
+			  f'{str(request.url)}-{request.method}')
 
-		print(timestamp + "\t" + userid + "\t" + ",".join(groups) + "\t" + str(request.url) + "-" + request.method)
 		return await f(userid=userid, groups=groups, projects=projects, *args, **kwargs)
 	return decorated_function
+
+
+# def group_required(f, *args, **kwargs):
+# 	pass
 
 
 # @app.after_request

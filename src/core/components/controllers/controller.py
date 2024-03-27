@@ -10,10 +10,17 @@ from starlette.responses import Response
 from starlette.routing import Mount, Route
 from sqlalchemy.engine import ScalarResult
 
-from .table import Base
-from .dbservice import DatabaseService, UnaryEntityService, CompositeEntityService
-from .s3service import S3Service
-from instance import config, entities
+from core.components import Base
+from core.components.services import (
+    DatabaseService, 
+    UnaryEntityService, 
+    CompositeEntityService,
+    KCService,
+    KCGroupService,
+    KCUserService
+)
+from instance import config
+from instance.entities import tables, schemas
 
 
 class HttpMethod(Enum):
@@ -52,6 +59,11 @@ class Controller(ABC):
         schema.many = many
         return schema.dumps(data, indent=config.INDENT)
 
+    # Routes
+    @abstractmethod
+    def routes(self, child_routes):
+        raise NotImplementedError
+
     # CRUD operations
     @abstractmethod
     def create(self, request):
@@ -84,32 +96,40 @@ class ActiveController(Controller):
                  entity: str=None,
                  table: Base=None,
                  schema: Schema=None):
-        # Setup dependencies. 
         self.entity = entity if entity else self._infer_entity_name()
         self.table = table if table else self._infer_table()
         self.pk: Tuple[str, ...] = tuple(
             str(pk).split('.')[-1] 
             for pk in self.table.__table__.primary_key.columns
         )
-        self.svc = self._infer_svc()
+        self.svc = self._infer_svc()(app=self.app, table=self.table, pk=self.pk)
         self.schema = schema() if schema else self._infer_schema()
 
     def _infer_entity_name(self) -> str:
+        """Infer entity name from controller name."""
         return self.__class__.__name__.split("Controller")[0]
 
-    def _infer_svc(self) -> DatabaseService:
-        if isinstance(self, S3Controller): # Files -> S3
-            svc = S3Service
-        elif len(self.table.relationships()) == 0: # No relationships -> unary
-            svc = UnaryEntityService
-        else:
-            svc = CompositeEntityService
+    @property
+    def prefix(self):
+        """Computes route path prefix from entity name."""
+        return '/' + self.entity.lower() + 's'
+    
+    @property
+    def qp_id(self):
+        """Put primary key in queryparam form."""
+        return "".join(["{" + id + "}_" for id in self.pk])[:-1]
 
-        return svc(app=self.app, table=self.table, pk=self.pk)
+    def _infer_svc(self) -> DatabaseService:
+        """Set approriate service for controller.
+        
+           Upon subclassing Controller, this method should be overloaded to provide
+           matching service. E.g. see KCController below or S3Controller.
+        """
+        return CompositeEntityService if self.table.relationships() else UnaryEntityService
 
     def _infer_table(self) -> Base:
         try:
-            return entities.tables.__dict__[self.entity]
+            return tables.__dict__[self.entity]
         except:
             raise ValueError(
                 f"{self.__class__.__name__} could not find {self.entity} Table."
@@ -120,7 +140,7 @@ class ActiveController(Controller):
     def _infer_schema(self) -> Schema:
         isn = f"{self.entity}Schema"
         try:
-            return entities.schemas.__dict__[isn]()
+            return schemas.__dict__[isn]()
         except:
             raise ValueError(
                 f"{self.__class__.__name__} could not find {isn} Schema. "
@@ -147,20 +167,16 @@ class ActiveController(Controller):
                         media_type="application/json")
 
     # https://restfulapi.net/http-methods/
-    def routes(self) -> Mount:
-        self.prefix = '/' + self.entity.lower() + 's'
-
-        id_params = "".join(["{" + id + "}_" for id in self.pk])[:-1]
-
+    def routes(self, child_routes=[]) -> Mount:
         return Mount(self.prefix, routes=[
-            Route('/',             self.query,         methods=[HttpMethod.GET.value]),
-            Route('/search',       self.query,         methods=[HttpMethod.GET.value]),
-            Route('/',             self.create,        methods=[HttpMethod.POST.value]),
-            Route(f'/{id_params}', self.delete,        methods=[HttpMethod.DELETE.value]),
-            Route(f'/{id_params}', self.create_update, methods=[HttpMethod.PUT.value]),
-            Route(f'/{id_params}', self.update,        methods=[HttpMethod.PATCH.value]),
-            Route(f'/{id_params}', self.read,          methods=[HttpMethod.GET.value]),
-        ])
+            Route( '/',             self.query,         methods=[HttpMethod.GET.value]),
+            Route( '/search',       self.query,         methods=[HttpMethod.GET.value]),
+            Route( '/',             self.create,        methods=[HttpMethod.POST.value]),
+            Route(f'/{self.qp_id}', self.delete,        methods=[HttpMethod.DELETE.value]),
+            Route(f'/{self.qp_id}', self.create_update, methods=[HttpMethod.PUT.value]),
+            Route(f'/{self.qp_id}', self.update,        methods=[HttpMethod.PATCH.value]),
+            Route(f'/{self.qp_id}', self.read,          methods=[HttpMethod.GET.value]),
+        ] + child_routes)
 
     async def create(self, request):
         body = await request.body()
@@ -214,35 +230,21 @@ class ActiveController(Controller):
         if querystring is empty -> return all
         -> /ressource/search <==> /ressource/
         """
-        items = await self.svc.filter(request.query_params)
-        return self.json_response(items, status=200, schema=self.schema)
+        return self.json_response(
+            await self.svc.filter(request.query_params), 
+            status=200, 
+            schema=self.schema
+        )
 
 
-class S3Controller(ActiveController):
-    """Controller for entities involving file management leveraging a model.S3Service ."""
-    def __init__(self,
-                 *args,
-                 **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def routes(self) -> Mount:
-        """Add an endpoint for successful file uploads."""
-        routes = super().routes()
-        # TODO: check if POST or PUT, + associate by ID
-        upload_callback = Route('/upload_success', 
-                                self.file_upload_success, 
-                                methods=[HttpMethod.POST.value])
-        self._route_upload_callback = Path(self.prefix,  upload_callback.path)
-        routes.routes.append(upload_callback)
-        return routes
-
-    async def file_upload_success(self, request):
-        """ Used as a callback in the s3 presigned urls that are emitted.
-            The response.
-            Uppon receival, update entity status in the DB."""
-
-        # 1. read request
-            # -> get path ? 
-        # 2. self.svc.file_ready() -> set ready state (and update path ?  
-        pass
-
+class KCController(ActiveController):
+    """Controller for entities managed by keycloak (i.e. User/Group)."""
+    def _infer_svc(self) -> KCService:
+        e = self.entity.lower()
+        if 'user' in e:
+            return KCUserService
+        elif 'group' in e:
+            return KCGroupService
+        else:
+            raise ValueError("KCController manages keycloak user/groups only. "
+                             "Use that class on corresponding entities.")

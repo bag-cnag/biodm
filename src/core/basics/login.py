@@ -6,7 +6,6 @@ from starlette.responses import PlainTextResponse
 from instance import config
 from core.utils.security import login_required
 
-
 # Setup some basic auth system:
 HANDSHAKE = (f"{config.SERVER_SCHEME}{config.SERVER_HOST}:"
                 f"{config.SERVER_PORT}/syn_ack")

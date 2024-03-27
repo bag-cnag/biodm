@@ -11,7 +11,8 @@ from starlette.responses import HTMLResponse
 from starlette.routing import Route
 
 from core.basics.login import login, syn_ack, authenticated
-from core.components import DatabaseManager, Controller
+from core.components.managers import DatabaseManager, KeycloakManager
+from core.components.controllers import Controller
 from core.errors import onerror
 from core.exceptions import RequestError
 from instance import config
@@ -33,6 +34,7 @@ class Api(Starlette):
 
     def __init__(self, controllers=[], routes=[], *args, **kwargs):
         self.db = DatabaseManager()
+        self.kc = KeycloakManager(app=self)
         self.controllers = []
         routes.extend(self.adopt_controllers(controllers))
         routes.extend(self.setup_login())
@@ -61,7 +63,7 @@ class Api(Starlette):
         # self.add_exception_handler(DatabaseError, on_error)
         # self.add_exception_handler(Exception, on_error)
 
-    def adopt_controllers(self, controllers: List[Controller]) -> List:
+    def adopt_controllers(self, controllers: List[Controller]=[]) -> List:
         """Adopts controllers, and their associated routes."""
         routes = []
         for controller in controllers:
@@ -75,11 +77,11 @@ class Api(Starlette):
 
     def setup_login(self) -> List:
         """Setup login routes."""
-        routes = []
-        routes.append(Route("/login", endpoint=login))
-        routes.append(Route("/syn_ack", endpoint=syn_ack))
-        routes.append(Route("/authenticated", endpoint=authenticated))
-        return routes
+        return [
+            Route("/login", endpoint=login),
+            Route("/syn_ack", endpoint=syn_ack),
+            Route("/authenticated", endpoint=authenticated)
+        ]
 
     async def onstart(self) -> None:
         if config.DEV:

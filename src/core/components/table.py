@@ -1,8 +1,8 @@
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.relationships import Relationship
-from sqlalchemy import inspect
 
 
 class Base(DeclarativeBase, AsyncAttrs):

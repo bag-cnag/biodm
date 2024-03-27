@@ -4,7 +4,6 @@ from pathlib import Path
 from boto3 import client 
 from botocore.exceptions import ClientError
 
-# from core.components import UnaryEntityService
 from .dbservice import UnaryEntityService
 from instance import config
 
@@ -25,11 +24,29 @@ class S3Service(UnaryEntityService):
         conditions.append({"success_action_redirect": 
                            Path(config.SERVER_HOST, "success_file_upload")})
         try:
-            return self.s3_client(
+            return self.s3_client.generate_presigned_post(
                 config.S3_BUCKET_NAME,
                 object_name,
                 Fields=fields,
                 Conditions=conditions,
+                ExpiresIn=expiration
+            )
+        except ClientError as e:
+            self.app.logger.error(e)
+            return None
+    
+    def create_presigned_download_url(self, object_name, expiration=config.S3_URL_EXPIRATION):
+        """Generate a presigned URL to share an S3 object
+
+        :param bucket_name: string
+        :param object_name: string
+        :param expiration: Time in seconds for the presigned URL to remain valid
+        :return: Presigned URL as string. If error, returns None.
+        """
+        try:
+            return self.s3_client.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': config.S3_BUCKET_NAME, 'Key': object_name},
                 ExpiresIn=expiration
             )
         except ClientError as e:
@@ -61,40 +78,6 @@ class S3Service(UnaryEntityService):
     async def read(self, **kwargs):
         """READ one row."""
         raise NotImplementedError
-
-    # async def create(self, data, stmt_only: bool=False) -> Base | CompositeInsert:
-    #     """CREATE, accounting for nested entitites."""
-    #     stmts = []
-    #     delayed = {}
-
-    #     # For all table relationships, check whether data contains that item.
-    #     for key, rel in self.relationships.items():
-    #         sub = data.get(key)
-    #         if not sub: continue
-
-    #         # Retrieve associated service.
-    #         svc = get_class_by_table(Base, rel.target).svc
-
-    #         # Get statement(s) for nested entity:
-    #         nested_stmt = await svc.create(sub, stmt_only=True)
-
-    #         # Single nested entity.
-    #         if isinstance(sub, dict):
-    #             stmts += [nested_stmt]
-    #         # List of entities: one - to - many relationship.
-    #         elif isinstance(sub, list):
-    #             delayed[key] = nested_stmt
-    #         else:
-    #             raise ValueError("Expecting nested entities to be either passed as dict or list.")
-    #         # Remove from data dict to avoid errors on building item statement.
-    #         del data[key]
-
-    #     # Statement for original item.
-    #     stmt = insert(self.table).values(**data).returning(self.table)
-
-    #     # Pack & return.
-    #     composite = self.CompositeInsert(item=stmt, nested=stmts, delayed=delayed)
-    #     return composite if stmt_only else await self._insert_composite(composite)
 
     async def update(self, **kwargs):
         """UPDATE one row."""
