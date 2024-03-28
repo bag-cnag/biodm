@@ -7,7 +7,6 @@ from core.components.table import Base
 from .asso import asso_user_group
 if TYPE_CHECKING:
     from .user import User
-    from .dataset import Dataset
 
 
 class Group(Base):
@@ -36,7 +35,7 @@ class Group(Base):
     # projects: Mapped[List["Project"]] = relationship(
     #     secondary=asso_project_group, back_populates="groups"
     # )
-    datasets: Mapped[List["Dataset"]] = relationship(back_populates="group")
+    # datasets: Mapped[List["Dataset"]] = relationship(back_populates="group")
 
     def __repr__(self):
         return f"<Group(name={self.name}, parent={str(self.parent)})>"

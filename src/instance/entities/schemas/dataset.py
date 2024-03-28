@@ -1,7 +1,8 @@
 from marshmallow import Schema, validate, pre_load, ValidationError
 from marshmallow.fields import String, Date, List, Nested, Integer, UUID
 
-from instance.entities.tables import Dataset, Group, User
+from core.tables import Group, User
+from instance.entities.tables import Dataset
 # from controllers import schemas
 # from .group import GroupSchema
 # from .user import UserSchema

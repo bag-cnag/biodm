@@ -4,13 +4,6 @@ from core.components.table import Base
 
 
 ## Associative tables for join operations
-asso_user_group = Table(
-    "ASSO_USER_GROUP",
-    Base.metadata,
-    Column("id_user",    ForeignKey("USER.id"),    primary_key=True),
-    Column("name_group", ForeignKey("GROUP.name"), primary_key=True)
-)
-
 asso_dataset_tag = Table(
     "ASSO_DATASET_TAG",
     Base.metadata,

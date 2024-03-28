@@ -36,6 +36,8 @@ class Api(Starlette):
         self.db = DatabaseManager()
         self.kc = KeycloakManager(app=self)
         self.controllers = []
+        # routes.extend(self.adopt_controllers(
+        #     self.scan_entities()))
         routes.extend(self.adopt_controllers(controllers))
         routes.extend(self.setup_login())
 
@@ -62,6 +64,15 @@ class Api(Starlette):
         self.add_exception_handler(RequestError, onerror)
         # self.add_exception_handler(DatabaseError, on_error)
         # self.add_exception_handler(Exception, on_error)
+    
+    # def scan_entities(self, ) -> List[Controller]:
+    #     """Makes a pass over entities defined in instance to infer controllers"""
+    # TODO ?
+    #     ls = []
+        
+
+
+    #     return ls
 
     def adopt_controllers(self, controllers: List[Controller]=[]) -> List:
         """Adopts controllers, and their associated routes."""

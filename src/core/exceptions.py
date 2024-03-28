@@ -10,14 +10,21 @@ class RequestError(RuntimeError):
         self.orig = orig
 
 
+class UnauthorizedError(RequestError):
+    """Raised when a request on a group restricted route is sent by an unauthorized user."""
+
+
 class FailedRead(RequestError):
     """Requested record doesn't exist."""
+
 
 class FailedUpdate(RequestError):
     """Raised when an update operation is not successful."""
 
+
 class FailedDelete(RequestError):
     """Raised when a delete operation is not successful."""
+
 
 class MissingDB(RequestError):
     """DB access attempted with no manager attached to the service."""

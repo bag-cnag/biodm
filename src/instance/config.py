@@ -29,6 +29,7 @@ SERVER_TIMEOUT = config("SERVER_TIMEOUT", cast=int, default=30)
 # Indentation level when returning json.
 INDENT = config('INDENT', cast=int, default=2)
 
+
 ## Keycloak
 # https://keycloak.local:8443/auth/realms/3TR/.well-known/openid-configuration
 # Warning: Mind the '/auth' if your keycloak instance requires it or not

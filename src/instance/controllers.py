@@ -1,8 +1,4 @@
-from core.components.controllers import (
-    ActiveController, 
-    S3Controller, 
-    KCController
-)
+from core.components.controllers import ActiveController, S3Controller
 
 
 # E.g. on how to overload inferred tables/schemas names:
@@ -14,14 +10,6 @@ from core.components.controllers import (
 #               entity="Dataset"
 #               table=Dataset,
 #               schema=DatasetSchema)
-
-
-class UserController(KCController):
-    pass
-
-
-class GroupController(KCController):
-    pass
 
 
 class DatasetController(ActiveController):
@@ -36,5 +24,4 @@ class FileController(S3Controller):
     pass
 
 
-CONTROLLERS = [DatasetController, FileController, GroupController, 
-               TagController, UserController]
+CONTROLLERS = [DatasetController, FileController, TagController]

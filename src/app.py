@@ -3,6 +3,7 @@ import uvicorn
 
 from core.api import Api
 from core.basics.routes import routes
+from core.basics.controllers import CORE_CONTROLLERS
 from instance import config, CONTROLLERS
 
 
@@ -10,7 +11,7 @@ def main():
     app = Api(
         debug=config.DEBUG, 
         routes=routes,
-        controllers=CONTROLLERS,
+        controllers=CORE_CONTROLLERS+CONTROLLERS,
     )
     return app
 

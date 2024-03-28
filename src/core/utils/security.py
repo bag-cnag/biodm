@@ -1,3 +1,4 @@
+from typing import List
 from functools import wraps
 # from app import app
 
@@ -7,37 +8,59 @@ import jwt
 # from core.entities import History: TODO
 import logging
 import json
+from core.exceptions import UnauthorizedError
 from instance import config
 
 
-def enclose_idrsa(idrsa) -> str:
-	return f"-----BEGIN PUBLIC KEY-----\n {idrsa} \n-----END PUBLIC KEY-----"
+def extract_and_decode_token(request) -> tuple[str, List, List]:
+	# Helper functions.
+	def enclose_idrsa(idrsa) -> str:
+		return f"-----BEGIN PUBLIC KEY-----\n {idrsa} \n-----END PUBLIC KEY-----"
+
+	def extract_items(token, name, default=""):
+		n = token.get(name, [])
+		return [s.replace("/", "") for s in n] if n else [default]
+
+	# Extract.
+	token = request.headers['Authorization']
+	token = (token.split('Bearer')[-1] if 'Bearer' in token else token).strip()
+
+	# Decode.
+	try:
+		decoded = jwt.decode(jwt=token,
+							 key=enclose_idrsa(config.KC_PUBLIC_KEY),
+							 algorithms='RS256',
+							 options=config.JWT_OPTIONS)
+	except Exception as e:
+		raise RuntimeError(f"Something went wrong: {str(e)}")
+
+	# Parse.
+	userid = decoded.get('preferred_username')
+	groups = extract_items(decoded, 'group', 'no_groups')
+	projects = extract_items(decoded, 'group_projects', 'no_projects')
+	return userid, groups, projects
 
 
-def extract_items(token, name, default=""):
-	n = token.get(name, [])
-	return [s.replace("/", "") for s in n] if n else [default]
+def group_required(f, groups: List):
+	"""Decorator for function expecting"""
+	@wraps(f)
+	async def wrapper(request, *args, **kwargs):
+		_, user_groups, _ = extract_and_decode_token(request)
+		if any((ug in groups for ug in user_groups)):
+			return f(request, *args, **kwargs)
+		raise UnauthorizedError("Insufficient group privileges for this operation.")
+	return wrapper
+
+
+def admin_required(f):
+	return group_required(f, groups=['admin'])
 
 
 def login_required(f):
 	"""Docorator for function expecting header 'Authorization: Bearer <token>'"""
 	@wraps(f)
 	async def decorated_function(request, *args, **kwargs):
-		token = request.headers['Authorization']
-		token = (token.split('Bearer')[-1] if 'Bearer' in token else token).strip()
-
-		try:
-			decoded = jwt.decode(jwt=token,
-								 key=enclose_idrsa(config.KC_PUBLIC_KEY),
-								 algorithms='RS256',
-								 options=config.JWT_OPTIONS)
-		except Exception as e:
-			raise RuntimeError(f"Something went wrong: {str(e)}")
-
-		userid = decoded.get('preferred_username')
-		groups = extract_items(decoded, 'group', 'no_groups')
-		projects = extract_items(decoded, 'group_projects', 'no_projects')
-
+		userid, groups, projects = extract_and_decode_token(request)
 		timestamp = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
 		print(f'{timestamp}\t{userid}\t{",".join(groups)}\t'
 			  f'{str(request.url)}-{request.method}')

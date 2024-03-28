@@ -15,9 +15,6 @@ from core.components.services import (
     DatabaseService, 
     UnaryEntityService, 
     CompositeEntityService,
-    KCService,
-    KCGroupService,
-    KCUserService
 )
 from instance import config
 from instance.entities import tables, schemas
@@ -235,16 +232,3 @@ class ActiveController(Controller):
             status=200, 
             schema=self.schema
         )
-
-
-class KCController(ActiveController):
-    """Controller for entities managed by keycloak (i.e. User/Group)."""
-    def _infer_svc(self) -> KCService:
-        e = self.entity.lower()
-        if 'user' in e:
-            return KCUserService
-        elif 'group' in e:
-            return KCGroupService
-        else:
-            raise ValueError("KCController manages keycloak user/groups only. "
-                             "Use that class on corresponding entities.")

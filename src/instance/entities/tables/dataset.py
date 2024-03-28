@@ -4,11 +4,10 @@ from sqlalchemy import Column, Integer, SmallInteger, ForeignKey, String, Primar
 from sqlalchemy.orm import Mapped, relationship
 
 from core.components.table import Base
+from core.tables import Group, User
 from .asso import asso_dataset_tag
 if TYPE_CHECKING:
     from .file import File
-    from .group import Group
-    from .user import User
     from .tag import Tag
 
 
@@ -49,7 +48,7 @@ class Dataset(Base):
 
     # # relationships
     # # TODO: figure out policy - cascade="save-update, merge"
-    group:   Mapped["Group"]     = relationship(back_populates="datasets", lazy="immediate")
+    group:   Mapped["Group"]     = relationship(foreign_keys=[name_group], lazy="immediate")
     contact: Mapped["User"]      = relationship(foreign_keys=[id_user_contact], lazy="immediate")
     tags:    Mapped[Set["Tag"]]  = relationship(secondary=asso_dataset_tag, lazy="immediate", uselist=True)
 

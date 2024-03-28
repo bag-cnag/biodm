@@ -1,1 +1,1 @@
-from .table import Base
+from .table import Base, S3File
