@@ -1,6 +1,9 @@
 from typing import List
-from functools import wraps
+from functools import wraps, lru_cache
 # from app import app
+
+from starlette import requests
+
 
 import datetime
 import jwt
@@ -12,7 +15,15 @@ from core.exceptions import UnauthorizedError
 from instance import config
 
 
+def auth_header(request) -> str | None:
+	return request.headers.get('Authorization', None)
+
+
+@lru_cache(128)
 def extract_and_decode_token(request) -> tuple[str, List, List]:
+	"""Cached because it may be called twice per request: 
+		1. history middleware 
+		2. protected function decorator."""
 	# Helper functions.
 	def enclose_idrsa(idrsa) -> str:
 		return f"-----BEGIN PUBLIC KEY-----\n {idrsa} \n-----END PUBLIC KEY-----"
@@ -22,7 +33,11 @@ def extract_and_decode_token(request) -> tuple[str, List, List]:
 		return [s.replace("/", "") for s in n] if n else [default]
 
 	# Extract.
-	token = request.headers['Authorization']
+	token = auth_header(request)
+	if not token:
+		raise UnauthorizedError(f"This route is token protected. " 
+						  		f"Please provide it in header: "
+								f"Authorization: Bearer <token>")
 	token = (token.split('Bearer')[-1] if 'Bearer' in token else token).strip()
 
 	# Decode.
@@ -42,12 +57,12 @@ def extract_and_decode_token(request) -> tuple[str, List, List]:
 
 
 def group_required(f, groups: List):
-	"""Decorator for function expecting"""
+	"""Decorator for function expecting groups: decorates a controller CRUD function."""
 	@wraps(f)
-	async def wrapper(request, *args, **kwargs):
+	async def wrapper(controller, request, *args, **kwargs):
 		_, user_groups, _ = extract_and_decode_token(request)
 		if any((ug in groups for ug in user_groups)):
-			return f(request, *args, **kwargs)
+			return f(controller, request, *args, **kwargs)
 		raise UnauthorizedError("Insufficient group privileges for this operation.")
 	return wrapper
 

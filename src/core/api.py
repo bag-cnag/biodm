@@ -4,10 +4,11 @@ from typing import List
 
 # from keycloak.extensions.starlette import AuthenticationMiddleware
 from starlette.applications import Starlette
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.middleware.cors import CORSMiddleware
 # from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import HTMLResponse
+from starlette.requests import Request
+from starlette.responses import HTMLResponse, Response
 from starlette.routing import Route
 
 from core.basics.login import login, syn_ack, authenticated
@@ -15,6 +16,9 @@ from core.components.managers import DatabaseManager, KeycloakManager
 from core.components.controllers import Controller
 from core.errors import onerror
 from core.exceptions import RequestError
+from core.utils.security import extract_and_decode_token, auth_header
+from core.tables import History
+
 from instance import config
 
 
@@ -27,6 +31,16 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
                 timeout=config.SERVER_TIMEOUT)
         except TimeoutError:
             return HTMLResponse("Request reached timeout.", status_code=504)
+
+
+class HistoryMiddleware(BaseHTTPMiddleware):
+    """Logins in authenticated user requests in History."""
+    async def dispatch(self, request: Request, call_next) -> Response:
+        if auth_header(request):
+            userid, _, _ = extract_and_decode_token(request)
+            History()
+
+        return await call_next(request)
 
 
 class Api(Starlette):
@@ -44,7 +58,9 @@ class Api(Starlette):
         super(Api, self).__init__(routes=routes, *args, **kwargs)
 
         ## Middlewares
-        # Set up CORS
+        # History
+        self.add_middleware(HistoryMiddleware)
+        # CORS
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
             allow_origins=[config.SERVER_HOST, config.KC_HOST, "*"], 

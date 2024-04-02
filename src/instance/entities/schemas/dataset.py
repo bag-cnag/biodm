@@ -31,7 +31,7 @@ class DatasetSchema(Schema):
     )
 
     group = Nested('GroupSchema', only=('name', 'n_members'))
-    contact = Nested('UserSchema', only=('id',))
+    contact = Nested('UserSchema', only=('id', 'username'))
     tags = List(Nested('TagSchema'), only=('name', ))
 
     @pre_load
@@ -40,6 +40,7 @@ class DatasetSchema(Schema):
 
         id_uc = data.get('id_user_contact')
         contact_id = data.get('contact', {}).get('id')
+
         if id_uc and contact_id:
             assert(id_uc == contact_id)
         elif contact_id and not id_uc:
