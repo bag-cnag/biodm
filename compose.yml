@@ -1,5 +1,5 @@
 services:
-  db:
+  api-db:
     image: postgres:16-bookworm
     environment:
       - POSTGRES_PASSWORD=pass
@@ -9,29 +9,68 @@ services:
     networks:
       biodm-dev:
         ipv4_address: 10.10.0.2
-  keycloak: # Start page: https://keycloak.local:8443/auth/
-    image: jboss/keycloak:16.0.0
+  kc-db:
+    image: postgres:16-bookworm
+    container_name: kc-db
     environment:
-      - KEYCLOAK_USER=admin 
-      - KEYCLOAK_PASSWORD=admin
-    ports: 
-      - 8443:8080
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=keycloak
+    restart: unless-stopped
+    # ports:
+    #   - 9999:5432
+    healthcheck:
+      test: pg_isready -U postgres
+    networks:
+      biodm-dev:
+        ipv4_address: 10.10.0.5
+  # Start page: https://keycloak.local:8443/auth/
+  keycloak:
+    container_name: keycloak
+    image: keycloak:22.0_local-certs
+    depends_on:
+      - kc-db
+    links:
+      - kc-db
+    environment:
+      - DB_VENDOR=postgres
+      - DB_ADDR=postgres
+      - DB_DATABASE=keycloak
+      - DB_USER=postgres
+      - DB_PASSWORD=pass
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=1234
+      - KEYCLOAK_HOSTNAME_DEBUG=true
+      - KEYCLOAK_HOSTNAME_STRICT=false
+      - KEYCLOAK_HTTP_ENABLED=true
+      - KEYCLOAK_HOSTNAME_STRICT_HTTPS=false
+      - KC_HEALTH_ENABLED=true
+    ports:
+      - 8080:8080
+      - 8443:8443
+      # - 5432:5432
+    restart: unless-stopped
+    # command: start-dev
+    healthcheck:
+      test: curl 10.10.0.3:8443/health | grep -q "UP"
+      interval: 10s
+      timeout: 10s
+      retries: 5
     hostname: keycloak.local
     networks:
       biodm-dev:
         ipv4_address: 10.10.0.3
-  s3: # Check status: aws s3 ls --endpoint-url http://s3.local:9090/3trdevopal/
-    image: adobe/s3mock:3.5.2
-    ports:
-      - 9090:9090 
-      - 9191:9191
-    tty: True
-    environment:
-      - initialBuckets=3trdevopal
-      - debug=true
-    networks:
-      biodm-dev:
-        ipv4_address: 10.10.0.4
+  # s3: # Check status: aws s3 ls --endpoint-url http://s3.local:9090/3trdevopal/
+  #   image: adobe/s3mock:3.5.2
+  #   ports:
+  #     - 9090:9090 
+  #     - 9191:9191
+  #   tty: True
+  #   environment:
+  #     - initialBuckets=3trdevopal
+  #     - debug=true
+  #   networks:
+  #     biodm-dev:
+  #       ipv4_address: 10.10.0.4
 
 networks:
   biodm-dev:

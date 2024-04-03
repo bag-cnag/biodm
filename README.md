@@ -35,6 +35,7 @@ Python
 pip3 install uvicorn[uvloop]
 pip3 install sqlalchemy[asyncio]
 pip3 install sqlalchemy_utils
+pip3 install python-keycloak
 pip3 install requests
 pip3 install starlette
 pip3 install marshmallow
@@ -46,15 +47,15 @@ pip3 install boto3
 
 ## Setup services dependencies
 
-### Quick setup
+### Recommended: Quick setup
 
 To start all at once and skip individual configuration below you may use the provided `compose.yml`.
 You may start all services using
 ```bash
 docker compose up -d
 ```
-
-_Note_: You still need to perform keycloak realm and client configuration on the UI.
+*Note*: You need to build up the docker container as explained in the keycloak secton below. 
+_Note_: You need to perform keycloak realm and client configuration on the admin interface by default located at `https://keycloak.local:8443/admin/`
 
 It bundles those services in a local subnet **i.e.** `biodm-dev` by default located at `10.10.0.1/16` for an easy quick setup it is advised to add the following lines to your `/etc/hosts` file as they are matching default config settings.
 
@@ -81,9 +82,19 @@ docker exec -u postgres biodm-pg createdb biodm
 ```
 
 ### Keycloak
+
+First you need to build the image yourself according to the [documentation](https://www.keycloak.org/server/containers) :
+
 ```bash
-docker pull jboss/keycloak:16.0.0
-docker run --name local_keycloak -e KEYCLOAK_USER=admin -e KEYCLOAK_PASSWORD=admin -p 8443:8080 jboss/keycloak:16.0.0
+cd docker/ && \
+docker build . -t keycloak:23.0.0_local-certs -f Dockerfile.keycloak-23.0.0_local-certs && \
+cd -
+```
+
+then
+
+```bash
+docker run --name local_keycloak -e KEYCLOAK_USER=admin -e KEYCLOAK_PASSWORD=admin -p 8443:8080 keycloak:22.0.5_local-certs
 ```
 
 #### Configuration
