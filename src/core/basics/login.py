@@ -43,7 +43,7 @@ async def syn_ack(request):
             'client_secret': config.CLIENT_SECRET,
             'code': code,
             # !! Must be the same as in /login
-            'redirect_uri': f'{HANDSHAKE}'
+            'redirect_uri': HANDSHAKE
         }
     )
     if r.status_code != 200:

@@ -1,6 +1,6 @@
 from typing import Optional, List, TYPE_CHECKING
 
-from sqlalchemy import Column, String, Integer, ForeignKey
+from sqlalchemy import Column, String, Integer, ForeignKey, Uuid
 from sqlalchemy.orm import Mapped, relationship
 
 from core.components.table import Base
@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
 
 class Group(Base):
+    id = Column(Uuid, unique=True)
     name: Mapped[str] = Column(String(100), primary_key=True)
     # test
     n_members: Mapped[int] = Column(Integer, nullable=True)

@@ -1,4 +1,13 @@
+import asyncio
+import json
+import requests
+from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import AsyncGenerator
+
+from keycloak import KeycloakAdmin
+from keycloak import KeycloakOpenIDConnection
+from keycloak.exceptions import KeycloakDeleteError
 
 from instance import config
 
@@ -6,33 +15,48 @@ from instance import config
 class KeycloakManager():
     def __init__(self, app) -> None:
         self.app = app
+        self._connexion = KeycloakOpenIDConnection(
+            server_url=config.KC_HOST,
+            username=config.KC_ADMIN,
+            password=config.KC_ADMIN_PASSWORD,
+            user_realm_name="master",
+            realm_name=config.KC_REALM,
+            verify=(not config.DEV)
+        )
 
     @property
-    def host(self):
-        return config.KC_HOST
+    def admin(self):
+        return KeycloakAdmin(connection=self._connexion)
 
-    @property
-    def realm(self):
-        return config.KC_REALM
+    async def create_user(self, data) -> str:
+        payload = {
+            field: data.get(field, "")
+            for field in ("username", "email", "firstName", "lastName")
+        }
+        payload.update({
+            "enabled": True,
+            "requiredActions": [],
+            "groups":[],
+            "emailVerified": False,
+        })
+        return self.admin.create_user(payload, exist_ok=True)
 
-    # # https://steve-mu.medium.com/create-new-user-in-keycloak-with-admin-restful-api-e6e868b836b4
-    # def admin_user_url(self):
-    #     return f"{self.host}/admin/realms/{self.realm}/users"
+    async def update_user(self, id, data):
+        # TODO:
+        raise NotImplementedError
 
-    async def create_user(data):
-        pass
+    async def delete_user(self, id) -> None:
+        try:
+            self.admin.delete_user(id)
+        except KeycloakDeleteError as e:
+            raise
 
-    async def update_user(id, data):
-        pass
+    async def create_group(self, data) -> str:
+        return self.admin.create_group({"name": data.get("name")})
 
-    async def delete_user(id):
-        pass
+    async def update_group(self, id, data):
+        raise NotImplementedError
 
-    async def create_group(data):
-        pass
+    async def delete_group(self, id):
+        return self.admin.delete_group(id)
 
-    async def update_group(id, data):
-        pass
-
-    async def delete_group(id):
-        pass

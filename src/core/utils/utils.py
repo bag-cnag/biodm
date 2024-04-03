@@ -1,8 +1,17 @@
+from os import path, utime
 import operator
 from typing import Any, List
 from functools import reduce
 import uuid
 from abc import ABCMeta
+
+
+def touch(fname):
+    if path.exists(fname):
+        utime(fname, None)
+    else:
+        open(fname, 'a').close()
+
 
 def to_it(x: Any) -> (tuple | list):
     """Return identity list/tuple or pack atomic value in a tuple."""
@@ -21,6 +30,7 @@ def unevalled_or(ls: List[Any]):
 
 def nonce():
     return uuid.uuid4().hex
+
 
 class Singleton(ABCMeta):
     """Singleton pattern as metaclass."""

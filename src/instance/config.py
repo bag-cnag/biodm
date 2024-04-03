@@ -1,5 +1,9 @@
 from starlette.config import Config
 
+from core.utils.utils import touch
+
+
+touch(".env")
 config = Config(".env")
 
 ## DB
@@ -33,9 +37,11 @@ INDENT = config('INDENT', cast=int, default=2)
 ## Keycloak
 # https://keycloak.local:8443/auth/realms/3TR/.well-known/openid-configuration
 # Warning: Mind the '/auth' if your keycloak instance requires it or not
-KC_HOST = config("KC_HOST", cast=str, default="https://keycloak.local:8443/auth")
+KC_HOST = config("KC_HOST", cast=str, default="http://keycloak.local:8080")
 KC_REALM = config("KC_REALM", cast=str, default="3TR")
-KC_PUBLIC_KEY = config("KC_PUBLIC_KEY", cast=str, default="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjhilY5gEp0dbH1op1BGUB4f3q1WLoEWgWJSvJmXKwSMMfMfmdcG3vG1rjq62dZBIhqlGSn3/Lu2lLhPpSrbaUUp8ny+CJgrEN4XVtBcw5GJxNdhNS3P1H78ncBW5dtXL7ySgHyzR9F9jx3gR6IiIszBrqj0nUubyAKs28Bn9LeNm2SK4uimJ3TaJqZW8h2KVsgJy2rfYeFz8YB+f25rgpYptDd/Eu4rlv1iIrpYXOcpkBAh0idWZlUeFqerAbjhtE5Qzm1p3T6CAHigQ/KtElkhGgopkP4ya923pTNqAbig4J9AFXThfBaJqxHvZH4XoiVOWGCOsUWnckUDtpBDhYQIDAQAB")
+KC_PUBLIC_KEY = config("KC_PUBLIC_KEY", cast=str, default="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsXQdTq59dgaufEXGrOMh0ieCtKR1ypBeNiSDp9BkU2/4d5iKsyhgUNUTHDZQgVpyXYFfw+0VXK4pxotF/x5KKZvxdbWoSmPxC5jbiTDJ/TQ2CGXKKDibbwpHdfwed/5cZSVegVAyztMf9mKdJ/CPMcRU37EuWLSV9D5nSem0zwnz3jzTnQJsCl5Dfb18GBafD9z96pPlEXJIMadFJlGyFu+DKDeb3S+lzoQH7/KX6e/ggzhSId3UIgcO67cmWVXHWUcvyxwBx6N1g0n2rzI0GUcoxyZDQEat1eQ6b90jq6O75TLmtC8wRXhmK5BgHcC1adJJuUwETd4VfScMvRGdDwIDAQAB")
+KC_ADMIN = config("KC_ADMIN", cast=str, default="admin")
+KC_ADMIN_PASSWORD = config("KC_ADMIN_PASSWORD", cast=str, default="1234")
 CLIENT_ID = config("CLIENT_ID", cast=str, default="submission_client")
-CLIENT_SECRET = config("CLIENT_SECRET", cast=str, default="skyShnxa97hJnxy2FxGP0uBb7ICoi9cV")
+CLIENT_SECRET = config("CLIENT_SECRET", cast=str, default="BMmIoFomELVOQKz0GJnepIRhtMEGzbGe")
 JWT_OPTIONS = config("JWT_OPTIONS", cast=dict, default={'verify_exp': False,'verify_aud':False})

@@ -23,12 +23,11 @@ class KCController(ActiveController):
 
 
 class UserSchema(Schema):
-    class Meta:
-        model = User
-        include_fk = True
-        load_instance = True
-
-    id = UUID(required=True)
+    # class Meta:
+    #     model = User
+    #     include_fk = True
+    #     load_instance = True
+    # id = UUID()
     username = String(required=True)
     password = String()
     email = String()
@@ -38,11 +37,10 @@ class UserSchema(Schema):
     groups = List(Nested('GroupSchema'), load_only=True)
 
 class GroupSchema(Schema):
-    class Meta:
-        model = Group
-        include_fk = True
-        load_instance = True
-
+    # class Meta:
+    #     model = Group
+    #     include_fk = True
+    #     load_instance = True
     name = String(required=True)
     # Test
     n_members = Integer(required=False)

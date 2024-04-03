@@ -2,7 +2,6 @@ from typing import List, Any
 
 from core.components import Base
 from .dbservice import UnaryEntityService
-from instance import config
 
 
 class KCService(UnaryEntityService):
@@ -13,7 +12,8 @@ class KCUserService(KCService):
     """Service that manage Keycloak Users."""
     async def create(self, data, stmt_only: bool=False) -> Base | List[Base]:
         """On CREATE, foward to keycloak."""
-        # await self.app.kc.create_user(data)
+        id = await self.app.kc.create_user(data)
+        data["id"] = id
         return await super().create(data, stmt_only)
 
     async def update(self, id, data: dict) -> Base:
@@ -23,7 +23,8 @@ class KCUserService(KCService):
 
     async def delete(self, id) -> Any:
         """On DELETE, forward to keycloak."""
-        # await self.app.kc.delete_user(id)
+        item = await self.read(id)
+        await self.app.kc.delete_user(item.id)
         return await super().delete(id)
 
 
@@ -31,7 +32,8 @@ class KCGroupService(KCService):
     """Service that manage Keycloak Groups."""
     async def create(self, data, stmt_only: bool=False) -> Base | List[Base]:
         """On CREATE, foward to keycloak."""
-        # await self.app.kc.create_group(data)
+        id = await self.app.kc.create_group(data)
+        data["id"] = id
         return await super().create(data, stmt_only)
 
     async def update(self, id, data: dict) -> Base:
@@ -41,5 +43,6 @@ class KCGroupService(KCService):
 
     async def delete(self, id) -> Any:
         """On DELETE, forward to keycloak."""
-        # await self.app.kc.delete_group(id)
+        item = await self.read(id)
+        await self.app.kc.delete_group(item.id)
         return await super().delete(id)
