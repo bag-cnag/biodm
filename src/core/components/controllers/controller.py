@@ -114,11 +114,11 @@ class ActiveController(Controller):
     @property
     def qp_id(self):
         """Put primary key in queryparam form."""
-        return "".join(["{" + id + "}_" for id in self.pk])[:-1]
+        return "".join(["{" + k + "}_" for k in self.pk])[:-1]
 
     def _infer_svc(self) -> DatabaseService:
-        """Set approriate service for controller.
-        
+        """Set approriate service for given controller.
+
            Upon subclassing Controller, this method should be overloaded to provide
            matching service. E.g. see KCController below or S3Controller.
         """
@@ -131,7 +131,7 @@ class ActiveController(Controller):
             raise ValueError(
                 f"{self.__class__.__name__} could not find {self.entity} Table."
                 " Alternatively if you are following another naming convention "
-                "you may provide it as table arg when creating a new controller"
+                "you should provide it as 'table' arg when creating a new controller"
             )
 
     def _infer_schema(self) -> Schema:
@@ -142,7 +142,7 @@ class ActiveController(Controller):
             raise ValueError(
                 f"{self.__class__.__name__} could not find {isn} Schema. "
                 "Alternatively if you are following another naming convention "
-                "you may provide it as schema arg when creating a new controller"
+                "you should provide it as 'schema' arg when creating a new controller"
             )
 
     def inst_serialize(self, data: Any, many: bool) -> (str | Any):

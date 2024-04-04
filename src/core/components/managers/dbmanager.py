@@ -9,7 +9,7 @@ from core.components import Base
 from instance.config import DATABASE_URL, DEBUG
 
 
-class DatabaseManager():
+class DatabaseManager(object):
     def __init__(self, sync=False) -> None:
         self.database_url = DATABASE_URL if sync else self.async_database_url()
         self.engine = create_async_engine(
@@ -42,16 +42,3 @@ class DatabaseManager():
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
-
-# ## Snippet for version In case needed one day:
-# # SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-# # def db():
-#     # db = SessionLocal()
-#     # try:
-#     #     yield dbBase = declarative_base()
-
-#     # finally:
-#     #     db.close()
-# # Goes into db/session
-# # from sqlalchemy import create_engine
-# # engine = create_engine(SQLALCHEMY_DATABASE_URL)

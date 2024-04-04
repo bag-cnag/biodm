@@ -1,6 +1,9 @@
 class MissingService(RuntimeError):
     """Raised when a controller expects a service that is not present."""
 
+class ImplementionErrror(RuntimeError):
+    """Raised when a wrong use of components is detected."""
+
 class RequestError(RuntimeError):
     detail = None
     orig = None

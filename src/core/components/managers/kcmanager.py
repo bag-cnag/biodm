@@ -1,10 +1,3 @@
-import asyncio
-import json
-import requests
-from contextlib import asynccontextmanager
-from pathlib import Path
-from typing import AsyncGenerator
-
 from keycloak import KeycloakAdmin
 from keycloak import KeycloakOpenIDConnection
 from keycloak.exceptions import KeycloakDeleteError
@@ -12,7 +5,7 @@ from keycloak.exceptions import KeycloakDeleteError
 from instance import config
 
 
-class KeycloakManager():
+class KeycloakManager(object):
     def __init__(self, app) -> None:
         self.app = app
         self._connexion = KeycloakOpenIDConnection(

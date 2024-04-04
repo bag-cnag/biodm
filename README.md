@@ -115,10 +115,17 @@ Once you've created the realm, create the client. Then
 
 _Note_: depending on your keycloak version or running instance `SERVER_HOST` may have to be appended with `/auth` 
 
-Finally you should provide the server with the `SECRET` field located in the `Credentials` tab, that appears **after** you changed access type and the realm public key located at `{KC_HOST}[auth/]realms/{KC_REALM}/`
+Then you should provide the server with the `SECRET` field located in the `Credentials` tab, that appears **after** you changed access type and the realm public key located at `{KC_HOST}[auth/]realms/{KC_REALM}/`
 ```env
-CLIENT_SECRET={SECRET}a
+CLIENT_SECRET={SECRET}
 KC_PUBLIC_KEY={public_key}
+```
+
+For admin functionalities such as CRUD operations on Keycloak tables, the server also needs the KEYCLOAK_ADMIN and KEYCLOAK_ADMIN_SECRET like this:
+
+```env
+KC_ADMIN={KEYCLOAK_ADMIN}
+KC_ADMIN_PASSWORD={KEYCLOAK_ADMIN_SECRET}
 ```
 
 ### S3Mock
@@ -142,6 +149,7 @@ Furthermore, Controllers are leveraging services to communicate with the databas
 Then Controllers are inheriting from the following methods. 
 
 TODO: user manual
+
 
 ## Authentication
 Hitting the login endpoint **i.e.**
