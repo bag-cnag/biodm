@@ -38,8 +38,9 @@ class HistoryMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         if auth_header(request):
             userid, _, _ = extract_and_decode_token(request)
-            History()
-
+            async with self.app.db.session() as session:
+                entry = History({})
+                # TODO:
         return await call_next(request)
 
 

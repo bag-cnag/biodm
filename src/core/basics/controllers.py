@@ -3,7 +3,7 @@ from marshmallow.fields import String, List, Nested, Integer, UUID
 
 
 from core.components.controllers import ActiveController, AdminController
-from core.components.services import KCService #, KCGroupService, KCUserService
+from core.components.services import KCService
 from core.tables import Group, User
 from core.components.table import Base
 
@@ -14,17 +14,10 @@ class KCController(ActiveController):
     def _infer_svc(self) -> KCService:
         return KCService
 
-        # e = self.entity.lower()
-        # if 'user' in e:
-        #     return KCUserService
-        # elif 'group' in e:
-        #     return KCGroupService
-        # else:
-        #     raise ValueError("KCController manages keycloak user/groups only. "
-        #                      "Use that class on corresponding entities.")
-
 
 class UserSchema(Schema):
+    """Schema for Keycloak Users. 
+       id field is purposefully left out as it is managed internally."""
     # class Meta:
     #     model = User
     #     include_fk = True
@@ -39,6 +32,8 @@ class UserSchema(Schema):
     groups = List(Nested('GroupSchema'), load_only=True)
 
 class GroupSchema(Schema):
+    """Schema for Keycloak Groups. 
+       id field is purposefully left out as it is managed internally."""
     # class Meta:
     #     model = Group
     #     include_fk = True
