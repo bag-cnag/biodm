@@ -6,8 +6,7 @@ from instance import config
 
 
 class KeycloakManager(object):
-    def __init__(self, app) -> None:
-        self.app = app
+    def __init__(self) -> None:
         self._connexion = KeycloakOpenIDConnection(
             server_url=config.KC_HOST,
             username=config.KC_ADMIN,
@@ -53,6 +52,6 @@ class KeycloakManager(object):
 
     async def delete_group(self, id):
         return self.admin.delete_group(id)
-    
+
     async def group_user_add(self, user_id, group_id): 
         return self.admin.group_user_add(user_id, group_id)

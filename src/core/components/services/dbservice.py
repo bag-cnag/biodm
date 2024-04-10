@@ -3,10 +3,10 @@
 from abc import ABC, abstractmethod
 from typing import List, Any, overload, Tuple
 
-from sqlalchemy.sql import Select, Insert, Update, Delete
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import select, update, delete
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import Select, Insert, Update, Delete
 from sqlalchemy_utils import get_class_by_table
 from starlette.datastructures import QueryParams
 

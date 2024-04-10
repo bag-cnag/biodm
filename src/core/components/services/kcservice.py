@@ -1,29 +1,34 @@
-from typing import List, Any, Tuple
-
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy import select, update, delete
+from abc import abstractmethod
+from typing import Any, List
 
 from core.components import Base
-from core.exceptions import ImplementionErrror, FailedRead
-from core.utils.utils import to_it, it_to
+from core.exceptions import FailedRead
 from core.tables import Group, User
+from core.utils.utils import to_it
 from .dbservice import CompositeEntityService
 
 
 class KCService(CompositeEntityService):
     @property
     def kc(self):
+        """Return KCManager instance."""
         return self.app.kc
+
+    @abstractmethod
+    async def _read_or_create(self, **kwargs):
+        """Try to read from DB, create on keycloak side if not present. Return id."""
+        raise NotImplementedError
+
 
 class KCGroupService(KCService):
     async def _read_or_create(self, data):
-        """Try to read from DB, create on keycloak side if not present. Return id."""
         try:
             return (await self.read(data["name"])).id
         except FailedRead:
             return await self.kc.create_group(data)
 
     async def create(self, data, stmt_only: bool=False) -> Base | List[Base]:
+        """Create entities on Keycloak Side before passing to parent class for DB."""
         # KC
         if not stmt_only:
             for group in to_it(data):
@@ -37,10 +42,17 @@ class KCGroupService(KCService):
         # DB
         return await super(KCService, self).create(data, stmt_only)
 
+    async def update(self, id, data: dict) -> Base:
+        raise NotImplementedError
+        return await super(KCService, self).update(id, data)
+
+    async def delete(self, id) -> Any:
+        raise NotImplementedError
+        return await super(KCService, self).delete(id)
+
 
 class KCUserService(KCService):
     async def _read_or_create(self, data, groups=[], group_ids=[]):
-        """Try to read from DB, create on keycloak side if not present. Return id."""
         try:
             user = await self.read(data["username"])
             for gid in group_ids:
@@ -50,6 +62,7 @@ class KCUserService(KCService):
             return await self.kc.create_user(data, groups)
 
     async def create(self, data, stmt_only: bool=False) -> Base | List[Base]:
+        """Create entities on Keycloak Side before passing to parent class for DB."""
         # KC
         if not stmt_only:
             for user in to_it(data):
@@ -63,3 +76,11 @@ class KCUserService(KCService):
                 user['id'] = await self._read_or_create(user, group_names, group_ids)
         # DB
         return await super(KCService, self).create(data, stmt_only)
+
+    async def update(self, id, data: dict) -> Base:
+        raise NotImplementedError
+        return await super(KCService, self).update(id, data)
+
+    async def delete(self, id) -> Any:
+        raise NotImplementedError
+        return await super(KCService, self).delete(id)

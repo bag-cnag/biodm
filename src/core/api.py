@@ -12,7 +12,7 @@ from starlette.responses import HTMLResponse, Response
 from starlette.routing import Route
 
 from core.basics.login import login, syn_ack, authenticated
-from core.components.managers import DatabaseManager, KeycloakManager
+from core.components.managers import DatabaseManager, KeycloakManager, S3Manager
 from core.components.controllers import Controller
 from core.errors import onerror
 from core.exceptions import RequestError
@@ -48,13 +48,13 @@ class Api(Starlette):
     logger = logging.getLogger(__name__)
 
     def __init__(self, controllers=[], routes=[], *args, **kwargs):
-        # Managers
+        ## Managers
         self.db = DatabaseManager()
-        self.kc = KeycloakManager(app=self)
-        # self.s3 = S3Manager(app=self) # TODO:
+        self.kc = KeycloakManager()
+        self.s3 = S3Manager(app=self)
+
+        ## Controllers
         self.controllers = []
-        # routes.extend(self.adopt_controllers(
-        #     self.scan_entities()))
         routes.extend(self.adopt_controllers(controllers))
         routes.extend(self.setup_login())
 
@@ -83,14 +83,11 @@ class Api(Starlette):
         self.add_exception_handler(RequestError, onerror)
         # self.add_exception_handler(DatabaseError, on_error)
         # self.add_exception_handler(Exception, on_error)
-    
+
     # def scan_entities(self, ) -> List[Controller]:
-    #     """Makes a pass over entities defined in instance to infer controllers"""
+    #     """Make a pass over entities defined in instance to infer controllers"""
     # TODO ?
     #     ls = []
-        
-
-
     #     return ls
 
     def adopt_controllers(self, controllers: List[Controller]=[]) -> List:

@@ -67,10 +67,8 @@ class DatabaseManager(object):
         #     # CompositeEntityService.CompositeInsert
         #     ))
         assert('session' in argspec.args)
-        #
-        from functools import wraps
 
-        # @wraps(db_exec)
+        #
         async def wrapper(self, arg, session: AsyncSession=None):
             async with AsyncExitStack() as stack:
                 session = session if session else (
