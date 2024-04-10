@@ -21,7 +21,7 @@ class KeycloakManager(object):
     def admin(self):
         return KeycloakAdmin(connection=self._connexion)
 
-    async def create_user(self, data) -> str:
+    async def create_user(self, data, groups=[]) -> str:
         payload = {
             field: data.get(field, "")
             for field in ("username", "email", "firstName", "lastName")
@@ -29,7 +29,7 @@ class KeycloakManager(object):
         payload.update({
             "enabled": True,
             "requiredActions": [],
-            "groups":[],
+            "groups": [g["name"] for g in data.get("groups", [])] + groups,
             "emailVerified": False,
         })
         return self.admin.create_user(payload, exist_ok=True)
@@ -42,14 +42,17 @@ class KeycloakManager(object):
         try:
             self.admin.delete_user(id)
         except KeycloakDeleteError as e:
+            # TODO: catch
             raise
 
     async def create_group(self, data) -> str:
-        return self.admin.create_group({"name": data.get("name")})
+        return self.admin.create_group({"name": data["name"]})
 
     async def update_group(self, id, data):
         raise NotImplementedError
 
     async def delete_group(self, id):
         return self.admin.delete_group(id)
-
+    
+    async def group_user_add(self, user_id, group_id): 
+        return self.admin.group_user_add(user_id, group_id)

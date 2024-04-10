@@ -1,5 +1,5 @@
-from contextlib import AsyncExitStack
-from inspect import getfullargspec
+# from contextlib import AsyncExitStack
+# from inspect import getfullargspec
 from abc import ABC, abstractmethod
 from typing import List, Any, overload, Tuple
 
@@ -10,9 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy_utils import get_class_by_table
 from starlette.datastructures import QueryParams
 
-from core.exceptions import MissingDB, FailedRead, FailedDelete, FailedUpdate, MissingService
 from core.components import Base
-from core.utils.utils import unevalled_all, unevalled_or, to_it
+from core.components.managers import DatabaseManager
+from core.utils.utils import unevalled_all, unevalled_or, to_it, it_to
+
+
+SUPPORTED_INT_OPERATORS = ('gt', 'ge', 'lt', 'le')
 
 
 class DatabaseService(ABC):
@@ -20,81 +23,6 @@ class DatabaseService(ABC):
     def __init__(self, app):
         self.logger = app.logger
         self.app = app
-
-    def in_session(db_exec):
-        """Decorator that ensures db_exec receives a session.
-
-        session object is either passed as an argument (from nested obj creation)
-            or a new context manager is opened.
-        contextlib.AsyncExitStack() below allows for conditional context management.
-        """
-        # Restrict decorator on functions that looks like this.
-        argspec = getfullargspec(db_exec)
-        assert('self' in argspec.args)
-        assert(any((
-            'stmt'      in argspec.args,
-            'item'      in argspec.args,
-            'composite' in argspec.args
-        )))
-        # TODO: debug
-        # assert(argspec.annotations[argspec.args[1]] in (
-        #     Insert, Delete, Select, Update, Base, 
-        #     # CompositeEntityService.CompositeInsert
-        #     ))
-        assert('session' in argspec.args)
-        #
-
-        async def wrapper(self, arg, session: AsyncSession=None):
-            async with AsyncExitStack() as stack:
-                session = session if session else (
-                    await stack.enter_async_context(self.app.db.session()))
-                return await db_exec(self, arg, session)
-        return wrapper
-
-    @in_session
-    async def _insert(self, stmt: Insert, session: AsyncSession) -> (Any | None):
-        """INSERT one into database."""
-        row = await session.scalar(stmt)
-        if row: return row
-
-    @in_session
-    async def _insert_many(self, stmt: Insert, session: AsyncSession) -> List[Any]:
-        """INSERT many into database."""
-        return await session.scalars(stmt)
-
-    @in_session
-    async def _select(self, stmt: Select, session: AsyncSession) -> (Any | None):
-        """SELECT one from database."""
-        row = await session.scalar(stmt)
-        if row: return row
-        raise FailedRead("Query returned no result.")
-
-    @in_session
-    async def _select_many(self, stmt: Select, session: AsyncSession) -> List[Any]:
-        """SELECT many from database."""
-        return (await session.execute(stmt)).scalars().unique()
-
-    @in_session
-    async def _update(self, stmt: Update, session: AsyncSession):
-        """UPDATE database entry."""
-        result = await session.scalar(stmt)
-        # result = (await session.execute(stmt)).scalar()
-        if result: return result
-        raise FailedUpdate("Query updated no result.")
-
-    @in_session
-    async def _merge(self, item: Base, session: AsyncSession) -> Base:
-        """Use session.merge feature: sync local object with one from db."""
-        item = await session.merge(item)
-        if item: return item
-        raise FailedUpdate("Query updated no result.")
-
-    @in_session
-    async def _delete(self, stmt: Delete, session: AsyncSession) -> None:
-        """DELETE one row."""
-        result = await session.execute(stmt)
-        if result.rowcount == 0:
-            raise FailedDelete("Query deleted no rows.")
 
     @abstractmethod
     async def create(self, stmt_only=False, **kwargs):
@@ -144,8 +72,16 @@ class UnaryEntityService(DatabaseService):
 
     @property
     def table(self) -> Base:
-        """Return"""
         return self._table
+
+    @property
+    def db(self):
+        return self.app.db
+
+    @property
+    def session(self):
+        """Important for when @in_session is applied on a service method."""
+        return self.db.session
 
     @overload
     async def create(self, data, stmt_only: bool=True) -> Insert:
@@ -164,12 +100,12 @@ class UnaryEntityService(DatabaseService):
                     for key in stmt.excluded.keys()
                 }
             )
-            return stmt if stmt_only else await self._insert_many(stmt)
+            return stmt if stmt_only else await self.app.db._insert_many(stmt)
         else:
             stmt = insert(self.table).values(**data).returning(self.table
                     ).on_conflict_do_update(index_elements=idx_elm,
                                             set_=data)
-            return stmt if stmt_only else await self._insert(stmt)
+            return stmt if stmt_only else await self.db._insert(stmt)
 
     def gen_cond(self, values):
         """Generates WHERE condition from pk definition and values."""
@@ -196,7 +132,18 @@ class UnaryEntityService(DatabaseService):
         # return await self._merge(item)
         # Merge
         item = self.table(**kw, **data)
-        return await self._merge(item)
+        return await self.db._merge(item)
+
+    def _parse_int_operators(self, attr):
+        SUPPORTED_OPERATORS = ('gt', 'ge', 'lt', 'le')
+        input_op = attr.pop()
+        match input_op.strip(')').split('('):
+            case [('gt'| 'ge' | 'lt' | 'le') as op, arg]:
+                return (op, arg)
+            case _:
+                raise ValueError(
+                    f"Expecting either 'field=v1,v2' pairs or integrer"
+                    f" operators 'field.op(v)' op in {SUPPORTED_INT_OPERATORS}")
 
     async def filter(self, query_params: QueryParams) -> List[Base]:
         """READ rows filted on query parameters."""
@@ -209,18 +156,10 @@ class UnaryEntityService(DatabaseService):
 
             # In case no value is associated we should be in the case of a numerical operator.
             operator = None
-            SUPPORTED_OPERATORS = ('gt', 'ge', 'lt', 'le')
             if not csval:
-                input_op = attr.pop()
-                match input_op.strip(')').split('('):
-                    case [('gt'| 'ge' | 'lt' | 'le') as op, arg]:
-                        operator = (op, arg)
-                    case _:
-                        raise ValueError(
-                            f"Expecting either 'field=v1,v2' pairs or integrer"
-                            f" operators 'field.op(v)' op in {SUPPORTED_OPERATORS}")
-            elif any(op in dskey for op in SUPPORTED_OPERATORS):
-                raise ValueError("'field.op()=value' type of query is not yet supported.")
+                operator = self._parse_int_operators(attr.pop())
+            # elif any(op in dskey for op in SUPPORTED_INT_OPERATORS):
+            #     raise ValueError("'field.op()=value' type of query is not yet supported.")
 
             # For every nested entity of the attribute, join table.
             table = self.table
@@ -239,7 +178,7 @@ class UnaryEntityService(DatabaseService):
             if operator:
                 if ctype not in (int, float):
                     raise ValueError(
-                        f"Using operators methods {SUPPORTED_OPERATORS} in /search is"
+                        f"Using operators methods {SUPPORTED_INT_OPERATORS} in /search is"
                         " only allowed for numerical fields."
                     )
                 op, val = operator
@@ -274,12 +213,12 @@ class UnaryEntityService(DatabaseService):
 
             # if exclude:
             #     stmt = select(self.table.not_in(stmt))
-        return await self._select_many(stmt)
+        return await self.db._select_many(stmt)
 
     async def read(self, id) -> Base:
         """READ one row."""
         stmt = select(self.table).where(self.gen_cond(id))
-        return await self._select(stmt)
+        return await self.db._select(stmt)
 
     async def update(self, id, data: dict) -> Base:
         """UPDATE one row."""
@@ -287,15 +226,16 @@ class UnaryEntityService(DatabaseService):
                 ).where(self.gen_cond(id)
                     ).values(**data
                         ).returning(self.table)
-        return await self._update(stmt)
+        return await self.db._update(stmt)
 
     async def delete(self, id) -> Any:
         """DELETE."""
         stmt = delete(self.table).where(self.gen_cond(id))
-        return await self._delete(stmt)
+        return await self.db._delete(stmt)
 
 
 class CompositeEntityService(UnaryEntityService):
+    """Special case for Composite Entities (i.e. containing nested entities attributes.)"""
     class CompositeInsert(object):
         """Class to manage composite entities insertions."""
         def __init__(self, item: Insert, nested: List[Insert]=[], delayed: dict={}) -> None:
@@ -303,38 +243,34 @@ class CompositeEntityService(UnaryEntityService):
             self.nested = nested
             self.delayed = delayed
 
-    @property
-    def table(self) -> Base:
-        """Return"""
-        return self._table
-
     async def _insert(self, stmt: Insert | CompositeInsert, session: AsyncSession=None) -> Base | None:
         """Redirect in case of composite insert. No need for session decorator."""
         if isinstance(stmt, self.CompositeInsert):
             return await self._insert_composite(stmt, session)
         else:
-            return await super()._insert(stmt, session)
+            return await self.db._insert(stmt, session)
 
     async def _insert_many(self, stmt: Insert | List[CompositeInsert], session: AsyncSession=None) -> List[Base]:
         """Redirect in case of composite insert. No need for session decorator."""
         if isinstance(stmt, Insert):
-            return await super()._insert_many(stmt, session)
+            return await self.db._insert_many(stmt, session)
         else:
             return [await self._insert(composite, session) for composite in stmt]
 
-    @DatabaseService.in_session
+    @DatabaseManager.in_session
     async def _insert_composite(self, composite: CompositeInsert, session: AsyncSession) -> (Base | None):
         """INSERT composite entity."""
         # Insert all nested objects + item (last).
         for sub in composite.nested + [composite.item]:
             item = await self._insert(sub, session)
-        # Populate item with delayed lists.
+        # Populate many-to-one fields with delayed lists.
         for key in composite.delayed.keys():
             items = await self._insert_many(composite.delayed[key], session)
-            getattr(item, key).update(items)
-        if item: return item
+            mto = await item.awaitable_attrs.__getattr__(key)
+            mto.extend(items)
+        return item
 
-    async def create(self, data, stmt_only: bool=False) -> Base | CompositeInsert:
+    async def _create_one(self, data, stmt_only: bool=False) -> Base | CompositeInsert:
         """CREATE, accounting for nested entitites."""
         stmts = []
         delayed = {}
@@ -362,8 +298,23 @@ class CompositeEntityService(UnaryEntityService):
             del data[key]
 
         # Statement for original item.
-        stmt = insert(self.table).values(**data).returning(self.table)
+        stmt = await super(CompositeEntityService, self).create(data, stmt_only=True)
 
         # Pack & return.
         composite = self.CompositeInsert(item=stmt, nested=stmts, delayed=delayed)
         return composite if stmt_only else await self._insert_composite(composite)
+
+    async def create(self, data, stmt_only: bool=False) -> Base | CompositeInsert:
+        """CREATE, Handle list and single case."""
+        if isinstance(data, list):
+            return [await self._create_one(one, stmt_only) for one in data]
+        else:
+            return await self._create_one(data, stmt_only)
+
+    async def update(self, id, data: dict) -> Base:
+        # TODO
+        raise NotImplementedError
+
+    async def delete(self, id) -> Any:
+        # TODO
+        raise NotImplementedError

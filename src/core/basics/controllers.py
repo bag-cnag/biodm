@@ -3,8 +3,9 @@ from marshmallow.fields import String, List, Nested, Integer, UUID
 
 
 from core.components.controllers import ActiveController, AdminController
-from core.components.services import KCService
+from core.components.services import KCService, KCUserService, KCGroupService
 from core.tables import Group, User
+from core.exceptions import ImplementionErrror
 from core.components.table import Base
 
 
@@ -12,7 +13,13 @@ from core.components.table import Base
 class KCController(ActiveController):
     """Controller for entities managed by keycloak (i.e. User/Group)."""
     def _infer_svc(self) -> KCService:
-        return KCService
+        match self.entity.lower():
+            case "user":
+                return KCUserService
+            case "group":
+                return KCGroupService
+            case _:
+                raise ImplementionErrror("KCController currently only support User/Groups.")
 
 
 class UserSchema(Schema):

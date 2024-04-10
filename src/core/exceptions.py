@@ -13,6 +13,11 @@ class RequestError(RuntimeError):
         self.orig = orig
 
 
+class DBError(RuntimeError):
+    """Rasised when DB related errors are catched."""
+    sa_error = None
+
+
 class UnauthorizedError(RequestError):
     """Raised when a request on a group restricted route is sent by an unauthorized user."""
 

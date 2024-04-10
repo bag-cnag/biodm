@@ -1,1 +1,1 @@
-from .table import Base, S3File
+from .table import Base, S3File, Permission

@@ -18,6 +18,11 @@ def to_it(x: Any) -> (tuple | list):
     return x if isinstance(x, (tuple, list)) else (x,)
 
 
+def it_to(x: tuple | list) -> (Any | tuple | list):
+    """Return element for a single element list/tuple else identity list/tuple."""
+    return x[0] if hasattr(x, '__len__') and len(x) == 1 else x
+
+
 def unevalled_all(ls: List[Any]):
     """Build (ls[0] and ls[1] ... ls[n]) but does not evaluate like all() does."""
     return reduce(operator.and_, ls)

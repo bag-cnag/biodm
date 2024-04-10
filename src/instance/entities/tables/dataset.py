@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, List, Set # Optional,
 from sqlalchemy import Column, Integer, SmallInteger, ForeignKey, String, PrimaryKeyConstraint, UniqueConstraint
 from sqlalchemy.orm import Mapped, relationship
 
-from core.components.table import Base
+from core.components.table import Base, Permission
 from core.tables import Group, User
 from .asso import asso_dataset_tag
 if TYPE_CHECKING:
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from .tag import Tag
 
 
-class Dataset(Base):
+class Dataset(Permission, Base):
     # pk
     id:          Mapped[int] = Column(Integer,      primary_key=True, autoincrement=True)
     version:     Mapped[int] = Column(SmallInteger, primary_key=True, server_default='1')
@@ -42,14 +42,12 @@ class Dataset(Base):
     # # supplementary_metadata = Column(JSONB, nullable=True)
 
     # # Foreign keys
-    name_group:      Mapped[int] = Column(ForeignKey("GROUP.name"), nullable=False)
-    id_user_contact: Mapped[int] = Column(ForeignKey("USER.id"),    nullable=False)
+    username_user_contact: Mapped[int] = Column(ForeignKey("USER.username"),    nullable=False)
     # # id_project:      Mapped[int] = Column(ForeignKey("PROJECT.id"), nullable=False)
 
     # # relationships
     # # TODO: figure out policy - cascade="save-update, merge"
-    group:   Mapped["Group"]     = relationship(foreign_keys=[name_group], lazy="immediate")
-    contact: Mapped["User"]      = relationship(foreign_keys=[id_user_contact], lazy="immediate")
+    contact: Mapped["User"]      = relationship(foreign_keys=[username_user_contact], lazy="immediate")
     tags:    Mapped[Set["Tag"]]  = relationship(secondary=asso_dataset_tag, lazy="immediate", uselist=True)
 
     # # project: Mapped[Project]       = relationship(back_populates="datasets")

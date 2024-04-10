@@ -48,8 +48,10 @@ class Api(Starlette):
     logger = logging.getLogger(__name__)
 
     def __init__(self, controllers=[], routes=[], *args, **kwargs):
+        # Managers
         self.db = DatabaseManager()
         self.kc = KeycloakManager(app=self)
+        # self.s3 = S3Manager(app=self) # TODO:
         self.controllers = []
         # routes.extend(self.adopt_controllers(
         #     self.scan_entities()))

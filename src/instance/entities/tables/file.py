@@ -2,13 +2,13 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import Column, Integer, ForeignKey, Boolean, String, ForeignKeyConstraint, SmallInteger
 from sqlalchemy.orm import Mapped, relationship
-from core.components.table import Base, S3File
+from core.components.table import Base, S3File, Permission
 # from .asso import asso_dataset_tag
 if TYPE_CHECKING:
     from .dataset import Dataset
 
 
-class File(S3File, Base):
+class File(S3File, Permission, Base):
     id_dataset = Column(Integer, nullable=False)
     version_dataset = Column(SmallInteger, nullable=False)
 

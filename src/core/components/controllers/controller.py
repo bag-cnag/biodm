@@ -155,13 +155,10 @@ class ActiveController(Controller):
 
     def json_response(self, data: Any, status: int, schema=None) -> Response:
         """Formats a Response object, serializing entities into JSON."""
-        return Response(str(self.serialize(
-                                    data, 
-                                    schema, 
-                                    many=isinstance(data, ScalarResult)
-                                ) if schema else data) + "\n", 
-                        status_code=status, 
-                        media_type="application/json")
+        many = isinstance(data, ScalarResult) | isinstance(data, list)
+        return Response(
+            str(self.serialize(data, schema, many=many) if schema else data) + "\n", 
+            status_code=status, media_type="application/json")
 
     # https://restfulapi.net/http-methods/
     def routes(self, child_routes=[]) -> Mount:
