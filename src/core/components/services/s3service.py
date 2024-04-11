@@ -14,14 +14,14 @@ class S3Service(UnaryEntityService):
     def s3(self):
         return self.app.s3
     
-    async def create(self, data, stmt_only=False):
+    async def create(self, data, **kwargs):
         """CREATE accounting for generation of presigned url for 2step file upload."""
         name = data.get("name")
         url = self.create_presigned_post(name)
         if not url:
             raise Exception("Could not generate presigned url.")
         data["url"] = url
-        return super().create(data, stmt_only)
+        return super().create(data, **kwargs)
 
     async def read(self, **kwargs):
         """READ one row."""

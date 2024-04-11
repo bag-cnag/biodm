@@ -1,7 +1,8 @@
 # from contextlib import AsyncExitStack
 # from inspect import getfullargspec
 from abc import ABC, abstractmethod
-from typing import List, Any, overload, Tuple
+from contextlib import AsyncExitStack
+from typing import List, Any, overload, Tuple, Callable
 
 from sqlalchemy import select, update, delete
 from sqlalchemy.dialects.postgresql import insert
@@ -75,37 +76,38 @@ class UnaryEntityService(DatabaseService):
         return self._table
 
     @property
-    def db(self):
+    def db(self) -> DatabaseManager:
         return self.app.db
 
     @property
-    def session(self):
+    def session(self) -> AsyncSession:
         """Important for when @in_session is applied on a service method."""
         return self.db.session
 
     @overload
-    async def create(self, data, stmt_only: bool=True) -> Insert:
+    async def create(self, data, stmt_only: bool=True, **kwargs) -> Insert:
         """..."""
 
-    async def create(self, data, stmt_only: bool=False) -> Base | List[Base]:
+    async def create(self, data, stmt_only: bool=False, **kwargs) -> Base | List[Base]:
         """CREATE one or many rows. data: schema validation result."""
         idx_elm = [k.name for k in self.pk]
-
-        if isinstance(data, list):
-            stmt = insert(self.table).values(data).returning(self.table)
-            stmt = stmt.on_conflict_do_update(
-                index_elements=idx_elm,
-                set_={
-                    key: getattr(stmt.excluded, key)
-                    for key in stmt.excluded.keys()
-                }
-            )
-            return stmt if stmt_only else await self.app.db._insert_many(stmt)
+        many = isinstance(data, list)
+        stmt = insert(self.table)
+        if many:
+            stmt = stmt.values(data)
+            set_ = {
+                key: getattr(stmt.excluded, key)
+                for key in stmt.excluded.keys()
+            }
+            f_ins = self.db._insert_many
         else:
-            stmt = insert(self.table).values(**data).returning(self.table
-                    ).on_conflict_do_update(index_elements=idx_elm,
-                                            set_=data)
-            return stmt if stmt_only else await self.db._insert(stmt)
+            stmt = stmt.values(**data)
+            set_ = data
+            f_ins = self.db._insert
+
+        stmt = stmt.on_conflict_do_update(index_elements=idx_elm, set_=set_)
+        stmt = stmt.returning(self.table)
+        return stmt if stmt_only else await f_ins(stmt, **kwargs)
 
     def gen_cond(self, values):
         """Generates WHERE condition from pk definition and values."""
@@ -155,9 +157,7 @@ class UnaryEntityService(DatabaseService):
             #     exclude = True
 
             # In case no value is associated we should be in the case of a numerical operator.
-            operator = None
-            if not csval:
-                operator = self._parse_int_operators(attr.pop())
+            operator = None if csval else self._parse_int_operators(attr.pop())
             # elif any(op in dskey for op in SUPPORTED_INT_OPERATORS):
             #     raise ValueError("'field.op()=value' type of query is not yet supported.")
 
@@ -243,6 +243,19 @@ class CompositeEntityService(UnaryEntityService):
             self.nested = nested
             self.delayed = delayed
 
+    @DatabaseManager.in_session
+    async def _insert_composite(self, composite: CompositeInsert, session: AsyncSession) -> Base | None:
+        """INSERT composite entity."""
+        # Insert all nested objects + item (last).
+        for sub in composite.nested + [composite.item]:
+            item = await self._insert(sub, session)
+        # Populate many-to-one fields with delayed lists.
+        for key in composite.delayed.keys():
+            items = await self._insert_many(composite.delayed[key], session)
+            mto = await item.awaitable_attrs.__getattr__(key)
+            mto.extend(items)
+        return item
+
     async def _insert(self, stmt: Insert | CompositeInsert, session: AsyncSession=None) -> Base | None:
         """Redirect in case of composite insert. No need for session decorator."""
         if isinstance(stmt, self.CompositeInsert):
@@ -257,20 +270,7 @@ class CompositeEntityService(UnaryEntityService):
         else:
             return [await self._insert(composite, session) for composite in stmt]
 
-    @DatabaseManager.in_session
-    async def _insert_composite(self, composite: CompositeInsert, session: AsyncSession) -> (Base | None):
-        """INSERT composite entity."""
-        # Insert all nested objects + item (last).
-        for sub in composite.nested + [composite.item]:
-            item = await self._insert(sub, session)
-        # Populate many-to-one fields with delayed lists.
-        for key in composite.delayed.keys():
-            items = await self._insert_many(composite.delayed[key], session)
-            mto = await item.awaitable_attrs.__getattr__(key)
-            mto.extend(items)
-        return item
-
-    async def _create_one(self, data, stmt_only: bool=False) -> Base | CompositeInsert:
+    async def _create_one(self, data, stmt_only: bool=False, **kwargs) -> Base | CompositeInsert:
         """CREATE, accounting for nested entitites."""
         stmts = []
         delayed = {}
@@ -302,14 +302,22 @@ class CompositeEntityService(UnaryEntityService):
 
         # Pack & return.
         composite = self.CompositeInsert(item=stmt, nested=stmts, delayed=delayed)
-        return composite if stmt_only else await self._insert_composite(composite)
+        return composite if stmt_only else await self._insert_composite(composite, **kwargs)
 
-    async def create(self, data, stmt_only: bool=False) -> Base | CompositeInsert:
+    async def _create_many(self, data, stmt_only: bool=False, **kwargs) -> List[Base] | List[CompositeInsert]:
+        """Shares session for list creation."""
+        # TODO: (?) write _create_many compatible with in_session 
+        async with AsyncExitStack() as stack:
+            session = None if stmt_only else await stack.enter_async_context(self.db.session())
+            return [
+                await self._create_one(one, stmt_only=stmt_only, session=session, **kwargs)
+                for one in data
+            ]
+
+    async def create(self, data, **kwargs) -> Base | CompositeInsert | List[Base] | List[CompositeInsert]:
         """CREATE, Handle list and single case."""
-        if isinstance(data, list):
-            return [await self._create_one(one, stmt_only) for one in data]
-        else:
-            return await self._create_one(data, stmt_only)
+        f = self._create_many if isinstance(data, list) else self._create_one
+        return await f(data, **kwargs)
 
     async def update(self, id, data: dict) -> Base:
         # TODO

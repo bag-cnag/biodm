@@ -36,7 +36,8 @@ class UserSchema(Schema):
     first_name = String()
     last_name = String()
 
-    groups = List(Nested('GroupSchema'), load_only=True)
+    groups = List(Nested('GroupSchema'))
+
 
 class GroupSchema(Schema):
     """Schema for Keycloak Groups. 
@@ -60,6 +61,7 @@ class GroupSchema(Schema):
 
     parent = Nested('GroupSchema', load_only=True)
     users = List(Nested('UserSchema'), load_only=True)
+
 
 class UserController(KCController):
     def __init__(self):

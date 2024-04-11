@@ -52,6 +52,8 @@ class DatabaseManager(object):
         session object is either passed as an argument (from nested obj creation)
             or a new context manager is opened.
         contextlib.AsyncExitStack() below allows for conditional context management.
+
+        Also performs serialization **within the session**: important for lazy nested attributes) when passed a serializer. 
         """
         # Restrict decorator on functions that looks like this.
         argspec = getfullargspec(db_exec)
@@ -69,18 +71,18 @@ class DatabaseManager(object):
         assert('session' in argspec.args)
 
         #
-        async def wrapper(self, arg, session: AsyncSession=None):
+        async def wrapper(obj, arg, session: AsyncSession=None, serializer=None):
             async with AsyncExitStack() as stack:
                 session = session if session else (
-                    await stack.enter_async_context(self.session()))
-                return await db_exec(self, arg, session)
+                    await stack.enter_async_context(obj.session()))
+                res = await db_exec(obj, arg, session)
+                return serializer(res) if serializer else res
         return wrapper
 
     @in_session
     async def _insert(self, stmt: Insert, session: AsyncSession) -> (Any | None):
         """INSERT one into database."""
-        row = await session.scalar(stmt)
-        if row: return row
+        return await session.scalar(stmt)
 
     @in_session
     async def _insert_many(self, stmt: Insert, session: AsyncSession) -> List[Any]:

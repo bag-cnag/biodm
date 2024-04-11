@@ -1,9 +1,10 @@
 import io
 import json
-from pathlib import Path
 from abc import ABC, abstractmethod
-from typing import Any, Tuple
 from enum import Enum
+from functools import partial
+from pathlib import Path
+from typing import Any, Tuple
 
 from marshmallow.schema import Schema, EXCLUDE
 from starlette.responses import Response
@@ -172,14 +173,16 @@ class ActiveController(Controller):
             Route(f'/{self.qp_id}', self.read,          methods=[HttpMethod.GET.value]),
         ] + child_routes)
 
+    # async def openapischema()
+    # https://www.starlette.io/schemas/
+    # TODO
+
     async def create(self, request):
         body = await request.body()
         validated = self.inst_deserialize(body)
-        return self.json_response(
-            await self.svc.create(validated, stmt_only=False),
-            status = 201,
-            schema = self.schema
-        )
+        ser = partial(self.inst_serialize, **{"many": isinstance(validated, list)})
+        res = await self.svc.create(validated, stmt_only=False, serializer=ser)
+        return self.json_response(res, status = 201)
 
     async def read(self, request):
         id = [request.path_params.get(k) for k in self.pk]
