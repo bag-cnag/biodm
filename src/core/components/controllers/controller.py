@@ -20,12 +20,6 @@ from instance import config
 from instance.entities import tables, schemas
 
 
-# """ SchemaGenerator object for openapi_schema generation."""
-# schema_generator = SchemaGenerator(
-#     {"openapi": "3.0.0", "info": {"title": "biodm", "version": "0.1.0"}}
-# )
-
-
 class HttpMethod(Enum):
     GET = "GET"
     POST = "POST"
@@ -40,6 +34,27 @@ class Controller(ABC):
         cls.app = app
         return cls()
 
+    # Routes
+    @abstractmethod
+    def routes(self, **kwargs):
+        raise NotImplementedError
+
+    @property
+    def schema_gen(self):
+        return self.app.schema_generator
+
+    async def openapi_schema(self, _):
+        # starlette: https://www.starlette.io/schemas/
+        # doctrings: https://apispec.readthedocs.io/en/stable/
+        # status codes: https://restfulapi.net/http-status-codes/
+        return json_response(json.dumps(
+            self.schema_gen.get_schema(routes=self.routes().routes),
+            indent=config.INDENT
+        ), status_code=200)
+
+
+class EntityController(Controller, ABC):
+    # Validation & Serialization
     @staticmethod
     def deserialize(data: Any, schema: Schema) -> (Any | list | dict | None):
         """Deserialize statically passing a schema."""
@@ -61,16 +76,6 @@ class Controller(ABC):
         """Serialize statically passing a schema."""
         schema.many = many
         return schema.dumps(data, indent=config.INDENT)
-
-    # Routes
-    @abstractmethod
-    def routes(self, child_routes):
-        raise NotImplementedError
-
-    # OpenAPISchema
-    @abstractmethod
-    def openapi_schema(self, request):
-        raise NotImplementedError
 
     # CRUD operations
     @abstractmethod
@@ -98,7 +103,7 @@ class Controller(ABC):
         raise NotImplementedError
 
 
-class ActiveController(Controller):
+class ActiveController(EntityController):
     """Basic class for controllers. Implements the interface CRUD methods."""
     def __init__(self,
                  entity: str=None,
@@ -126,10 +131,6 @@ class ActiveController(Controller):
     def qp_id(self):
         """Put primary key in queryparam form."""
         return "".join(["{" + k + "}_" for k in self.pk])[:-1]
-    
-    @property
-    def schema_gen(self):
-        return self.app.schema_generator
 
     def _infer_svc(self) -> DatabaseService:
         """Set approriate service for given controller.
@@ -193,15 +194,6 @@ class ActiveController(Controller):
         if not body:
             raise EmptyPayloadException
         return body
-
-    async def openapi_schema(self, request):
-        # starlette: https://www.starlette.io/schemas/
-        # doctrings: https://apispec.readthedocs.io/en/stable/
-        # status codes: https://restfulapi.net/http-status-codes/
-        return json_response(json.dumps(
-            self.schema_gen.get_schema(routes=self.routes().routes),
-            indent=config.INDENT
-        ), status_code=200)
 
     async def create(self, request):
         """

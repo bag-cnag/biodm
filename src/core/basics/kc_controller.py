@@ -8,7 +8,6 @@ from core.tables import Group, User
 from core.exceptions import ImplementionErrror
 from core.components.table import Base
 
-# TODO: base controller that takes on Login/Schema and all other basic routes responsabilities.
 
 # class KCController(AdminController):
 class KCController(ActiveController):
@@ -78,6 +77,3 @@ class GroupController(KCController):
               entity="Group",
               table=Group,
               schema=GroupSchema)
-
-
-CORE_CONTROLLERS = [UserController, GroupController]

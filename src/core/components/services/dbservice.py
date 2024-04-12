@@ -1,19 +1,16 @@
-# from contextlib import AsyncExitStack
-# from inspect import getfullargspec
 from abc import ABC, abstractmethod
 from contextlib import AsyncExitStack
-from typing import List, Any, overload, Tuple, Callable
+from typing import List, Any, overload, Tuple
 
 from sqlalchemy import select, update, delete
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql import Select, Insert, Update, Delete
+from sqlalchemy.sql import Insert #, Update, Delete, Select 
 from sqlalchemy_utils import get_class_by_table
 from starlette.datastructures import QueryParams
 
-from core.components import Base
-from core.components.managers import DatabaseManager
-from core.utils.utils import unevalled_all, unevalled_or, to_it, it_to
+from core.utils.utils import unevalled_all, unevalled_or, to_it
+from ..table import Base
 
 
 SUPPORTED_INT_OPERATORS = ('gt', 'ge', 'lt', 'le')
@@ -58,7 +55,7 @@ class DatabaseService(ABC):
 
 class UnaryEntityService(DatabaseService):
     """Generic Service class for non-composite entities."""
-    def __init__(self, app, table: Base, pk: Tuple[str, ...], *args, **kwargs) -> None:
+    def __init__(self, app, table: Base, pk: Tuple[str, ...], *args, **kwargs):
         # Entity info.
         self._table = table
         # Enable entity - service linkage.
@@ -76,7 +73,7 @@ class UnaryEntityService(DatabaseService):
         return self._table
 
     @property
-    def db(self) -> DatabaseManager:
+    def db(self):
         return self.app.db
 
     @property
@@ -137,7 +134,6 @@ class UnaryEntityService(DatabaseService):
         return await self.db._merge(item)
 
     def _parse_int_operators(self, attr):
-        SUPPORTED_OPERATORS = ('gt', 'ge', 'lt', 'le')
         input_op = attr.pop()
         match input_op.strip(')').split('('):
             case [('gt'| 'ge' | 'lt' | 'le') as op, arg]:
@@ -242,8 +238,13 @@ class CompositeEntityService(UnaryEntityService):
             self.item = item
             self.nested = nested
             self.delayed = delayed
+    
+    def __init__(self, **kwargs) -> None:
+        super(CompositeEntityService, self).__init__(**kwargs)
+        # Apply decorator explicitely to avoid circular import problems.
+        self.db.in_session(self._insert_composite)
 
-    @DatabaseManager.in_session
+    # @DatabaseManager.in_session
     async def _insert_composite(self, composite: CompositeInsert, session: AsyncSession) -> Base | None:
         """INSERT composite entity."""
         # Insert all nested objects + item (last).

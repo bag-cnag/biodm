@@ -7,10 +7,9 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.sql import Select, Insert, Update, Delete
 
-from core.components import Base
 from core.exceptions import FailedRead, FailedDelete, FailedUpdate
 from instance.config import DATABASE_URL, DEBUG
-
+from ..table import Base
 
 class DatabaseManager(object):
     def __init__(self, sync=False) -> None:
@@ -46,6 +45,7 @@ class DatabaseManager(object):
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
 
+    @staticmethod
     def in_session(db_exec):
         """Decorator that ensures db_exec receives a session.
 
