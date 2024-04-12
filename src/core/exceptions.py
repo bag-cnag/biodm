@@ -18,6 +18,10 @@ class DBError(RuntimeError):
     sa_error = None
 
 
+class EmptyPayloadException(RuntimeError):
+    """Raised when a route expecting a payload, is reached without one."""
+
+
 class InvalidCollectionMethod(RuntimeError):
     """Raised when a unit method is accesed as a collection."""
     def __init__(self, _, orig=None):

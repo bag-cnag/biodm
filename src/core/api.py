@@ -1,4 +1,5 @@
 from asyncio import wait_for, TimeoutError
+import json
 import logging
 from typing import List
 
@@ -10,6 +11,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response
 from starlette.routing import Route
+from starlette.schemas import SchemaGenerator
 
 from core.basics.login import login, syn_ack, authenticated
 from core.components.managers import DatabaseManager, KeycloakManager, S3Manager
@@ -17,6 +19,7 @@ from core.components.controllers import Controller
 from core.errors import onerror
 from core.exceptions import RequestError
 from core.utils.security import extract_and_decode_token, auth_header
+from core.utils.utils import json_response
 from core.tables import History
 
 from instance import config
@@ -57,6 +60,13 @@ class Api(Starlette):
         self.controllers = []
         routes.extend(self.adopt_controllers(controllers))
         routes.extend(self.setup_login())
+        routes.extend(self.setup_schema())
+
+        ## Schema Generator
+        # TODO: take from config
+        self.schema_generator = SchemaGenerator(
+           {"openapi": "3.0.0", "info": {"title": "biodm", "version": "0.1.0"}}
+        )
 
         super(Api, self).__init__(routes=routes, *args, **kwargs)
 
@@ -108,6 +118,21 @@ class Api(Starlette):
             Route("/login", endpoint=login),
             Route("/syn_ack", endpoint=syn_ack),
             Route("/authenticated", endpoint=authenticated)
+        ]
+
+    async def openapi_schema(self, request):
+        # starlette: https://www.starlette.io/schemas/
+        # doctrings: https://apispec.readthedocs.io/en/stable/
+        # status codes: https://restfulapi.net/http-status-codes/
+        return json_response(json.dumps(
+            self.schema_generator.get_schema(routes=self.routes),
+            indent=config.INDENT
+        ), status_code=200)
+
+    def setup_schema(self) -> List:
+        """Setup login routes."""
+        return [
+            Route("/schema", endpoint=self.openapi_schema),
         ]
 
     async def onstart(self) -> None:

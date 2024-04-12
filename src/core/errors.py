@@ -6,7 +6,8 @@ from starlette.responses import Response
 from .exceptions import (
     RequestError,
     FailedDelete,
-    InvalidCollectionMethod
+    InvalidCollectionMethod,
+    EmptyPayloadException,
 )
 
 from instance import config
@@ -43,6 +44,8 @@ async def onerror(_, exc):
                 status = 404
             case InvalidCollectionMethod():
                 status = 405
+            case EmptyPayloadException():
+                status = 204
             case _:
                 pass
         # if isinstance(exc, FailedDelete):
