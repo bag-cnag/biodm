@@ -3,13 +3,10 @@ import json
 from abc import ABC, abstractmethod
 from enum import Enum
 from functools import partial
-from pathlib import Path
 from typing import Any, Tuple
 
 from marshmallow.schema import Schema, EXCLUDE
-from starlette.responses import Response
 from starlette.routing import Mount, Route
-from sqlalchemy.engine import ScalarResult
 
 from core.components import Base
 from core.components.services import (
@@ -17,6 +14,8 @@ from core.components.services import (
     UnaryEntityService, 
     CompositeEntityService,
 )
+from core.exceptions import InvalidCollectionMethod
+from core.utils.utils import json_response
 from instance import config
 from instance.entities import tables, schemas
 
@@ -60,6 +59,11 @@ class Controller(ABC):
     # Routes
     @abstractmethod
     def routes(self, child_routes):
+        raise NotImplementedError
+
+    # OpenAPISchema
+    @abstractmethod
+    def openapischema(self, request):
         raise NotImplementedError
 
     # CRUD operations
@@ -146,70 +150,72 @@ class ActiveController(Controller):
                 "you should provide it as 'schema' arg when creating a new controller"
             )
 
-    def inst_serialize(self, data: Any, many: bool) -> (str | Any):
-        """Serialize through an instanciated controller."""
-        return self.serialize(data=data, schema=self.schema, many=many)
-
-    def inst_deserialize(self, data: Any):
+    def deserialize(self, data: Any):
         """Deserialize through an instanciated controller."""
-        return self.deserialize(data=data, schema=self.schema)
+        return super(ActiveController, self).deserialize(data=data, schema=self.schema)
 
-    def json_response(self, data: Any, status: int, schema=None) -> Response:
-        """Formats a Response object, serializing entities into JSON."""
-        many = isinstance(data, ScalarResult) | isinstance(data, list)
-        return Response(
-            str(self.serialize(data, schema, many=many) if schema else data) + "\n", 
-            status_code=status, media_type="application/json")
+    def serialize(self, data: Any, many: bool) -> (str | Any):
+        return super(ActiveController, self).serialize(data, self.schema, many)
 
     # https://restfulapi.net/http-methods/
     def routes(self, child_routes=[]) -> Mount:
         return Mount(self.prefix, routes=[
+            Route( '/',             self.create,        methods=[HttpMethod.POST.value]),
             Route( '/',             self.query,         methods=[HttpMethod.GET.value]),
             Route( '/search',       self.query,         methods=[HttpMethod.GET.value]),
-            Route( '/',             self.create,        methods=[HttpMethod.POST.value]),
+            Route( '/schema',       self.openapischema, methods=[HttpMethod.GET.value]),
+            Route(f'/{self.qp_id}', self.read,          methods=[HttpMethod.GET.value]),
             Route(f'/{self.qp_id}', self.delete,        methods=[HttpMethod.DELETE.value]),
             Route(f'/{self.qp_id}', self.create_update, methods=[HttpMethod.PUT.value]),
             Route(f'/{self.qp_id}', self.update,        methods=[HttpMethod.PATCH.value]),
-            Route(f'/{self.qp_id}', self.read,          methods=[HttpMethod.GET.value]),
         ] + child_routes)
 
-    # async def openapischema()
+    def _extract_id(self, request):
+        """Extracts id from request, raise exception if not found."""
+        id = (request.path_params.get(k) for k in self.pk)
+        if not id:
+            raise InvalidCollectionMethod
+        return id
+
+    async def openapischema(self, request):
+        raise NotImplementedError
     # https://www.starlette.io/schemas/
     # TODO
 
     async def create(self, request):
-        body = await request.body()
-        validated = self.inst_deserialize(body)
-        ser = partial(self.inst_serialize, **{"many": isinstance(validated, list)})
-        res = await self.svc.create(validated, stmt_only=False, serializer=ser)
-        return self.json_response(res, status = 201)
+        validated_data = self.deserialize(await request.body())
+        return json_response(
+            data=await self.svc.create(
+                data=validated_data,
+                stmt_only=False,
+                serializer=partial(
+                    self.serialize, 
+                    **{"many": isinstance(validated_data, list)}
+                )
+            ), status_code=201)
 
     async def read(self, request):
-        id = [request.path_params.get(k) for k in self.pk]
-        return self.json_response(
-            await self.svc.read(id=id), 
-            status=200, 
-            schema=self.schema
-        )
+        return json_response(
+            data=await self.svc.read(
+                id=self._extract_id(request),
+                serializer=partial(self.serialize, **{"many": False})
+            ), status_code=200)
 
     async def update(self, request):
         # TODO: Implement PATCH ?
         raise NotImplementedError
 
     async def delete(self, request):
-        id = [request.path_params.get(k) for k in self.pk]
-        if not id:
-            return self.json_response("Method not allowed on a collection.", status=405)
-        await self.svc.delete(id)
-        return self.json_response("Deleted.", status=200)
+        await self.svc.delete(id=self._extract_id(request))
+        return json_response("Deleted.", status_code=200)
 
     async def create_update(self, request):
-        id = [request.path_params.get(k) for k in self.pk]
-        if not id:
-            return self.json_response("Method not allowed on a collection.", status=405)
-        body = await request.body()
-        item = await self.svc.create_update(id, self.inst_deserialize(body))
-        return self.json_response(item, status=200, schema=self.schema)
+        validated_data = self.deserialize(await request.body())
+        return json_response(
+            data=await self.svc.create_update(
+                id=self._extract_id(request),
+                data=validated_data
+            ), status_code=200)
 
     async def query(self, request):
         """ Query
@@ -227,8 +233,8 @@ class ActiveController(Controller):
         if querystring is empty -> return all
         -> /ressource/search <==> /ressource/
         """
-        return self.json_response(
-            await self.svc.filter(request.query_params), 
-            status=200, 
-            schema=self.schema
-        )
+        return json_response(
+            await self.svc.filter(
+                query_params=request.query_params,
+                serializer=partial(self.serialize, many=True)
+            ), status_code=200)

@@ -53,7 +53,8 @@ class DatabaseManager(object):
             or a new context manager is opened.
         contextlib.AsyncExitStack() below allows for conditional context management.
 
-        Also performs serialization **within the session**: important for lazy nested attributes) when passed a serializer. 
+        Also performs serialization **within the session**: important for lazy nested attributes) when passed a serializer.
+        It is doing so by extracting 'serializer' argument (sometimes explicitely, sometimes implicitely passed around using kwargs dict)
         """
         # Restrict decorator on functions that looks like this.
         argspec = getfullargspec(db_exec)

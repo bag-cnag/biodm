@@ -14,8 +14,15 @@ class RequestError(RuntimeError):
 
 
 class DBError(RuntimeError):
-    """Rasised when DB related errors are catched."""
+    """Raised when DB related errors are catched."""
     sa_error = None
+
+
+class InvalidCollectionMethod(RuntimeError):
+    """Raised when a unit method is accesed as a collection."""
+    def __init__(self, _, orig=None):
+        detail = "Method not allowed on a collection."
+        return super(InvalidCollectionMethod, self).__init__(detail=detail)
 
 
 class UnauthorizedError(RequestError):

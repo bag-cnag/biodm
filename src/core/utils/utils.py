@@ -1,9 +1,20 @@
-from os import path, utime
-import operator
-from typing import Any, List
-from functools import reduce
-import uuid
 from abc import ABCMeta
+from functools import reduce
+import operator
+from os import path, utime
+import uuid
+from typing import Any, List
+
+from starlette.responses import Response
+
+
+def json_response(data: Any, status_code: int) -> Response:
+    """Formats a Response object."""
+    return Response(
+        str(data) + "\n",   
+        status_code=status_code,
+        media_type="application/json"
+    )
 
 
 def touch(fname):

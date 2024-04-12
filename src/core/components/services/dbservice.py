@@ -147,7 +147,7 @@ class UnaryEntityService(DatabaseService):
                     f"Expecting either 'field=v1,v2' pairs or integrer"
                     f" operators 'field.op(v)' op in {SUPPORTED_INT_OPERATORS}")
 
-    async def filter(self, query_params: QueryParams) -> List[Base]:
+    async def filter(self, query_params: QueryParams, **kwargs) -> List[Base]:
         """READ rows filted on query parameters."""
         stmt = select(self.table)
         for dskey, csval in query_params.items():
@@ -213,25 +213,25 @@ class UnaryEntityService(DatabaseService):
 
             # if exclude:
             #     stmt = select(self.table.not_in(stmt))
-        return await self.db._select_many(stmt)
+        return await self.db._select_many(stmt, **kwargs)
 
-    async def read(self, id) -> Base:
+    async def read(self, id, **kwargs) -> Base:
         """READ one row."""
         stmt = select(self.table).where(self.gen_cond(id))
-        return await self.db._select(stmt)
+        return await self.db._select(stmt, **kwargs)
 
-    async def update(self, id, data: dict) -> Base:
+    async def update(self, id, data: dict, **kwargs) -> Base:
         """UPDATE one row."""
         stmt = update(self.table
                 ).where(self.gen_cond(id)
                     ).values(**data
                         ).returning(self.table)
-        return await self.db._update(stmt)
+        return await self.db._update(stmt, **kwargs)
 
-    async def delete(self, id) -> Any:
+    async def delete(self, id, **kwargs) -> Any:
         """DELETE."""
         stmt = delete(self.table).where(self.gen_cond(id))
-        return await self.db._delete(stmt)
+        return await self.db._delete(stmt, **kwargs)
 
 
 class CompositeEntityService(UnaryEntityService):

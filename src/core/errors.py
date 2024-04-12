@@ -5,7 +5,8 @@ from starlette.responses import Response
 # from sqlalchemy.exc import DatabaseError
 from .exceptions import (
     RequestError,
-    FailedDelete
+    FailedDelete,
+    InvalidCollectionMethod
 )
 
 from instance import config
@@ -37,7 +38,15 @@ async def onerror(_, exc):
 
     if issubclass(exc.__class__, RequestError):
         detail = exc.detail
-        if isinstance(exc, FailedDelete):
-            status = 404
-
+        match exc:
+            case FailedDelete():
+                status = 404
+            case InvalidCollectionMethod():
+                status = 405
+            case _:
+                pass
+        # if isinstance(exc, FailedDelete):
+        #     status = 404
+        # if isinstance(exc, InvalidCollectionMethod):
+        #     status = 405
     return Error(status, detail).response
