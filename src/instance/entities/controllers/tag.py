@@ -17,6 +17,9 @@ class TagController(ActiveController):
     @overload_docstring
     async def read(**kwargs):
         """
+        parameters:
+          - in: path
+            id: entity id
         responses:
           200:
             description: Found matching Tag.

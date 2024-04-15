@@ -1,6 +1,5 @@
-from typing import overload
+from core.components.controllers import ActiveController, overload_docstring
 
-from core.components.controllers import ActiveController
 # E.g. on how to overload inferred tables/schemas names:
 # from .entities.tables import Dataset
 # from .entities.schemas import DatasetSchema
@@ -13,27 +12,32 @@ from core.components.controllers import ActiveController
 
 
 class DatasetController(ActiveController):
-    # CRUD operations
-    @overload
-    def create(**kwargs):
-        raise NotImplementedError
+    @overload_docstring
+    async def create(**kwargs):
+        """
+        responses:
+          201:
+              description: Create Dataset.
+              examples: |
+                # TODO:
+                {"name": "instant_sc_1234", ""}
+          204:
+              description: Empty Payload.
+        """
 
-    @overload
-    def read(**kwargs):
-        raise NotImplementedError
+    @overload_docstring
+    async def read(**kwargs):
+        """
+        parameters:
+          - in: path
+            id: entity id
+        responses:
+          200:
+            description: Found matching Dataset.
+            examples: |
+              # TODO:
+              {"name": "epidemiology"} 
+          404:
+            description: Dataset not found.
+        """
 
-    @overload
-    def update(**kwargs):
-        raise NotImplementedError
-
-    @overload
-    def delete(**kwargs):
-        raise NotImplementedError
-    
-    @overload
-    def create_update(**kwargs):
-        raise NotImplementedError
-    
-    @overload
-    def query(**kwargs):
-        raise NotImplementedError
