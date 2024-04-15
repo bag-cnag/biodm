@@ -20,6 +20,29 @@ from instance import config
 from instance.entities import tables, schemas
 
 
+def overload_docstring(f):
+    """Decorator to allow for docstring overloading.
+
+    To apply on a "c-like" preprocessor on controllers subclasses.
+    Targeted at the REST-to-CRUD mapped endpoints in order to do a per-entity schema documentation.
+
+    Necessary because docstring inheritance is managed a little bit weirdly
+    behind the hood in python and depending on the version the .__doc__ attribute of a
+    member function is not editable - Not the case as of python 3.11.2.
+
+    Relevant SO posts:
+    - https://stackoverflow.com/questions/38125271/extending-or-overwriting-a-docstring-when-composing-classes
+    - https://stackoverflow.com/questions/1782843/python-decorator-handling-docstrings
+    """
+    async def wrapper(self, *args, **kwargs):
+        # TODO: change in error raising
+        assert(isinstance(self, ActiveController))
+        return await getattr(super(self.__class__, self), f.__name__)(*args, **kwargs)
+    wrapper.__name__ = f.__name__
+    wrapper.__doc__ = f.__doc__
+    return wrapper
+
+
 class HttpMethod(Enum):
     GET = "GET"
     POST = "POST"
@@ -44,9 +67,17 @@ class Controller(ABC):
         return self.app.schema_generator
 
     async def openapi_schema(self, _):
-        # starlette: https://www.starlette.io/schemas/
-        # doctrings: https://apispec.readthedocs.io/en/stable/
-        # status codes: https://restfulapi.net/http-status-codes/
+        """
+        Relevant Documentation:
+         - starlette: https://www.starlette.io/schemas/
+         - doctrings: https://apispec.readthedocs.io/en/stable/
+         - status codes: https://restfulapi.net/http-status-codes/
+        ---
+        description: Generatate API schema for routes managed by given Controller.
+        responses:
+          200:
+              description: Returns the Schema as a JSON response.
+        """
         return json_response(json.dumps(
             self.schema_gen.get_schema(routes=self.routes().routes),
             indent=config.INDENT
@@ -205,7 +236,7 @@ class ActiveController(EntityController):
           204:
               description: Empty Payload
         """
-        validated_data = self.deserialize(await self._extract_body())
+        validated_data = self.deserialize(await self._extract_body(request))
         return json_response(
             data=await self.svc.create(
                 data=validated_data,
@@ -256,7 +287,7 @@ class ActiveController(EntityController):
         return json_response("Deleted.", status_code=200)
 
     async def create_update(self, request):
-        validated_data = self.deserialize(await self._extract_body())
+        validated_data = self.deserialize(await self._extract_body(request))
         return json_response(
             data=await self.svc.create_update(
                 id=self._extract_id(request),

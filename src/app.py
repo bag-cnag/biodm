@@ -3,7 +3,8 @@ import uvicorn
 
 from core.api import Api
 from core.basics import CORE_CONTROLLERS
-from instance import config, CONTROLLERS
+from instance import config
+from instance.entities.controllers import CONTROLLERS
 
 
 def main():

@@ -59,8 +59,8 @@ class GroupSchema(Schema):
         # )
     )
 
-    parent = Nested('GroupSchema', load_only=True)
-    users = List(Nested('UserSchema'), load_only=True)
+    parent = Nested('GroupSchema')
+    users = List(Nested('UserSchema')) # , load_only=True
 
 
 class UserController(KCController):

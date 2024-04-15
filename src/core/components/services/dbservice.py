@@ -231,7 +231,7 @@ class UnaryEntityService(DatabaseService):
 
 
 class CompositeEntityService(UnaryEntityService):
-    """Special case for Composite Entities (i.e. containing nested entities attributes.)"""
+    """Special case for Composite Entities (i.e. containing nested entities attributes)."""
     class CompositeInsert(object):
         """Class to manage composite entities insertions."""
         def __init__(self, item: Insert, nested: List[Insert]=[], delayed: dict={}) -> None:
@@ -256,7 +256,7 @@ class CompositeEntityService(UnaryEntityService):
             mto = await item.awaitable_attrs.__getattr__(key)
             mto.extend(items)
         return item
-
+    
     async def _insert(self, stmt: Insert | CompositeInsert, session: AsyncSession=None) -> Base | None:
         """Redirect in case of composite insert. No need for session decorator."""
         if isinstance(stmt, self.CompositeInsert):
@@ -271,7 +271,7 @@ class CompositeEntityService(UnaryEntityService):
         else:
             return [await self._insert(composite, session) for composite in stmt]
 
-    async def _create_one(self, data, stmt_only: bool=False, **kwargs) -> Base | CompositeInsert:
+    async def _create_one(self, data: dict, stmt_only: bool=False, **kwargs) -> Base | CompositeInsert:
         """CREATE, accounting for nested entitites."""
         stmts = []
         delayed = {}
@@ -305,17 +305,23 @@ class CompositeEntityService(UnaryEntityService):
         composite = self.CompositeInsert(item=stmt, nested=stmts, delayed=delayed)
         return composite if stmt_only else await self._insert_composite(composite, **kwargs)
 
-    async def _create_many(self, data, stmt_only: bool=False, **kwargs) -> List[Base] | List[CompositeInsert]:
-        """Shares session for list creation."""
-        # TODO: (?) write _create_many compatible with in_session 
+    async def _create_many(self, data: List[dict], stmt_only: bool=False, **kwargs) -> List[Base] | List[CompositeInsert]:
+        """Share session & top level stmt_only=True for list creation.
+        
+           Issues a session.commit() after each insertion."""
         async with AsyncExitStack() as stack:
             session = None if stmt_only else await stack.enter_async_context(self.db.session())
-            return [
-                await self._create_one(one, stmt_only=stmt_only, session=session, **kwargs)
-                for one in data
-            ]
+            composites = []
+            for one in data:
+                composites.append(
+                    await self._create_one(
+                        one, stmt_only=stmt_only, session=session **kwargs
+                ))
+                if not stmt_only:
+                    await session.commit()
+            return composites
 
-    async def create(self, data, **kwargs) -> Base | CompositeInsert | List[Base] | List[CompositeInsert]:
+    async def create(self, data: List[dict] | dict, **kwargs) -> Base | CompositeInsert | List[Base] | List[CompositeInsert]:
         """CREATE, Handle list and single case."""
         f = self._create_many if isinstance(data, list) else self._create_one
         return await f(data, **kwargs)

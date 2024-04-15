@@ -21,7 +21,7 @@ class KCService(CompositeEntityService):
 
 
 class KCGroupService(KCService):
-    async def _read_or_create(self, data):
+    async def _read_or_create(self, data: dict):
         try:
             return (await self.read(data["name"])).id
         except FailedRead:
