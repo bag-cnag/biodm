@@ -54,29 +54,28 @@ class DatabaseManager(object):
         contextlib.AsyncExitStack() below allows for conditional context management.
 
         Also performs serialization **within the session**: important for lazy nested attributes) when passed a serializer.
+
         It is doing so by extracting 'serializer' argument (sometimes explicitely, sometimes implicitely passed around using kwargs dict)
+        !! Thus all 'not final' functions (i.e. defined outside of this class) onto which this decorator is applied should pass down **kwargs dictionary.
         """
-        # Restrict decorator on functions that looks like this.
+
+        # Weak protection: restrict decorator on functions that looks like this.
         argspec = getfullargspec(db_exec)
         assert('self' in argspec.args)
         assert(any((
+            'data'      in argspec.args,
             'stmt'      in argspec.args,
             'item'      in argspec.args,
             'composite' in argspec.args
         )))
-        # TODO: debug
-        # assert(argspec.annotations[argspec.args[1]] in (
-        #     Insert, Delete, Select, Update, Base, 
-        #     # CompositeEntityService.CompositeInsert
-        #     ))
         assert('session' in argspec.args)
 
-        #
-        async def wrapper(obj, arg, session: AsyncSession=None, serializer=None):
+        # Callable.
+        async def wrapper(obj, arg, session: AsyncSession=None, serializer=None, **kwargs):
             async with AsyncExitStack() as stack:
                 session = session if session else (
                     await stack.enter_async_context(obj.session()))
-                res = await db_exec(obj, arg, session=session)
+                res = await db_exec(obj, arg, session=session, **kwargs)
                 return serializer(res) if serializer else res
         return wrapper
 

@@ -1,16 +1,16 @@
 from abc import ABC, abstractmethod
-from contextlib import AsyncExitStack
 from typing import List, Any, overload, Tuple
 
 from sqlalchemy import select, update, delete
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql import Insert #, Update, Delete, Select 
+from sqlalchemy.sql import Insert #, Update, Delete, Select
 from sqlalchemy_utils import get_class_by_table
 from starlette.datastructures import QueryParams
 
 from core.utils.utils import unevalled_all, unevalled_or, to_it
 from core.components import Base
+from core.components.managers import DatabaseManager
 
 
 SUPPORTED_INT_OPERATORS = ('gt', 'ge', 'lt', 'le')
@@ -232,9 +232,7 @@ class UnaryEntityService(DatabaseService):
 
 
 class CompositeEntityService(UnaryEntityService):
-    from core.components.managers import DatabaseManager
     """Special case for Composite Entities (i.e. containing nested entities attributes)."""
-
     class CompositeInsert(object):
         """Class to manage composite entities insertions."""
         def __init__(self, item: Insert, nested: dict={}, delayed: dict={}) -> None:
@@ -244,7 +242,7 @@ class CompositeEntityService(UnaryEntityService):
 
     @DatabaseManager.in_session
     async def _insert_composite(self, composite: CompositeInsert, session: AsyncSession) -> Base | None:
-        # Insert all nested objects.
+        # Insert all nested objects, and keep track.
         for key, sub in composite.nested.items():
             composite.nested[key] = await self._insert(sub, session)
             await session.commit()
@@ -272,14 +270,14 @@ class CompositeEntityService(UnaryEntityService):
         return item
 
     async def _insert(self, stmt: Insert | CompositeInsert, session: AsyncSession=None) -> Base | None:
-        """Redirect in case of composite insert. No need for session decorator."""
+        """Redirect in case of composite insert. Mid-level: No need for in_session decorator."""
         if isinstance(stmt, self.CompositeInsert):
             return await self._insert_composite(stmt, session)
         else:
             return await self.db._insert(stmt, session)
 
     async def _insert_many(self, stmt: Insert | List[CompositeInsert], session: AsyncSession=None) -> List[Base]:
-        """Redirect in case of composite insert. No need for session decorator."""
+        """Redirect in case of composite insert. Mid-level: No need for in_session decorator."""
         if isinstance(stmt, Insert):
             return await self.db._insert_many(stmt, session)
         else:
@@ -319,21 +317,19 @@ class CompositeEntityService(UnaryEntityService):
         composite = self.CompositeInsert(item=stmt, nested=nested, delayed=delayed)
         return composite if stmt_only else await self._insert_composite(composite, **kwargs)
 
-    async def _create_many(self, data: List[dict], stmt_only: bool=False, **kwargs) -> List[Base] | List[CompositeInsert]:
+    @DatabaseManager.in_session
+    async def _create_many(self, data: List[dict], stmt_only: bool=False, session: AsyncSession = None, **kwargs) -> List[Base] | List[CompositeInsert]:
         """Share session & top level stmt_only=True for list creation.
-        
            Issues a session.commit() after each insertion."""
-        async with AsyncExitStack() as stack:
-            session = None if stmt_only else await stack.enter_async_context(self.db.session())
-            composites = []
-            for one in data:
-                composites.append(
-                    await self._create_one(
-                        one, stmt_only=stmt_only, session=session, **kwargs
-                ))
-                if not stmt_only:
-                    await session.commit()
-            return composites
+        composites = []
+        for one in data:
+            composites.append(
+                await self._create_one(
+                    one, stmt_only=stmt_only, session=session, **kwargs
+            ))
+            if not stmt_only:
+                await session.commit()
+        return composites
 
     async def create(self, data: List[dict] | dict, **kwargs) -> Base | CompositeInsert | List[Base] | List[CompositeInsert]:
         """CREATE, Handle list and single case."""
