@@ -237,17 +237,28 @@ class CompositeEntityService(UnaryEntityService):
 
     class CompositeInsert(object):
         """Class to manage composite entities insertions."""
-        def __init__(self, item: Insert, nested: List[Insert]=[], delayed: dict={}) -> None:
+        def __init__(self, item: Insert, nested: dict={}, delayed: dict={}) -> None:
             self.item = item
             self.nested = nested
             self.delayed = delayed
 
     @DatabaseManager.in_session
     async def _insert_composite(self, composite: CompositeInsert, session: AsyncSession) -> Base | None:
-        # Insert all nested objects + item (last).
-        for sub in composite.nested + [composite.item]:
-            item = await self._insert(sub, session)
+        # Insert all nested objects.
+        for key, sub in composite.nested.items():
+            composite.nested[key] = await self._insert(sub, session)
             await session.commit()
+
+        # Insert main object.
+        item = await self._insert(composite.item, session)
+
+        # Populate main object with nested object id if matching field is found.
+        for key, sub in composite.nested.items():
+            attr = f'id_{key}'
+            if hasattr(item, attr):
+                item.__setattr__(attr, sub.id)
+        await session.commit()
+
         # Populate many-to-one fields with delayed lists.
         for key in composite.delayed.keys():
             items = await self._insert_many(composite.delayed[key], session)
@@ -276,7 +287,7 @@ class CompositeEntityService(UnaryEntityService):
 
     async def _create_one(self, data: dict, stmt_only: bool=False, **kwargs) -> Base | CompositeInsert:
         """CREATE, accounting for nested entitites."""
-        stmts = []
+        nested = {}
         delayed = {}
 
         # For all table relationships, check whether data contains that item.
@@ -292,7 +303,7 @@ class CompositeEntityService(UnaryEntityService):
 
             # Single nested entity.
             if isinstance(sub, dict):
-                stmts += [nested_stmt]
+                nested[key] = nested_stmt
             # List of entities: one - to - many relationship.
             elif isinstance(sub, list):
                 delayed[key] = nested_stmt
@@ -305,7 +316,7 @@ class CompositeEntityService(UnaryEntityService):
         stmt = await super(CompositeEntityService, self).create(data, stmt_only=True)
 
         # Pack & return.
-        composite = self.CompositeInsert(item=stmt, nested=stmts, delayed=delayed)
+        composite = self.CompositeInsert(item=stmt, nested=nested, delayed=delayed)
         return composite if stmt_only else await self._insert_composite(composite, **kwargs)
 
     async def _create_many(self, data: List[dict], stmt_only: bool=False, **kwargs) -> List[Base] | List[CompositeInsert]:
