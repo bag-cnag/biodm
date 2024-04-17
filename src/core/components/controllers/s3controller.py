@@ -3,10 +3,11 @@ from pathlib import Path
 from starlette.routing import Route, Mount
 
 from core.components.services import S3Service
-from .controller import ActiveController, HttpMethod
+from .controller import HttpMethod
+from .resourcecontroller import ResourceController
 
 
-class S3Controller(ActiveController):
+class S3Controller(ResourceController):
     """Controller for entities involving file management leveraging an S3Service."""
     def _infer_svc(self) -> S3Service:
         return S3Service

@@ -6,7 +6,7 @@ from starlette.routing import Route
 from starlette.responses import PlainTextResponse
 
 from instance import config
-from core.components.controllers import Controller, HttpMethod
+from core.components.controllers import Controller
 from core.utils.security import login_required
 from core.utils.utils import json_response
 

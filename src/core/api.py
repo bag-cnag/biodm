@@ -1,5 +1,4 @@
 from asyncio import wait_for, TimeoutError
-import json
 import logging
 from typing import List
 
@@ -15,11 +14,12 @@ from starlette.schemas import SchemaGenerator
 
 from core.components.managers import DatabaseManager, KeycloakManager, S3Manager
 from core.components.controllers import Controller
+from core.components.services import CompositeEntityService
 from core.errors import onerror
 from core.exceptions import RequestError
 from core.utils.utils import to_it
 from core.utils.security import extract_and_decode_token, auth_header
-from core.tables import History
+from core.tables import History, ListGroup
 
 from instance import config
 
@@ -64,6 +64,16 @@ class Api(Starlette):
         self.schema_generator = SchemaGenerator(
            {"openapi": "3.0.0", "info": {"title": "biodm", "version": "0.1.0"}}
         )
+
+        ## Headless Services
+        """For entities that are managed internally: not exposing routes 
+            i.e. only ListGroups atm
+
+            Since the controller normally instanciates the service, and it does so
+            because the services needs to access the app instance.
+            If more useful cases for this show up we might want to design a cleaner solution.
+        """
+        ListGroup.svc = CompositeEntityService(app=self, table=ListGroup, pk=('id',))
 
         super(Api, self).__init__(routes=routes, *args, **kwargs)
 

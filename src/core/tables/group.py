@@ -4,7 +4,8 @@ from sqlalchemy import Column, String, Integer, ForeignKey, Uuid
 from sqlalchemy.orm import Mapped, relationship
 
 from core.components.table import Base
-from .asso import asso_user_group, asso_list_group
+from .asso import asso_user_group
+
 if TYPE_CHECKING:
     from .user import User
 
@@ -42,11 +43,3 @@ class Group(Base):
         return f"<Group(name={self.name}, parent={str(self.parent)})>"
 
 
-class ListGroup(Base):
-    id = Column(Integer, primary_key=True)
-
-    groups: Mapped[List["Group"]] = relationship(
-        secondary=asso_list_group, 
-        cascade="all, delete-orphan",
-        single_parent=True
-    )

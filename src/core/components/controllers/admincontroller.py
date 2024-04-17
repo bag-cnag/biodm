@@ -2,10 +2,10 @@ from marshmallow import Schema
 
 from core.components.table import Base
 from core.utils.security import admin_required
-from .controller import ActiveController
+from .resourcecontroller import ResourceController
 
 
-class AdminController(ActiveController):
+class AdminController(ResourceController):
     """Class for admin managed entities, i.e. KC User/Groups/Projects.
     
     CRUD Behaviour:

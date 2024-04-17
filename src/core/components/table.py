@@ -73,18 +73,20 @@ class Permission(object):
             
 
     """
-    def __init__(self) -> None:
-        if isinstance(self, S3File):
-            declared_attr(self.id_dl)
-            declared_attr(self.download)
-        super().__init__()
-    
+    # def __init_subclass__(cls, **kwargs) -> None:
+    #     """To restrict on some tables."""
+    #     if S3File in cls.__bases__:
+    #         cls.id_ls_download = declared_attr(cls.id_ls_download)
+    #         cls.ls_download = declared_attr(cls.ls_download)
+    #     super().__init_subclass__(**kwargs)
 
+    @declared_attr
     def id_ls_download(_):
         return Column(ForeignKey("LISTGROUP.id"), nullable=True)
 
+    @declared_attr
     def ls_download(cls) -> Mapped["ListGroup"]:
-        return relationship(foreign_keys=[cls.id_ls_download], lazy="immediate")
+        return relationship("ListGroup", foreign_keys=[cls.id_ls_download], lazy="selectin")
 
     @declared_attr
     def id_ls_create(_):
@@ -92,7 +94,7 @@ class Permission(object):
 
     @declared_attr
     def ls_create(cls) -> Mapped["ListGroup"]:
-        return relationship(foreign_keys=[cls.id_ls_create], lazy="immediate")
+        return relationship("ListGroup", foreign_keys=[cls.id_ls_create], lazy="selectin")
 
     @declared_attr
     def id_ls_read(_):
@@ -100,7 +102,7 @@ class Permission(object):
 
     @declared_attr
     def ls_read(cls) -> Mapped["ListGroup"]:
-        return relationship(foreign_keys=[cls.id_ls_read], lazy="immediate")
+        return relationship("ListGroup", foreign_keys=[cls.id_ls_read], lazy="selectin")
     
     @declared_attr
     def id_ls_update(_):
@@ -108,7 +110,7 @@ class Permission(object):
 
     @declared_attr
     def ls_update(cls) -> Mapped["ListGroup"]:
-        return relationship(foreign_keys=[cls.id_ls_update], lazy="immediate")
+        return relationship("ListGroup", foreign_keys=[cls.id_ls_update], lazy="selectin")
 
     @declared_attr
     def name_owner_group(_):
@@ -116,4 +118,4 @@ class Permission(object):
 
     @declared_attr
     def owner_group(cls) -> Mapped["Group"]:
-        return relationship(foreign_keys=[cls.name_owner_group], lazy="immediate")
+        return relationship(foreign_keys=[cls.name_owner_group], lazy="selectin")

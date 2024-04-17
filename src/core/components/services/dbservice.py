@@ -10,7 +10,7 @@ from sqlalchemy_utils import get_class_by_table
 from starlette.datastructures import QueryParams
 
 from core.utils.utils import unevalled_all, unevalled_or, to_it
-from ..table import Base
+from core.components import Base
 
 
 SUPPORTED_INT_OPERATORS = ('gt', 'ge', 'lt', 'le')
@@ -87,10 +87,9 @@ class UnaryEntityService(DatabaseService):
 
     async def create(self, data, stmt_only: bool=False, **kwargs) -> Base | List[Base]:
         """CREATE one or many rows. data: schema validation result."""
-        idx_elm = [k.name for k in self.pk]
-        many = isinstance(data, list)
         stmt = insert(self.table)
-        if many:
+
+        if isinstance(data, list):
             stmt = stmt.values(data)
             set_ = {
                 key: getattr(stmt.excluded, key)
@@ -102,7 +101,9 @@ class UnaryEntityService(DatabaseService):
             set_ = data
             f_ins = self.db._insert
 
-        stmt = stmt.on_conflict_do_update(index_elements=idx_elm, set_=set_)
+        if set_:
+            stmt = stmt.on_conflict_do_update(index_elements=[k.name for k in self.pk], set_=set_)
+
         stmt = stmt.returning(self.table)
         return stmt if stmt_only else await f_ins(stmt, **kwargs)
 
@@ -231,32 +232,34 @@ class UnaryEntityService(DatabaseService):
 
 
 class CompositeEntityService(UnaryEntityService):
+    from core.components.managers import DatabaseManager
     """Special case for Composite Entities (i.e. containing nested entities attributes)."""
+
     class CompositeInsert(object):
         """Class to manage composite entities insertions."""
         def __init__(self, item: Insert, nested: List[Insert]=[], delayed: dict={}) -> None:
             self.item = item
             self.nested = nested
             self.delayed = delayed
-    
-    def __init__(self, **kwargs) -> None:
-        super(CompositeEntityService, self).__init__(**kwargs)
-        # Apply decorator explicitely to avoid circular import problems.
-        self.db.in_session(self._insert_composite)
 
-    # @DatabaseManager.in_session
+    @DatabaseManager.in_session
     async def _insert_composite(self, composite: CompositeInsert, session: AsyncSession) -> Base | None:
-        """INSERT composite entity."""
         # Insert all nested objects + item (last).
         for sub in composite.nested + [composite.item]:
             item = await self._insert(sub, session)
+            await session.commit()
         # Populate many-to-one fields with delayed lists.
         for key in composite.delayed.keys():
             items = await self._insert_many(composite.delayed[key], session)
             mto = await item.awaitable_attrs.__getattr__(key)
-            mto.extend(items)
+            if isinstance(mto, list):
+                mto.extend(items)
+            else:
+                for e in list(items):
+                    mto.add(e)
+            await session.commit()
         return item
-    
+
     async def _insert(self, stmt: Insert | CompositeInsert, session: AsyncSession=None) -> Base | None:
         """Redirect in case of composite insert. No need for session decorator."""
         if isinstance(stmt, self.CompositeInsert):
@@ -269,7 +272,7 @@ class CompositeEntityService(UnaryEntityService):
         if isinstance(stmt, Insert):
             return await self.db._insert_many(stmt, session)
         else:
-            return [await self._insert(composite, session) for composite in stmt]
+            return [await self._insert_composite(composite, session) for composite in stmt]
 
     async def _create_one(self, data: dict, stmt_only: bool=False, **kwargs) -> Base | CompositeInsert:
         """CREATE, accounting for nested entitites."""
@@ -315,7 +318,7 @@ class CompositeEntityService(UnaryEntityService):
             for one in data:
                 composites.append(
                     await self._create_one(
-                        one, stmt_only=stmt_only, session=session **kwargs
+                        one, stmt_only=stmt_only, session=session, **kwargs
                 ))
                 if not stmt_only:
                     await session.commit()

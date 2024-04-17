@@ -1,7 +1,7 @@
-from core.components.controllers import ActiveController, overload_docstring
+from core.components.controllers import ResourceController, overload_docstring
 
 
-class TagController(ActiveController):
+class TagController(ResourceController):
     @overload_docstring
     async def create(**kwargs):
         """

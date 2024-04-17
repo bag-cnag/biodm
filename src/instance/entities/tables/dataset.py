@@ -47,8 +47,8 @@ class Dataset(Permission, Base):
 
     # # relationships
     # # TODO: figure out policy - cascade="save-update, merge"
-    contact: Mapped["User"]      = relationship(foreign_keys=[username_user_contact], lazy="immediate")
-    tags:    Mapped[Set["Tag"]]  = relationship(secondary=asso_dataset_tag, lazy="immediate", uselist=True)
+    contact: Mapped["User"]      = relationship(foreign_keys=[username_user_contact], lazy="selectin")
+    tags:    Mapped[Set["Tag"]]  = relationship(secondary=asso_dataset_tag, uselist=True, lazy="selectin")
 
     # # project: Mapped[Project]       = relationship(back_populates="datasets")
     files: Mapped[List["File"]] = relationship(back_populates="dataset")

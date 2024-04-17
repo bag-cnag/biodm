@@ -1,9 +1,9 @@
-from core.components.controllers import ActiveController, overload_docstring
+from core.components.controllers import ResourceController, overload_docstring
 
 # E.g. on how to overload inferred tables/schemas names:
 # from .entities.tables import Dataset
 # from .entities.schemas import DatasetSchema
-# class D4ta5setController(ActiveController):
+# class D4ta5setController(ResourceController):
 #     def __init__(self):
 #         super().__init__(
 #               entity="Dataset"
@@ -11,7 +11,7 @@ from core.components.controllers import ActiveController, overload_docstring
 #               schema=DatasetSchema)
 
 
-class DatasetController(ActiveController):
+class DatasetController(ResourceController):
     @overload_docstring
     async def create(**kwargs):
         """

@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from .dataset import Dataset
 
 
-class File(S3File, Permission, Base):
+class File(Permission, S3File, Base):
     id_dataset = Column(Integer, nullable=False)
     version_dataset = Column(SmallInteger, nullable=False)
 

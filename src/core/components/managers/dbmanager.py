@@ -76,7 +76,7 @@ class DatabaseManager(object):
             async with AsyncExitStack() as stack:
                 session = session if session else (
                     await stack.enter_async_context(obj.session()))
-                res = await db_exec(obj, arg, session)
+                res = await db_exec(obj, arg, session=session)
                 return serializer(res) if serializer else res
         return wrapper
 

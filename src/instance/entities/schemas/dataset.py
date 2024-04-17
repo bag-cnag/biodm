@@ -1,7 +1,8 @@
 from marshmallow import Schema, validate, pre_load, ValidationError
 from marshmallow.fields import String, Date, List, Nested, Integer, UUID
 
-from core.tables import Group, User
+from core.tables import User, Group, ListGroup
+from core.schemas import UserSchema, GroupSchema, ListGroupSchema
 from instance.entities.tables import Dataset
 # from controllers import schemas
 # from .group import GroupSchema
@@ -30,9 +31,12 @@ class DatasetSchema(Schema):
         # )
     )
 
-    group = Nested('GroupSchema', only=('name', 'n_members',))
+    owner_group = Nested('GroupSchema', only=('name', 'n_members',))
     contact = Nested('UserSchema', only=('username', ))
     tags = List(Nested('TagSchema'), only=('name', ))
+
+    id_ls_download = Integer()
+    ls_download = Nested('ListGroupSchema')
 
     @pre_load
     def pre_load_process(self, data, many, **kwargs):
@@ -49,7 +53,7 @@ class DatasetSchema(Schema):
             raise ValidationError("Need one of username_user_contact or contact fields.")
 
         name_group = data.get('name_owner_group')
-        group_name = data.get('group', {}).get('name')
+        group_name = data.get('owner_group', {}).get('name')
         if name_group and group_name:
             assert(name_group == group_name)
         elif group_name and not name_group:

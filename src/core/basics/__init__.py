@@ -1,5 +1,6 @@
 from .root_controller import RootController
-from .kc_controller import UserController, GroupController
+from .usercontroller import UserController
+from .groupcontroller import GroupController
 
 
 CORE_CONTROLLERS = [RootController, UserController, GroupController]
