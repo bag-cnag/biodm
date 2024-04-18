@@ -2,14 +2,18 @@ from contextlib import asynccontextmanager, AsyncExitStack
 from inspect import getfullargspec
 from typing import AsyncGenerator, Any, List
 
+from sqlalchemy import ScalarResult
 from sqlalchemy.ext.asyncio import (
     AsyncSession, create_async_engine, async_sessionmaker
 )
-from sqlalchemy.sql import Select, Insert, Update, Delete
+from sqlalchemy_utils import get_class_by_table
+# from sqlalchemy.sql import Select, Insert, Update, Delete
+from sqlalchemy.orm.collections import InstrumentedList, InstrumentedSet
 
-from core.exceptions import FailedRead, FailedDelete, FailedUpdate
-from instance.config import DATABASE_URL, DEBUG
+from core.utils.utils import to_it # it_to, 
+from instance.config import DATABASE_URL, DEBUG, DEV
 from ..table import Base
+
 
 class DatabaseManager(object):
     def __init__(self, sync=False) -> None:
@@ -60,65 +64,54 @@ class DatabaseManager(object):
         """
 
         # Weak protection: restrict decorator on functions that looks like this.
-        argspec = getfullargspec(db_exec)
-        assert('self' in argspec.args)
-        assert(any((
-            'data'      in argspec.args,
-            'stmt'      in argspec.args,
-            'item'      in argspec.args,
-            'composite' in argspec.args
-        )))
-        assert('session' in argspec.args)
+        if DEV:
+            argspec = getfullargspec(db_exec)
+            assert('self' in argspec.args)
+            assert(any((
+                'data'      in argspec.args,
+                'stmt'      in argspec.args,
+                'item'      in argspec.args,
+                'composite' in argspec.args
+            )))
+            assert('session' in argspec.args)
 
         # Callable.
         async def wrapper(obj, arg, session: AsyncSession=None, serializer=None, **kwargs):
+            if DEV and serializer:
+                from core.components.services import DatabaseService
+                assert(isinstance(obj, DatabaseService))
+
             async with AsyncExitStack() as stack:
                 session = session if session else (
                     await stack.enter_async_context(obj.session()))
                 res = await db_exec(obj, arg, session=session, **kwargs)
-                return serializer(res) if serializer else res
+
+                if DEV:
+                    assert(not isinstance(res, ScalarResult))
+
+                if serializer:
+                    """Ensures that lazy nested fields are loaded prior to serialization.
+
+                    No cleaner way of doing it with SQLAlchemy
+                    refer to: https://github.com/sqlalchemy/sqlalchemy/discussions/9731
+                    """
+                    attr_names = obj.table.relationships().keys()
+                    # Fetch depth=2, TODO: Make it configurable ?
+                    for item in to_it(res):
+                        origin_table = item.svc.table.__table__
+                        attributes = (await item.awaitable_attrs.__getattr__(name)
+                                      for name in attr_names)
+                        # async for doesn't support zip() nor making a dict out of attributes.
+                        i = 0
+                        async for attr in attributes:
+                            attr_name, i = attr_names[i], i + 1
+                            target = item.target_table(attr_name)
+                            nested_rel = get_class_by_table(Base, target).relationships()
+                            for nkey, rel in nested_rel.items():
+                                # Avoid circular refreshing !!
+                                if rel.target != origin_table and attr:
+                                    await session.refresh(attr, attribute_names=[nkey])
+                    return serializer(res)
+                return res
+        wrapper.__name__ = db_exec.__name__
         return wrapper
-
-    @in_session
-    async def _insert(self, stmt: Insert, session: AsyncSession) -> (Any | None):
-        """INSERT one into database."""
-        return await session.scalar(stmt)
-
-    @in_session
-    async def _insert_many(self, stmt: Insert, session: AsyncSession) -> List[Any]:
-        """INSERT many into database."""
-        return await session.scalars(stmt)
-
-    @in_session
-    async def _select(self, stmt: Select, session: AsyncSession) -> (Any | None):
-        """SELECT one from database."""
-        row = await session.scalar(stmt)
-        if row: return row
-        raise FailedRead("Query returned no result.")
-
-    @in_session
-    async def _select_many(self, stmt: Select, session: AsyncSession) -> List[Any]:
-        """SELECT many from database."""
-        return (await session.execute(stmt)).scalars().unique()
-
-    @in_session
-    async def _update(self, stmt: Update, session: AsyncSession):
-        """UPDATE database entry."""
-        result = await session.scalar(stmt)
-        # result = (await session.execute(stmt)).scalar()
-        if result: return result
-        raise FailedUpdate("Query updated no result.")
-
-    @in_session
-    async def _merge(self, item: Base, session: AsyncSession) -> Base:
-        """Use session.merge feature: sync local object with one from db."""
-        item = await session.merge(item)
-        if item: return item
-        raise FailedUpdate("Query updated no result.")
-
-    @in_session
-    async def _delete(self, stmt: Delete, session: AsyncSession) -> None:
-        """DELETE one row."""
-        result = await session.execute(stmt)
-        if result.rowcount == 0:
-            raise FailedDelete("Query deleted no rows.")

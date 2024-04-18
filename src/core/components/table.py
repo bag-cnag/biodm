@@ -86,7 +86,7 @@ class Permission(object):
 
     @declared_attr
     def ls_download(cls) -> Mapped["ListGroup"]:
-        return relationship("ListGroup", foreign_keys=[cls.id_ls_download], lazy="selectin")
+        return relationship("ListGroup", foreign_keys=[cls.id_ls_download], lazy="joined")
 
     @declared_attr
     def id_ls_create(_):
@@ -94,7 +94,7 @@ class Permission(object):
 
     @declared_attr
     def ls_create(cls) -> Mapped["ListGroup"]:
-        return relationship("ListGroup", foreign_keys=[cls.id_ls_create], lazy="selectin")
+        return relationship("ListGroup", foreign_keys=[cls.id_ls_create], lazy="joined")
 
     @declared_attr
     def id_ls_read(_):
@@ -102,7 +102,7 @@ class Permission(object):
 
     @declared_attr
     def ls_read(cls) -> Mapped["ListGroup"]:
-        return relationship("ListGroup", foreign_keys=[cls.id_ls_read], lazy="selectin")
+        return relationship("ListGroup", foreign_keys=[cls.id_ls_read], lazy="joined")
     
     @declared_attr
     def id_ls_update(_):
@@ -110,7 +110,7 @@ class Permission(object):
 
     @declared_attr
     def ls_update(cls) -> Mapped["ListGroup"]:
-        return relationship("ListGroup", foreign_keys=[cls.id_ls_update], lazy="selectin")
+        return relationship("ListGroup", foreign_keys=[cls.id_ls_update], lazy="joined")
 
     @declared_attr
     def name_owner_group(_):
@@ -118,4 +118,4 @@ class Permission(object):
 
     @declared_attr
     def owner_group(cls) -> Mapped["Group"]:
-        return relationship(foreign_keys=[cls.name_owner_group], lazy="selectin")
+        return relationship(foreign_keys=[cls.name_owner_group], lazy="joined")

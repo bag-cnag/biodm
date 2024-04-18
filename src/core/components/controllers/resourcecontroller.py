@@ -151,7 +151,7 @@ class ResourceController(EntityController):
                 data=validated_data,
                 stmt_only=False,
                 serializer=partial(
-                    self.serialize, 
+                    self.serialize,
                     **{"many": isinstance(validated_data, list)}
                 )
             ), status_code=201)

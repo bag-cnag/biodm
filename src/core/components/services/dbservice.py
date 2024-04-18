@@ -1,16 +1,19 @@
 from abc import ABC, abstractmethod
 from typing import List, Any, overload, Tuple
+from contextlib import AsyncExitStack
+
 
 from sqlalchemy import select, update, delete
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql import Insert #, Update, Delete, Select
+from sqlalchemy.sql import Insert, Update, Delete, Select
 from sqlalchemy_utils import get_class_by_table
 from starlette.datastructures import QueryParams
 
 from core.utils.utils import unevalled_all, unevalled_or, to_it
 from core.components import Base
 from core.components.managers import DatabaseManager
+from core.exceptions import FailedRead, FailedDelete, FailedUpdate
 
 
 SUPPORTED_INT_OPERATORS = ('gt', 'ge', 'lt', 'le')
@@ -51,6 +54,50 @@ class DatabaseService(ABC):
     async def filter(self, **kwargs):
         """FILTER."""
         raise NotImplementedError
+
+    @DatabaseManager.in_session
+    async def _insert(self, stmt: Insert, session: AsyncSession) -> (Any | None):
+        """INSERT one into database."""
+        return await session.scalar(stmt)
+
+    @DatabaseManager.in_session
+    async def _insert_many(self, stmt: Insert, session: AsyncSession) -> List[Any]:
+        """INSERT many into database."""
+        return (await session.scalars(stmt)).all()
+
+    @DatabaseManager.in_session
+    async def _select(self, stmt: Select, session: AsyncSession) -> (Any | None):
+        """SELECT one from database."""
+        row = await session.scalar(stmt)
+        if row: return row
+        raise FailedRead("Query returned no result.")
+
+    @DatabaseManager.in_session
+    async def _select_many(self, stmt: Select, session: AsyncSession) -> List[Any]:
+        """SELECT many from database."""
+        return ((await session.execute(stmt)).scalars().unique()).all()
+
+    @DatabaseManager.in_session
+    async def _update(self, stmt: Update, session: AsyncSession):
+        """UPDATE database entry."""
+        result = await session.scalar(stmt)
+        # result = (await session.execute(stmt)).scalar()
+        if result: return result
+        raise FailedUpdate("Query updated no result.")
+
+    @DatabaseManager.in_session
+    async def _merge(self, item: Base, session: AsyncSession) -> Base:
+        """Use session.merge feature: sync local object with one from db."""
+        item = await session.merge(item)
+        if item: return item
+        raise FailedUpdate("Query updated no result.")
+
+    @DatabaseManager.in_session
+    async def _delete(self, stmt: Delete, session: AsyncSession) -> None:
+        """DELETE one row."""
+        result = await session.execute(stmt)
+        if result.rowcount == 0:
+            raise FailedDelete("Query deleted no rows.")
 
 
 class UnaryEntityService(DatabaseService):
@@ -95,11 +142,11 @@ class UnaryEntityService(DatabaseService):
                 key: getattr(stmt.excluded, key)
                 for key in stmt.excluded.keys()
             }
-            f_ins = self.db._insert_many
+            f_ins = self._insert_many
         else:
             stmt = stmt.values(**data)
             set_ = data
-            f_ins = self.db._insert
+            f_ins = self._insert
 
         if set_:
             stmt = stmt.on_conflict_do_update(index_elements=[k.name for k in self.pk], set_=set_)
@@ -132,7 +179,7 @@ class UnaryEntityService(DatabaseService):
         # return await self._merge(item)
         # Merge
         item = self.table(**kw, **data)
-        return await self.db._merge(item)
+        return await self._merge(item)
 
     def _parse_int_operators(self, attr):
         input_op = attr.pop()
@@ -182,6 +229,7 @@ class UnaryEntityService(DatabaseService):
                 op = col.__getattr__(f"__{op}__")
                 stmt = stmt.where(op(ctype(val)))
 
+            ## Filters
             # Wildcards.
             wildcards = []
             for i, v in enumerate(values):
@@ -210,12 +258,12 @@ class UnaryEntityService(DatabaseService):
 
             # if exclude:
             #     stmt = select(self.table.not_in(stmt))
-        return await self.db._select_many(stmt, **kwargs)
+        return await self._select_many(stmt, **kwargs)
 
     async def read(self, id, **kwargs) -> Base:
         """READ one row."""
         stmt = select(self.table).where(self.gen_cond(id))
-        return await self.db._select(stmt, **kwargs)
+        return await self._select(stmt, **kwargs)
 
     async def update(self, id, data: dict, **kwargs) -> Base:
         """UPDATE one row."""
@@ -223,12 +271,12 @@ class UnaryEntityService(DatabaseService):
                 ).where(self.gen_cond(id)
                     ).values(**data
                         ).returning(self.table)
-        return await self.db._update(stmt, **kwargs)
+        return await self._update(stmt, **kwargs)
 
     async def delete(self, id, **kwargs) -> Any:
         """DELETE."""
         stmt = delete(self.table).where(self.gen_cond(id))
-        return await self.db._delete(stmt, **kwargs)
+        return await self._delete(stmt, **kwargs)
 
 
 class CompositeEntityService(UnaryEntityService):
@@ -274,12 +322,12 @@ class CompositeEntityService(UnaryEntityService):
         if isinstance(stmt, self.CompositeInsert):
             return await self._insert_composite(stmt, session)
         else:
-            return await self.db._insert(stmt, session)
+            return await super(CompositeEntityService, self)._insert(stmt, session)
 
     async def _insert_many(self, stmt: Insert | List[CompositeInsert], session: AsyncSession=None) -> List[Base]:
         """Redirect in case of composite insert. Mid-level: No need for in_session decorator."""
         if isinstance(stmt, Insert):
-            return await self.db._insert_many(stmt, session)
+            return await super(CompositeEntityService, self)._insert_many(stmt, session)
         else:
             return [await self._insert_composite(composite, session) for composite in stmt]
 
@@ -317,19 +365,22 @@ class CompositeEntityService(UnaryEntityService):
         composite = self.CompositeInsert(item=stmt, nested=nested, delayed=delayed)
         return composite if stmt_only else await self._insert_composite(composite, **kwargs)
 
-    @DatabaseManager.in_session
+    # @DatabaseManager.in_session
     async def _create_many(self, data: List[dict], stmt_only: bool=False, session: AsyncSession = None, **kwargs) -> List[Base] | List[CompositeInsert]:
         """Share session & top level stmt_only=True for list creation.
            Issues a session.commit() after each insertion."""
-        composites = []
-        for one in data:
-            composites.append(
-                await self._create_one(
-                    one, stmt_only=stmt_only, session=session, **kwargs
-            ))
-            if not stmt_only:
-                await session.commit()
-        return composites
+        async with AsyncExitStack() as stack:
+            session = session if session else (
+                    await stack.enter_async_context(self.session()))
+            composites = []
+            for one in data:
+                composites.append(
+                    await self._create_one(
+                        one, stmt_only=stmt_only, session=session, **kwargs
+                ))
+                if not stmt_only:
+                    await session.commit()
+            return composites
 
     async def create(self, data: List[dict] | dict, **kwargs) -> Base | CompositeInsert | List[Base] | List[CompositeInsert]:
         """CREATE, Handle list and single case."""
