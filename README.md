@@ -42,6 +42,13 @@ pip3 install asyncpg
 pip3 install boto3
 ```
 
+you may use the following
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip3 install uvicorn[uvloop] sqlalchemy[asyncio] python-keycloak starlette marshmallow psycopg2 asyncpg boto3
+```
+
 ## Setup services dependencies
 
 ### Recommended: Quick setup
