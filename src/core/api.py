@@ -67,7 +67,6 @@ class Api(Starlette):
         routes.extend(self.adopt_controllers(controllers))
 
         ## Schema Generator
-        # TODO: take from config
         self.schema_generator = SchemaGenerator({
             "openapi": "3.0.0", "info": {
                 "name": config.API_NAME, 
