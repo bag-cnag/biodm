@@ -1,4 +1,3 @@
-import requests
 from pathlib import Path
 
 from boto3 import client 

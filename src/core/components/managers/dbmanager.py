@@ -2,15 +2,11 @@ from contextlib import asynccontextmanager, AsyncExitStack
 from inspect import getfullargspec
 from typing import AsyncGenerator, Any, List
 
-from sqlalchemy import ScalarResult
 from sqlalchemy.ext.asyncio import (
     AsyncSession, create_async_engine, async_sessionmaker
 )
-from sqlalchemy_utils import get_class_by_table
-# from sqlalchemy.sql import Select, Insert, Update, Delete
-from sqlalchemy.orm.collections import InstrumentedList, InstrumentedSet
 
-from core.utils.utils import to_it # it_to, 
+from core.utils.utils import to_it, get_class_by_table # it_to, 
 from instance.config import DATABASE_URL, DEBUG, DEV
 from ..table import Base
 

@@ -1,4 +1,3 @@
-import requests
 from pathlib import Path
 
 from boto3 import client 
@@ -51,6 +50,7 @@ class S3Manager(object):
             return None
 
     ## How to use
+    # import requests
     # # Generate a presigned S3 POST URL
     # object_name = 'OBJECT_NAME'
     # response = create_presigned_post('BUCKET_NAME', object_name)

@@ -6,10 +6,9 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Insert, Update, Delete, Select
-from sqlalchemy_utils import get_class_by_table
 from starlette.datastructures import QueryParams
 
-from core.utils.utils import unevalled_all, unevalled_or, to_it
+from core.utils.utils import unevalled_all, unevalled_or, to_it, get_class_by_table
 from core.components import Base
 from core.components.managers import DatabaseManager
 from core.exceptions import FailedRead, FailedDelete, FailedUpdate

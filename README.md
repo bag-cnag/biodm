@@ -34,9 +34,7 @@ Python
 ```bash
 pip3 install uvicorn[uvloop]
 pip3 install sqlalchemy[asyncio]
-pip3 install sqlalchemy_utils
 pip3 install python-keycloak
-pip3 install requests
 pip3 install starlette
 pip3 install marshmallow
 pip3 install psycopg2
