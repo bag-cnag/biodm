@@ -1,5 +1,6 @@
 from keycloak import KeycloakAdmin
 from keycloak import KeycloakOpenIDConnection
+from keycloak import KeycloakOpenID
 from keycloak.exceptions import KeycloakDeleteError
 
 from instance import config
@@ -15,10 +16,33 @@ class KeycloakManager(object):
             realm_name=config.KC_REALM,
             verify=(not config.DEV)
         )
+        self._openid = KeycloakOpenID(server_url=config.KC_HOST,
+                                 client_id=config.CLIENT_ID,
+                                 realm_name=config.KC_REALM,
+                                 client_secret_key=config.CLIENT_SECRET)
 
     @property
     def admin(self):
         return KeycloakAdmin(connection=self._connexion)
+
+    @property
+    def openid(self):
+        return self._openid
+
+    async def auth_url(self, redirect_uri):
+        return self.openid.auth_url(redirect_uri=redirect_uri, scope="openid", state="")
+    
+    async def redeem_code_for_token(self, code, redirect_uri):
+        return self.openid.token(grant_type="authorization_code", code=code, redirect_uri=redirect_uri)
+    
+    async def decode_token(self, token):
+        def enclose_idrsa(idrsa) -> str:
+            return f"-----BEGIN PUBLIC KEY-----\n {idrsa} \n-----END PUBLIC KEY-----"
+
+        return self.openid.decode_token(token, 
+			key=enclose_idrsa(config.KC_PUBLIC_KEY), 
+            options=config.JWT_OPTIONS
+        )
 
     async def create_user(self, data, groups=[]) -> str:
         payload = {

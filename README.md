@@ -41,7 +41,6 @@ pip3 install starlette
 pip3 install marshmallow
 pip3 install psycopg2
 pip3 install asyncpg
-pip3 install pyjwt
 pip3 install boto3
 ```
 

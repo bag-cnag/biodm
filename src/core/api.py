@@ -38,11 +38,11 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
 class HistoryMiddleware(BaseHTTPMiddleware):
     """Logins in authenticated user requests in History."""
     async def dispatch(self, request: Request, call_next) -> Response:
-        if auth_header(request):
-            userid, _, _ = extract_and_decode_token(request)
-            async with self.app.db.session() as session:
-                entry = History({})
-                # TODO:
+        # if auth_header(request):
+        #     userid, _, _ = extract_and_decode_token(request)
+        #     async with self.app.db.session() as session:
+        #         entry = History({})
+        #         # TODO:
         return await call_next(request)
 
 
