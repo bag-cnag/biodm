@@ -20,6 +20,7 @@ from core.exceptions import RequestError
 from core.utils.utils import to_it
 from core.utils.security import extract_and_decode_token, auth_header
 from core.tables import History, ListGroup
+from core import __version__ as CORE_VERSION
 
 from instance import config
 
@@ -67,9 +68,13 @@ class Api(Starlette):
 
         ## Schema Generator
         # TODO: take from config
-        self.schema_generator = SchemaGenerator(
-           {"openapi": "3.0.0", "info": {"title": "biodm", "version": "0.1.0"}}
-        )
+        self.schema_generator = SchemaGenerator({
+            "openapi": "3.0.0", "info": {
+                "name": config.API_NAME, 
+                "version": config.API_VERSION, 
+                "backend": "biodm", 
+                "backend_version": CORE_VERSION
+        }})
 
         ## Headless Services
         """For entities that are managed internally: not exposing routes 

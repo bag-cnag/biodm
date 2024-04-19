@@ -24,6 +24,8 @@ DEBUG = config('DEBUG', cast=bool, default=True)
 DEV = config('DEV', cast=bool, default=True)
 
 ## Server info
+API_NAME = config("SERVER_NAME", cast=str, default="dwarf_PoC")
+API_VERSION = config("SERVER_VERSION", cast=str, default="0.1.0")
 SERVER_SCHEME = config("SERVER_SCHEME", cast=str, default="http://")
 SERVER_HOST = config("SERVER_HOST", cast=str, default="127.0.0.1")
 SERVER_PORT = config("SERVER_PORT", cast=int, default=8000)
