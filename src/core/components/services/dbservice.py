@@ -12,7 +12,7 @@ from starlette.datastructures import QueryParams
 from core.utils.utils import unevalled_all, unevalled_or, to_it
 from core.components import Base
 from core.components.managers import DatabaseManager
-from core.exceptions import FailedRead, FailedDelete, FailedUpdate, CreateError
+from core.exceptions import FailedRead, FailedDelete, FailedUpdate
 
 
 SUPPORTED_INT_OPERATORS = ('gt', 'ge', 'lt', 'le')
