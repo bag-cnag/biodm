@@ -48,18 +48,13 @@ class RootController(Controller):
         description: Returns the url for keycloak login page.
         responses:
           200:
-              description: Creates associated entity.
+              description: The URL.
               examples: |
                 https://mykeycloak/realms/myrealm/protocol/openid-connect/auth?scope=openid&response_type=code&client_id=myclientid&redirect_uri=http://myapp/syn_ack
         """
-        login_url = (
-            f"{config.KC_HOST}/realms/{config.KC_REALM}/"
-            "protocol/openid-connect/auth?"
-            "scope=openid" "&response_type=code"
-            f"&client_id={config.CLIENT_ID}"
-            f"&redirect_uri={self.HANDSHAKE}"
-        )
-        return PlainTextResponse(login_url + "\n")
+        auth_url = await self.app.kc.auth_url(redirect_uri=self.HANDSHAKE)
+        # print(auth_url == login_url)
+        return PlainTextResponse(auth_url + "\n")
 
 
     async def syn_ack(self, request):
@@ -69,29 +64,11 @@ class RootController(Controller):
             This way the client_secret remains hidden to the user.
         """
         code = request.query_params['code']
-
-        kc_token_url = (
-            f"{config.KC_HOST}/realms/{config.KC_REALM}/"
-            "protocol/openid-connect/token?"
-        )
-        r = requests.post(kc_token_url,
-            headers={'Content-Type': 'application/x-www-form-urlencoded'},
-            data={
-                'grant_type': 'authorization_code',
-                'client_id': config.CLIENT_ID,
-                'client_secret': config.CLIENT_SECRET,
-                'code': code,
-                # !! Must be the same as in /login
-                'redirect_uri': self.HANDSHAKE
-            }
-        )
-        if r.status_code != 200:
-            raise RuntimeError(f"keycloak token handshake failed: {r.text} {r.status_code}")
-
-        return PlainTextResponse(json.loads(r.text)['access_token'] + '\n')
+        token = await self.app.kc.redeem_code_for_token(code, redirect_uri=self.HANDSHAKE)
+        return PlainTextResponse(token['access_token'] + '\n')
 
 
     @login_required
-    async def authenticated(self, userid, groups, projects):
+    async def authenticated(self, request, userid, groups, projects):
         """Route to check token validity."""
         return PlainTextResponse(f"{userid}, {groups}, {projects}\n")

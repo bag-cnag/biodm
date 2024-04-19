@@ -14,7 +14,7 @@ from starlette.schemas import SchemaGenerator
 
 from core.components.managers import DatabaseManager, KeycloakManager, S3Manager
 from core.components.controllers import Controller
-from core.components.services import CompositeEntityService
+from core.components.services import UnaryEntityService, CompositeEntityService
 from core.errors import onerror
 from core.exceptions import RequestError
 from core.utils.utils import to_it
@@ -38,11 +38,16 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
 class HistoryMiddleware(BaseHTTPMiddleware):
     """Logins in authenticated user requests in History."""
     async def dispatch(self, request: Request, call_next) -> Response:
-        # if auth_header(request):
-        #     userid, _, _ = extract_and_decode_token(request)
-        #     async with self.app.db.session() as session:
-        #         entry = History({})
-        #         # TODO:
+        if auth_header(request):
+            app = History.svc.app
+            username, _, _ = await extract_and_decode_token(app.kc, request)
+            h = {
+                'username_user': username,
+                'endpoint': str(request.url).split(config.SERVER_HOST)[-1],
+                'method': request.method,
+                'content': "" # await request.body() # TODO: ask ivo.
+            }
+            await History.svc.create(h, stmt_only=False, serializer=None)
         return await call_next(request)
 
 
@@ -67,12 +72,13 @@ class Api(Starlette):
 
         ## Headless Services
         """For entities that are managed internally: not exposing routes 
-            i.e. only ListGroups atm
+            i.e. only ListGroups and History atm
 
             Since the controller normally instanciates the service, and it does so
             because the services needs to access the app instance.
             If more useful cases for this show up we might want to design a cleaner solution.
         """
+        History.svc = UnaryEntityService(app=self, table=History, pk=('timestamp', 'username_user'))
         ListGroup.svc = CompositeEntityService(app=self, table=ListGroup, pk=('id',))
 
         super(Api, self).__init__(routes=routes, *args, **kwargs)

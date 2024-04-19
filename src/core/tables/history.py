@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 class History(Base):
     timestamp = Column(TIMESTAMP(timezone=True), server_default=text('now()'), 
                        nullable=False, primary_key=True)
-    id_user = Column(ForeignKey('USER.id'), primary_key=True)
+    username_user = Column(ForeignKey('USER.username'), primary_key=True)
 
     content = Column(String(100), nullable=False)
     endpoint = Column(String(20), nullable=False)
