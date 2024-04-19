@@ -124,7 +124,7 @@ class ResourceController(EntityController):
 
     def _extract_id(self, request):
         """Extracts id from request, raise exception if not found."""
-        id = (request.path_params.get(k) for k in self.pk)
+        id = [request.path_params.get(k) for k in self.pk]
         if not id:
             raise InvalidCollectionMethod
         return id

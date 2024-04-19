@@ -75,6 +75,32 @@ class DatabaseManager(object):
             )))
             assert('session' in argspec.args)
 
+        # Helper method.
+        async def _refresh_result(obj, result, session: AsyncSession):
+            """Ensures that lazy nested fields are loaded prior to serialization.
+
+            No cleaner way of doing it with SQLAlchemy
+            refer to: https://github.com/sqlalchemy/sqlalchemy/discussions/9731
+            """
+            attr_names = obj.table.relationships().keys()
+            origin_table = obj.table.__table__
+            
+            # Fetch depth=2, TODO: Make it configurable ?
+            for item in to_it(result):
+                attributes = (await item.awaitable_attrs.__getattr__(name)
+                                for name in attr_names)
+                # async for doesn't support zip() nor making a dict out of attributes.
+                i = 0
+                async for attr in attributes:
+                    attr_name, i = attr_names[i], i + 1
+                    target = item.target_table(attr_name)
+                    nested_rel = get_class_by_table(Base, target).relationships()
+                    for nkey, rel in nested_rel.items():
+                        # Avoid circular refreshing !!
+                        if rel.target != origin_table and attr:
+                            await session.refresh(attr, attribute_names=[nkey])
+            return result
+
         # Callable.
         async def wrapper(obj, arg, session: AsyncSession=None, serializer=None, **kwargs):
             if DEV and serializer:
@@ -85,33 +111,6 @@ class DatabaseManager(object):
                 session = session if session else (
                     await stack.enter_async_context(obj.session()))
                 res = await db_exec(obj, arg, session=session, **kwargs)
-
-                if DEV:
-                    assert(not isinstance(res, ScalarResult))
-
-                if serializer:
-                    """Ensures that lazy nested fields are loaded prior to serialization.
-
-                    No cleaner way of doing it with SQLAlchemy
-                    refer to: https://github.com/sqlalchemy/sqlalchemy/discussions/9731
-                    """
-                    attr_names = obj.table.relationships().keys()
-                    # Fetch depth=2, TODO: Make it configurable ?
-                    for item in to_it(res):
-                        origin_table = item.svc.table.__table__
-                        attributes = (await item.awaitable_attrs.__getattr__(name)
-                                      for name in attr_names)
-                        # async for doesn't support zip() nor making a dict out of attributes.
-                        i = 0
-                        async for attr in attributes:
-                            attr_name, i = attr_names[i], i + 1
-                            target = item.target_table(attr_name)
-                            nested_rel = get_class_by_table(Base, target).relationships()
-                            for nkey, rel in nested_rel.items():
-                                # Avoid circular refreshing !!
-                                if rel.target != origin_table and attr:
-                                    await session.refresh(attr, attribute_names=[nkey])
-                    return serializer(res)
-                return res
+                return serializer(await _refresh_result(obj, res, session)) if serializer else res
         wrapper.__name__ = db_exec.__name__
         return wrapper

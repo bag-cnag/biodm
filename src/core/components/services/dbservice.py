@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import List, Any, overload, Tuple
 from contextlib import AsyncExitStack
 
-
 from sqlalchemy import select, update, delete
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -156,10 +155,10 @@ class UnaryEntityService(DatabaseService):
 
     def gen_cond(self, values):
         """Generates WHERE condition from pk definition and values."""
-        return unevalled_all((
+        return unevalled_all([
                 pk == pk.type.python_type(val)
-                for pk, val in zip(self.pk, to_it(values))
-            ))
+                for pk, val in zip(self.pk, values)
+            ])
 
     async def create_update(self, id, data: dict) -> Base:
         """CREATE or UPDATE one row."""
