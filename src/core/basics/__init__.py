@@ -1,4 +1,4 @@
-from .rootontroller import RootController
+from .rootcontroller import RootController
 from .usercontroller import UserController
 from .groupcontroller import GroupController
 

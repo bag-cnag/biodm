@@ -7,11 +7,9 @@ from core.exceptions import UnauthorizedError
 
 
 def auth_header(request) -> str | None:
-	header = request.headers.get('Authorization', None)
-	if not header:
-		raise UnauthorizedError(f"This route is token protected. "
-								f"Please provide it in header: "
-								f"Authorization: Bearer <token>")
+	header = request.headers.get('Authorization')
+	if not header: 
+		return None
 	return (header.split('Bearer')[-1] if 'Bearer' in header else header).strip()
 
 
@@ -26,6 +24,10 @@ async def extract_and_decode_token(kc, request) -> tuple[str, List, List]:
 	
 	# Extract.
 	token = auth_header(request)
+	if not token:
+		raise UnauthorizedError(f"This route is token protected. "
+								f"Please provide it in header: "
+								f"Authorization: Bearer <token>")
 	decoded = await kc.decode_token(token)
 
 	# Parse.

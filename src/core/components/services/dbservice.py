@@ -12,7 +12,7 @@ from starlette.datastructures import QueryParams
 from core.utils.utils import unevalled_all, unevalled_or, to_it
 from core.components import Base
 from core.components.managers import DatabaseManager
-from core.exceptions import FailedRead, FailedDelete, FailedUpdate
+from core.exceptions import FailedRead, FailedDelete, FailedUpdate, CreateError
 
 
 SUPPORTED_INT_OPERATORS = ('gt', 'ge', 'lt', 'le')
@@ -146,6 +146,11 @@ class UnaryEntityService(DatabaseService):
             stmt = stmt.values(**data)
             set_ = data
             f_ins = self._insert
+
+        # Remove PK elements.
+        for k in self.pk:
+            if hasattr(set_, k.name):
+                set_.pop(k.name)
 
         if set_:
             stmt = stmt.on_conflict_do_update(index_elements=[k.name for k in self.pk], set_=set_)

@@ -34,7 +34,10 @@ class KeycloakManager(object):
     
     async def redeem_code_for_token(self, code, redirect_uri):
         return self.openid.token(grant_type="authorization_code", code=code, redirect_uri=redirect_uri)
-    
+
+    # async def refresh_token(self, code, redirect_uri):
+    #     return self.openid.token(grant_type="refresh_token", code=code, redirect_uri=redirect_uri)
+
     async def decode_token(self, token):
         def enclose_idrsa(idrsa) -> str:
             return f"-----BEGIN PUBLIC KEY-----\n {idrsa} \n-----END PUBLIC KEY-----"

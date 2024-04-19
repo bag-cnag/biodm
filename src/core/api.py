@@ -41,11 +41,12 @@ class HistoryMiddleware(BaseHTTPMiddleware):
         if auth_header(request):
             app = History.svc.app
             username, _, _ = await extract_and_decode_token(app.kc, request)
+            body = await request.body()
             h = {
                 'username_user': username,
                 'endpoint': str(request.url).split(config.SERVER_HOST)[-1],
                 'method': request.method,
-                'content': "" # await request.body() # TODO: ask ivo.
+                'content': body if body else ""
             }
             await History.svc.create(h, stmt_only=False, serializer=None)
         return await call_next(request)
