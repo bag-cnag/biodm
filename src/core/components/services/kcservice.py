@@ -27,10 +27,10 @@ class KCGroupService(KCService):
         except FailedRead:
             return await self.kc.create_group(data)
 
-    async def create(self, data, **kwargs) -> Base | List[Base]:
+    async def create(self, data, stmt_only: bool=False, **kwargs) -> Base | List[Base]:
         """Create entities on Keycloak Side before passing to parent class for DB."""
         # KC
-        if not kwargs.get('stmt_only', False):
+        if not stmt_only:
             for group in to_it(data):
                 # Group first.
                 group['id'] = await self._read_or_create(group)
@@ -40,14 +40,15 @@ class KCGroupService(KCService):
                                                                 [group["name"]], 
                                                                 [group['id']])
         # DB
-        return await super(KCService, self).create(data, **kwargs)
+        return await super(KCService, self).create(data, stmt_only=stmt_only, **kwargs)
 
     async def update(self, id, data: dict, **kwargs) -> Base:
         raise NotImplementedError
+        await self.kc.update_group(await self.read(id).id, data)
         return await super(KCService, self).update(id, data, **kwargs)
 
     async def delete(self, id) -> Any:
-        raise NotImplementedError
+        await self.kc.delete_group(await self.read(id).id)
         return await super(KCService, self).delete(id)
 
 
@@ -61,10 +62,10 @@ class KCUserService(KCService):
         except FailedRead:
             return await self.kc.create_user(data, groups)
 
-    async def create(self, data, **kwargs) -> Base | List[Base]:
+    async def create(self, data, stmt_only: bool=False, **kwargs) -> Base | List[Base]:
         """Create entities on Keycloak Side before passing to parent class for DB."""
         # KC
-        if not kwargs.get('stmt_only', False):
+        if not stmt_only:
             for user in to_it(data):
                 # Groups first.
                 group_names, group_ids = [], []
@@ -75,12 +76,13 @@ class KCUserService(KCService):
                 # Then User.
                 user['id'] = await self._read_or_create(user, group_names, group_ids)
         # DB
-        return await super(KCService, self).create(data, **kwargs)
+        return await super(KCService, self).create(data, stmt_only=stmt_only, **kwargs)
 
     async def update(self, id, data: dict, **kwargs) -> Base:
         raise NotImplementedError
+        await self.kc.update_user(await self.read(id).id, data)
         return await super(KCService, self).update(id, data, **kwargs)
 
     async def delete(self, id) -> Any:
-        raise NotImplementedError
+        await self.kc.delete_user(await self.read(id).id)
         return await super(KCService, self).delete(id)

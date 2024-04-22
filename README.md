@@ -46,7 +46,7 @@ you may use the following
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip3 install uvicorn[uvloop] sqlalchemy[asyncio] python-keycloak starlette marshmallow psycopg2 asyncpg boto3
+pip3 install -r src/requirements.txt
 ```
 
 ## Setup services dependencies

@@ -18,6 +18,13 @@ class DBError(RuntimeError):
     sa_error = None
 
 
+class PostgresUnavailableError(RuntimeError):
+    """Raised when Postgres failed to initialize."""
+
+class KeycloakUnavailableError(RuntimeError):
+    """Raised when Keycloak failed to initialize."""
+
+
 class EmptyPayloadException(RuntimeError):
     """Raised when a route expecting a payload, is reached without one."""
 
@@ -31,6 +38,10 @@ class InvalidCollectionMethod(RuntimeError):
 
 class UnauthorizedError(RequestError):
     """Raised when a request on a group restricted route is sent by an unauthorized user."""
+
+
+class FailedCreate(RequestError):
+    """Could not create record."""
 
 
 class FailedRead(RequestError):

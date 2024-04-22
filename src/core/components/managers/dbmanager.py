@@ -6,23 +6,29 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession, create_async_engine, async_sessionmaker
 )
 
-from core.utils.utils import to_it, get_class_by_table # it_to, 
+from core.utils.utils import to_it
+from core.exceptions import PostgresUnavailableError
+
 from instance.config import DATABASE_URL, DEBUG, DEV
 from ..table import Base
 
 
 class DatabaseManager(object):
-    def __init__(self, sync=False) -> None:
+    def __init__(self, app, sync=False) -> None:
+        self.app = app
         self.database_url = DATABASE_URL if sync else self.async_database_url()
-        self.engine = create_async_engine(
-            self.database_url,
-            echo=DEBUG,
-        )
-        self.async_session = async_sessionmaker(
-            self.engine, 
-            class_=AsyncSession,
-            expire_on_commit=False,
-        )
+        try:
+            self.engine = create_async_engine(
+                self.database_url,
+                echo=DEBUG,
+            )
+            self.async_session = async_sessionmaker(
+                self.engine, 
+                class_=AsyncSession,
+                expire_on_commit=False,
+            )
+        except Exception as e:
+            raise PostgresUnavailableError(f"Failed to initialize connection to Postgres: {e.error_message}")
 
     @staticmethod
     def async_database_url() -> str:
@@ -50,8 +56,8 @@ class DatabaseManager(object):
         """Decorator that ensures db_exec receives a session.
 
         session object is either passed as an argument (from nested obj creation)
-            or a new context manager is opened.
-        contextlib.AsyncExitStack() below allows for conditional context management.
+            or a new context manager is opened. 
+        This decorator guarantees exactly 1 session per request, contextlib.AsyncExitStack() below allows for conditional context management.
 
         Also performs serialization **within the session**: important for lazy nested attributes) when passed a serializer.
 
@@ -72,14 +78,14 @@ class DatabaseManager(object):
             assert('session' in argspec.args)
 
         # Helper method.
-        async def _refresh_result(obj, result, session: AsyncSession):
+        async def _refresh_result(svc, result, session: AsyncSession):
             """Ensures that lazy nested fields are loaded prior to serialization.
 
             No cleaner way of doing it with SQLAlchemy
             refer to: https://github.com/sqlalchemy/sqlalchemy/discussions/9731
             """
-            attr_names = obj.table.relationships().keys()
-            origin_table = obj.table.__table__
+            attr_names = svc.table.relationships().keys()
+            origin_table = svc.table.__table__
             
             # Fetch depth=2, TODO: Make it configurable ?
             for item in to_it(result):
@@ -90,7 +96,7 @@ class DatabaseManager(object):
                 async for attr in attributes:
                     attr_name, i = attr_names[i], i + 1
                     target = item.target_table(attr_name)
-                    nested_rel = get_class_by_table(Base, target).relationships()
+                    nested_rel = target.decl_class.relationships()
                     for nkey, rel in nested_rel.items():
                         # Avoid circular refreshing !!
                         if rel.target != origin_table and attr:

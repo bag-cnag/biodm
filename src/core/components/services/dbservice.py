@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Insert, Update, Delete, Select
 from starlette.datastructures import QueryParams
 
-from core.utils.utils import unevalled_all, unevalled_or, to_it, get_class_by_table
+from core.utils.utils import unevalled_all, unevalled_or, to_it
 from core.components import Base
 from core.components.managers import DatabaseManager
 from core.exceptions import FailedRead, FailedDelete, FailedUpdate
@@ -103,10 +103,11 @@ class UnaryEntityService(DatabaseService):
     def __init__(self, app, table: Base, pk: Tuple[str, ...], *args, **kwargs):
         # Entity info.
         self._table = table
-        # Enable entity - service linkage.
-        table.svc = self
         self.pk = tuple(table.col(key) for key in pk)
         self.relationships = table.relationships()
+        # Enable entity - service - table linkage so everything is conveniently available.
+        table.svc = self
+        table.__table__.decl_class = table
 
         super(UnaryEntityService, self).__init__(app=app, *args, **kwargs)
 
@@ -214,7 +215,7 @@ class UnaryEntityService(DatabaseService):
                 jtn = table.target_table(nested)
                 if jtn is None:
                     raise ValueError(f"Invalid nested entity name {nested}.")
-                jtable = get_class_by_table(Base, jtn)
+                jtable = jtn.decl_class
                 stmt = stmt.join(jtable)
                 table = jtable
 
@@ -345,7 +346,7 @@ class CompositeEntityService(UnaryEntityService):
             if not sub: continue
 
             # Retrieve associated service.
-            svc = get_class_by_table(Base, rel.target).svc
+            svc = rel.target.decl_class.svc
 
             # Get statement(s) for nested entity:
             nested_stmt = await svc.create(sub, stmt_only=True)

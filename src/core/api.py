@@ -1,5 +1,6 @@
 from asyncio import wait_for, TimeoutError
 import logging
+import logging.config
 from typing import List
 
 # from keycloak.extensions.starlette import AuthenticationMiddleware
@@ -58,8 +59,8 @@ class Api(Starlette):
 
     def __init__(self, controllers=[], routes=[], *args, **kwargs):
         ## Managers
-        self.db = DatabaseManager()
-        self.kc = KeycloakManager()
+        self.db = DatabaseManager(app=self)
+        self.kc = KeycloakManager(app=self)
         self.s3 = S3Manager(app=self)
 
         ## Controllers

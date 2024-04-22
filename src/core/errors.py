@@ -8,6 +8,7 @@ from .exceptions import (
     FailedDelete,
     InvalidCollectionMethod,
     EmptyPayloadException,
+    UnauthorizedError,
 )
 
 from instance import config
@@ -33,6 +34,7 @@ class Error:
         )
 
 
+# https://restfulapi.net/http-status-codes/
 async def onerror(_, exc):
     status = 500
     detail = None
@@ -46,10 +48,8 @@ async def onerror(_, exc):
                 status = 405
             case EmptyPayloadException():
                 status = 204
+            case UnauthorizedError():
+                status = 511
             case _:
                 pass
-        # if isinstance(exc, FailedDelete):
-        #     status = 404
-        # if isinstance(exc, InvalidCollectionMethod):
-        #     status = 405
     return Error(status, detail).response
