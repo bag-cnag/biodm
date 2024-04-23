@@ -1,4 +1,3 @@
-import core
-import instance
-import app
+import biodm
+import example
 import tests

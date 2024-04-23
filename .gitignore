@@ -1,5 +1,7 @@
 *bak
 *env
+venv*
 *egg*
 __pycache__
 build/
+dist/

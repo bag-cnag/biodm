@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "biodm"
+authors = [
+  {name = "Etienne Jodry", email = "etienne.jodry@cnag.eu"},
+]
+dynamic = ["dependencies", "version"]
+readme = {file = "README.md", content-type = "text/markdown"}
+license = {file = "LICENSE"}
+requires-python = ">= 3.11"
+classifiers = [
+  "Development Status :: 3 - Pre-Release",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "License :: OSI Approved :: GNU/GPLv3",
+]
+
+[project.urls]
+Repository = "https://github.com/bag-cnag/biodm.git"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["src/biodm/requirements.txt"]}
+version = {attr = "biodm.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src/"]  # list of folders that contain the packages (["."] by default)
+include = ["*"]  # package names should match these glob patterns (["*"] by default)
+exclude = ["*instance*"]  # exclude packages matching these glob patterns (empty by default)
+namespaces = false # to disable scanning PEP 420 namespaces (true by default)

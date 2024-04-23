@@ -261,4 +261,17 @@ and
 and
 '-' operator for string search
 
-  
+
+## Build and install
+### Static
+```bash
+python3 -m build
+cd dist/
+pip3 install biodm-*-py3-none-any.whl [--force-reinstall] [--no-deps]
+```
+
+### Editable mode
+```bash
+python3 -m venv venv_edit
+pip3 install -e .
+```
