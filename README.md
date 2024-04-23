@@ -263,7 +263,7 @@ and
 
 
 ## Build and install
-### Static
+### Static
 ```bash
 python3 -m build
 cd dist/
