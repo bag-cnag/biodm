@@ -24,9 +24,6 @@ from biodm.tables import History, ListGroup
 from biodm import __version__ as CORE_VERSION
 from starlette.types import ASGIApp
 
-# from instance import config
-# APP_CONFIG = None
-
 
 class TimeoutMiddleware(BaseHTTPMiddleware):
     """Emit timeout signals."""
