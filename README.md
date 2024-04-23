@@ -262,7 +262,7 @@ and
 '-' operator for string search
 
 
-## Build and install
+## Build and install
 ### Static
 ```bash
 python3 -m build

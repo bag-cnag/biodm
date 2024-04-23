@@ -3,16 +3,16 @@ import logging
 import logging.config
 from typing import List
 
-# from keycloak.extensions.starlette import AuthenticationMiddleware
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware, DispatchFunction, RequestResponseEndpoint
 from starlette.middleware.cors import CORSMiddleware
-# from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response
 from starlette.routing import Route
 from starlette.schemas import SchemaGenerator
+from starlette.types import ASGIApp
 
+from biodm.basics import CORE_CONTROLLERS
 from biodm.components.managers import DatabaseManager, KeycloakManager, S3Manager
 from biodm.components.controllers import Controller
 from biodm.components.services import UnaryEntityService, CompositeEntityService
@@ -22,7 +22,6 @@ from biodm.utils.utils import to_it
 from biodm.utils.security import extract_and_decode_token, auth_header
 from biodm.tables import History, ListGroup
 from biodm import __version__ as CORE_VERSION
-from starlette.types import ASGIApp
 
 
 class TimeoutMiddleware(BaseHTTPMiddleware):
@@ -74,7 +73,7 @@ class Api(Starlette):
 
         ## Controllers
         self.controllers = []
-        routes.extend(self.adopt_controllers(controllers))
+        routes.extend(self.adopt_controllers(controllers + CORE_CONTROLLERS))
 
         ## Schema Generator
         self.schema_generator = SchemaGenerator({

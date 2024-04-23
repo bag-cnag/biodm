@@ -2,17 +2,17 @@
 import uvicorn
 
 from biodm.api import Api
-from biodm.basics import CORE_CONTROLLERS
 
 from example.entities.controllers import CONTROLLERS
 import example.config as config
+
 
 def main():
     app = Api(
         config=config,
         debug=config.DEBUG, 
         routes=[],
-        controllers=CORE_CONTROLLERS+CONTROLLERS,
+        controllers=CONTROLLERS,
     )
     return app
 
