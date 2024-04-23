@@ -123,12 +123,12 @@ class ResourceController(EntityController):
             Route(f'/{self.qp_id}', self.update,         methods=[HttpMethod.PATCH.value]),
         ] + child_routes)
 
-    def _extract_id(self, request):
+    def _extract_pk_val(self, request):
         """Extracts id from request, raise exception if not found."""
-        id = [request.path_params.get(k) for k in self.pk]
-        if not id:
+        pk_val = [request.path_params.get(k) for k in self.pk]
+        if not pk_val:
             raise InvalidCollectionMethod
-        return id
+        return pk_val
     
     async def _extract_body(self, request):
         body = await request.body()
@@ -173,7 +173,7 @@ class ResourceController(EntityController):
         """
         return json_response(
             data=await self.svc.read(
-                id=self._extract_id(request),
+                pk_val=self._extract_pk_val(request),
                 serializer=partial(self.serialize, **{"many": False})
             ), status_code=200)
 
@@ -193,14 +193,14 @@ class ResourceController(EntityController):
           404:
               description: Not Found
         """
-        await self.svc.delete(id=self._extract_id(request))
+        await self.svc.delete(pk_val=self._extract_pk_val(request))
         return json_response("Deleted.", status_code=200)
 
     async def create_update(self, request):
         validated_data = self.deserialize(await self._extract_body(request))
         return json_response(
             data=await self.svc.create_update(
-                id=self._extract_id(request),
+                pk_val=self._extract_pk_val(request),
                 data=validated_data
             ), status_code=200)
 

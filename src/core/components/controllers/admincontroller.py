@@ -1,6 +1,6 @@
 from marshmallow import Schema
 
-from core.components.table import Base
+from core.components import Base
 from core.utils.security import admin_required
 from .resourcecontroller import ResourceController
 

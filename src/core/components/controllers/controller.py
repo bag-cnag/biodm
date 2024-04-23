@@ -72,8 +72,8 @@ class EntityController(Controller, ABC):
     @staticmethod
     def serialize(data: Any, schema: Schema, many: bool) -> (str | Any):
         """Serialize statically passing a schema."""
-        schema.many = many
-        return schema.dumps(data, indent=config.INDENT)
+        serialized = schema.dump(data, many=many)
+        return json.dumps(serialized, indent=config.INDENT)
 
     # CRUD operations
     @abstractmethod

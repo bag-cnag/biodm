@@ -42,14 +42,14 @@ class KCGroupService(KCService):
         # DB
         return await super(KCService, self).create(data, stmt_only=stmt_only, **kwargs)
 
-    async def update(self, id, data: dict, **kwargs) -> Base:
+    async def update(self, pk_val, data: dict, **kwargs) -> Base:
         raise NotImplementedError
-        await self.kc.update_group(await self.read(id).id, data)
+        await self.kc.update_group(await self.read(pk_val).id, data)
         return await super(KCService, self).update(id, data, **kwargs)
 
-    async def delete(self, id) -> Any:
-        await self.kc.delete_group(await self.read(id).id)
-        return await super(KCService, self).delete(id)
+    async def delete(self, pk_val) -> Any:
+        await self.kc.delete_group(await self.read(pk_val).id)
+        return await super(KCService, self).delete(pk_val)
 
 
 class KCUserService(KCService):
@@ -78,11 +78,11 @@ class KCUserService(KCService):
         # DB
         return await super(KCService, self).create(data, stmt_only=stmt_only, **kwargs)
 
-    async def update(self, id, data: dict, **kwargs) -> Base:
+    async def update(self, pk_val, data: dict, **kwargs) -> Base:
         raise NotImplementedError
-        await self.kc.update_user(await self.read(id).id, data)
-        return await super(KCService, self).update(id, data, **kwargs)
+        await self.kc.update_user(await self.read(pk_val).id, data)
+        return await super(KCService, self).update(pk_val, data, **kwargs)
 
-    async def delete(self, id) -> Any:
-        await self.kc.delete_user(await self.read(id).id)
-        return await super(KCService, self).delete(id)
+    async def delete(self, pk_val) -> Any:
+        await self.kc.delete_user(await self.read(pk_val).id)
+        return await super(KCService, self).delete(pk_val)

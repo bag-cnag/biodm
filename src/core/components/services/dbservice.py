@@ -140,36 +140,33 @@ class UnaryEntityService(DatabaseService):
             set_ = {
                 key: getattr(stmt.excluded, key)
                 for key in stmt.excluded.keys()
+                if key not in self.pk
             }
             f_ins = self._insert_many
         else:
             stmt = stmt.values(**data)
-            set_ = data
+            set_ = {key: val for key, val in data.items() if key not in self.pk}
             f_ins = self._insert
 
-        # Remove PK elements.
-        for k in self.pk:
-            if hasattr(set_, k.name):
-                set_.pop(k.name)
-
-        if set_:
-            stmt = stmt.on_conflict_do_update(index_elements=[k.name for k in self.pk], set_=set_)
-
+        # UPSERT.
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[k.name for k in self.pk], set_=set_
+        ) if set_ else stmt
         stmt = stmt.returning(self.table)
         return stmt if stmt_only else await f_ins(stmt, **kwargs)
 
-    def gen_cond(self, values):
+    def gen_cond(self, pk_val):
         """Generates WHERE condition from pk definition and values."""
         return unevalled_all([
                 pk == pk.type.python_type(val)
-                for pk, val in zip(self.pk, values)
+                for pk, val in zip(self.pk, pk_val)
             ])
 
-    async def create_update(self, id, data: dict) -> Base:
+    async def create_update(self, pk_val, data: dict) -> Base:
         """CREATE or UPDATE one row."""
         kw = {
             pk.name: pk.type.python_type(val)
-            for pk, val in zip(self.pk, to_it(id))
+            for pk, val in zip(self.pk, to_it(pk_val))
         }
         # TODO: fix: this, doesn't work when trying to update the entire pk
         # try:
@@ -264,22 +261,22 @@ class UnaryEntityService(DatabaseService):
             #     stmt = select(self.table.not_in(stmt))
         return await self._select_many(stmt, **kwargs)
 
-    async def read(self, id, **kwargs) -> Base:
+    async def read(self, pk_val, **kwargs) -> Base:
         """READ one row."""
-        stmt = select(self.table).where(self.gen_cond(id))
+        stmt = select(self.table).where(self.gen_cond(pk_val))
         return await self._select(stmt, **kwargs)
 
-    async def update(self, id, data: dict, **kwargs) -> Base:
+    async def update(self, pk_val, data: dict, **kwargs) -> Base:
         """UPDATE one row."""
         stmt = update(self.table
-                ).where(self.gen_cond(id)
+                ).where(self.gen_cond(pk_val)
                     ).values(**data
                         ).returning(self.table)
         return await self._update(stmt, **kwargs)
 
-    async def delete(self, id, **kwargs) -> Any:
+    async def delete(self, pk_val, **kwargs) -> Any:
         """DELETE."""
-        stmt = delete(self.table).where(self.gen_cond(id))
+        stmt = delete(self.table).where(self.gen_cond(pk_val))
         return await self._delete(stmt, **kwargs)
 
 
@@ -303,6 +300,7 @@ class CompositeEntityService(UnaryEntityService):
         item = await self._insert(composite.item, session)
 
         # Populate main object with nested object id if matching field is found.
+        # TODO: hypehen the importance of that convention in the documentation.
         for key, sub in composite.nested.items():
             attr = f'id_{key}'
             if hasattr(item, attr):
@@ -391,10 +389,10 @@ class CompositeEntityService(UnaryEntityService):
         f = self._create_many if isinstance(data, list) else self._create_one
         return await f(data, **kwargs)
 
-    async def update(self, id, data: dict) -> Base:
+    async def update(self, pk_val, data: dict) -> Base:
         # TODO
         raise NotImplementedError
 
-    async def delete(self, id) -> Any:
+    async def delete(self, pk_val) -> Any:
         # TODO
         raise NotImplementedError
