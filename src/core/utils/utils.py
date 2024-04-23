@@ -6,7 +6,7 @@ import uuid
 from typing import Any, List
 
 from starlette.responses import Response
-from sqlalchemy import inspect
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def json_response(data: str, status_code: int) -> Response:
@@ -56,3 +56,30 @@ class Singleton(ABCMeta):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
+
+
+async def refresh_sqla_items(item, table, session: AsyncSession, reverse_property: str=None, level: int=0):
+    """Ensures that lazy nested fields are loaded
+
+    No cleaner way of doing it with SQLAlchemy
+    refer to: https://github.com/sqlalchemy/sqlalchemy/discussions/9731
+    """
+    if not item or not level:
+        return
+
+    for one in to_it(item):
+        for attr_name, rel in table.relationships().items():
+            # Avoid circular refreshing.
+            if attr_name != reverse_property:
+                await session.refresh(one, attribute_names=[attr_name])
+
+            rev = None
+            if rel._reverse_property:
+                rev = next(iter(rel._reverse_property))
+                rev = str(rev).split('.')[-1]
+
+            target = one.target_table(attr_name).decl_class
+            await refresh_sqla_items(
+                await one.awaitable_attrs.__getattr__(attr_name), 
+                target, session, reverse_property=rev, level=level-1
+            )
