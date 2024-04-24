@@ -1,38 +1,45 @@
-# BioDM
+# BioDM: A fast and RESTful Data Management framework
 
-Proof of concept for an extended purpose biology data management framework _DWARF galaxy_ standing for "Data Warehouse _FRAme/emARF_" and referencing [galaxy](https://usegalaxy.org/) project. However, we are **not** afiliated **nor** partnering with them **nor** reusing their codebase in any way **nor** aiming at providing matching functionalities. In fact the name _DWARF galaxy_ should hint the reader about the philosophy of this project which is to keep things simple, provide essential and efficient data management core functionalities and give developers the freedom to expand on it. 
+---
 
-BioDM is the current name of the RESTful and stateless API part of the framework. Target functionalities:
-- set up standards HTTP REST-to-CRUD endpoints for JSON communication -> Done for standard entities
-  - Leverages metadata table definitions **provided by the developper**:
-    - SQLAlchemy ORM Table definition for DB communication
-      - Columns definition (_a.k.a_ the _easy_ part)
-      - Relationships, lazy field loading policy, fine tune some `primaryjoin`, and so on (_a.k.a_ the _not so easy_ part which explains why we are not trying to fully automatize this step and simply accept a list of `key=type` pairs for table definition).
-    - matching Marshmallow Schema for input validation and serialization
-      - Column definition, which simply derives from the ORM
-      - Nested field, loading policy, dumping policy,... the counterpart of relationships for the schema and equally requires fine grained configuration depending on your needs.
-    - Connect appropriate **service** and **controller** classes to each entity
-    - TODO: let you choose by entity/by method authentication levels on routes 
-    - ... everything else is automatically setup !
-- connect to external services
-  - KeyCloak -> Done
-    - /login endpoint returns keycloak login page
-      - Upon login the user may access his token
-      - This token has to be provided for all methods decorated with `@login_required` 
-    - In progress: Design reasonable permission system with respect to desired 'by method authentication level' feature.
-      - decorator taking groups as arguments ??
-  - AWS S3 bucket -> In progress
-    - Link file entities with `S3Service` and `S3Controller` classes
-    - On file creation order the app returns boto generated `presigned_url`s that can be followed by the user or client to directly upload files. 
+**Source Code**: <a href="https://github.com/bag-cnag/biodm" target="_blank">https://github.com/bag-cnag/biodm</a>
 
--> Technical [presentation](https://www.overleaf.com/read/wxpdnptnkpsy) 
+---
 
-## API Dependencies
+BioDM is a fast, stateless and asynchronous REST API framework with the following core features:
+
+- Provide standard HTTP REST-to-CRUD endpoints from **developper provided** entity definitions:
+  - SQLAlchemy tables
+  - marshmallow schema
+
+- Abstract services ecosystem:
+  - Permissions leveraging _Keycloak_
+  - Storage leveraging _S3_ protocol
+  - Jobs leveraging _Kubernetes_ cluster
+
+- Also sets up essentials:
+  - Liveness endpoint
+  - Login and token retrieval system
+  - OpenAPI schema generation
+
+## Install
+
+### Build wheel
+```bash
+python3 -m build
+pip3 install dist/biodm-*-py3-none-any.whl [--force-reinstall] [--no-deps]
+```
+
+### Dev: Editable mode
+```bash
+pip3 install -e .
+```
+
+### API Dependencies
 
 Python
 
 ```bash
-pip3 install uvicorn[uvloop]
 pip3 install sqlalchemy[asyncio]
 pip3 install python-keycloak
 pip3 install starlette
@@ -42,16 +49,13 @@ pip3 install asyncpg
 pip3 install boto3
 ```
 
-you may use the following
+To run the API you will also need an ASGI server i.e.
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip3 install -r src/requirements.txt
+pip3 install uvicorn[uvloop]
 ```
 
-## Setup services dependencies
-
-### Recommended: Quick setup
+### Dev: Mock service dependencies
+#### Recommended: Quick setup
 
 To start all at once and skip individual configuration below you may use the provided `compose.yml`.
 You may start all services using
@@ -78,14 +82,14 @@ cat >> /etc/hosts <<EOF
 EOF
 ```
 
-### Postgres DB
+#### Postgres DB
 ```bash
 docker pull postgres:16-bookworm
 docker run --name biodm-pg -e POSTGRES_PASSWORD=pass -d postgres:16-bookworm
 docker exec -u postgres biodm-pg createdb biodm
 ```
 
-### Keycloak
+#### Keycloak
 
 First you need to build the image yourself according to the [documentation](https://www.keycloak.org/server/containers) :
 
@@ -101,7 +105,7 @@ then
 docker run --name local_keycloak -e KEYCLOAK_USER=admin -e KEYCLOAK_PASSWORD=admin -p 8443:8080 keycloak:22.0.5_local-certs
 ```
 
-#### Configuration
+**Configuration:**
 Once keycloak is running you need to configure a realm and a client for the app to log in.
 Default values are:
 
@@ -132,7 +136,7 @@ KC_ADMIN={KEYCLOAK_ADMIN}
 KC_ADMIN_PASSWORD={KEYCLOAK_ADMIN_SECRET}
 ```
 
-### S3Mock
+#### S3Mock
 ```bash
 docker pull adobe/s3mock
 docker run -e initialBuckets=3trdevopal -e debug=true -p 9090:9090 -p 9191:9191 adobe/s3mock
@@ -142,8 +146,7 @@ docker run -e initialBuckets=3trdevopal -e debug=true -p 9090:9090 -p 9191:9191 
 ### Run app
 You may start the app like this
 ```bash
-cd src/
-python3 app.py
+python3 src/example/app.py
 ```
 
 ### Architecture
@@ -260,18 +263,3 @@ and
 
 and
 '-' operator for string search
-
-
-## Build and install
-### Static
-```bash
-python3 -m build
-cd dist/
-pip3 install biodm-*-py3-none-any.whl [--force-reinstall] [--no-deps]
-```
-
-### Editable mode
-```bash
-python3 -m venv venv_edit
-pip3 install -e .
-```
