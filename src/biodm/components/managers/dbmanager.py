@@ -9,18 +9,17 @@ from sqlalchemy.ext.asyncio import (
 from biodm.utils.utils import to_it, refresh_sqla_items
 from biodm.exceptions import PostgresUnavailableError
 
-from example.config import DATABASE_URL, DEBUG, DEV
 from ..table import Base
 
 
 class DatabaseManager(object):
     def __init__(self, app, sync=False) -> None:
         self.app = app
-        self.database_url = DATABASE_URL if sync else self.async_database_url()
+        self.database_url = app.config.DATABASE_URL if sync else self.async_database_url(app.config.DATABASE_URL)
         try:
             self.engine = create_async_engine(
                 self.database_url,
-                echo=DEBUG,
+                echo=app.config.DEBUG,
             )
             self.async_session = async_sessionmaker(
                 self.engine, 
@@ -31,8 +30,8 @@ class DatabaseManager(object):
             raise PostgresUnavailableError(f"Failed to initialize connection to Postgres: {e.error_message}")
 
     @staticmethod
-    def async_database_url() -> str:
-        return DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+    def async_database_url(url) -> str:
+        return url.replace("postgresql://", "postgresql+asyncpg://")
 
     @asynccontextmanager
     async def session(self) -> AsyncGenerator[AsyncSession, None]:
@@ -66,20 +65,19 @@ class DatabaseManager(object):
         """
 
         # Weak protection: restrict decorator on functions that looks like this.
-        if DEV:
-            argspec = getfullargspec(db_exec)
-            assert('self' in argspec.args)
-            assert(any((
-                'data'      in argspec.args,
-                'stmt'      in argspec.args,
-                'item'      in argspec.args,
-                'composite' in argspec.args
-            )))
-            assert('session' in argspec.args)
+        argspec = getfullargspec(db_exec)
+        assert('self' in argspec.args)
+        assert(any((
+            'data'      in argspec.args,
+            'stmt'      in argspec.args,
+            'item'      in argspec.args,
+            'composite' in argspec.args
+        )))
+        assert('session' in argspec.args)
 
         # Callable.
         async def wrapper(obj, arg, session: AsyncSession=None, serializer=None, **kwargs):
-            if DEV and serializer:
+            if obj.app.config.DEV and serializer:
                 from biodm.components.services import DatabaseService
                 assert(isinstance(obj, DatabaseService))
 

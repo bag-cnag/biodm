@@ -1,0 +1,3 @@
+-r common.txt
+biodm>=0.1.3
+uvicorn[uvloop]==0.29.0

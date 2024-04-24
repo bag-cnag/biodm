@@ -63,7 +63,9 @@ class HistoryMiddleware(BaseHTTPMiddleware):
 class Api(Starlette):
     logger = logging.getLogger(__name__)
 
-    def __init__(self, config=None, controllers=[], routes=[], *args, **kwargs):
+    def __init__(self, config=None, controllers=[], routes=[], tables=None, schemas=None, *args, **kwargs):
+        self.tables = tables
+        self.schemas = schemas
         self.config = config
 
         ## Managers

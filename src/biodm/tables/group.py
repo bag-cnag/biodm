@@ -3,7 +3,7 @@ from typing import Optional, List, TYPE_CHECKING
 from sqlalchemy import Column, String, Integer, ForeignKey, Uuid
 from sqlalchemy.orm import Mapped, relationship
 
-from biodm.components.table import Base
+from biodm.components import Base
 from .asso import asso_user_group
 
 if TYPE_CHECKING:

@@ -22,7 +22,7 @@ classifiers = [
 Repository = "https://github.com/bag-cnag/biodm.git"
 
 [tool.setuptools.dynamic]
-dependencies = {file = ["src/biodm/requirements.txt"]}
+dependencies = {file = ["src/requirements/common.txt"]}
 version = {attr = "biodm.__version__"}
 
 [tool.setuptools.packages.find]

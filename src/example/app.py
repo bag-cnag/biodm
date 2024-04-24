@@ -1,10 +1,14 @@
 #!/usr/bin/env python
+import os
+import sys
 import uvicorn
 
 from biodm.api import Api
 
 from example.entities.controllers import CONTROLLERS
-import example.config as config
+from example.entities import tables, schemas
+sys.path.append(os.path.join(os.path.dirname(__file__), "config"))
+import config as config
 
 
 def main():
@@ -13,6 +17,8 @@ def main():
         debug=config.DEBUG, 
         routes=[],
         controllers=CONTROLLERS,
+        tables=tables,
+        schemas=schemas
     )
     return app
 
