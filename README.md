@@ -2,6 +2,8 @@
 
 ---
 
+**Introduction Presentation**: <a href="https://www.overleaf.com/read/wxpdnptnkpsy" target="_blank">https://www.overleaf.com/read/wxpdnptnkpsy</a> 
+
 **Source Code**: <a href="https://github.com/bag-cnag/biodm" target="_blank">https://github.com/bag-cnag/biodm</a>
 
 ---
@@ -9,8 +11,8 @@
 BioDM is a fast, stateless and asynchronous REST API framework with the following core features:
 
 - Provide standard HTTP REST-to-CRUD endpoints from **developper provided** entity definitions:
-  - SQLAlchemy tables
-  - marshmallow schema
+  - _SQLAlchemy_ tables
+  - _marshmallow_ schemas
 
 - Abstract services ecosystem:
   - Permissions leveraging _Keycloak_
@@ -140,6 +142,12 @@ KC_ADMIN_PASSWORD={KEYCLOAK_ADMIN_SECRET}
 ```bash
 docker pull adobe/s3mock
 docker run -e initialBuckets=3trdevopal -e debug=true -p 9090:9090 -p 9191:9191 adobe/s3mock
+```
+
+### Generate documentation
+
+```bash
+python -m sphinx -b html docs/ docs/build/html
 ```
 
 ## Quickstart
