@@ -30,7 +30,7 @@ def overload_docstring(f):
     - https://stackoverflow.com/questions/1782843/python-decorator-handling-docstrings
     """
     async def wrapper(self, *args, **kwargs):
-        if self.app.DEV:
+        if self.app.config.DEV:
             assert(isinstance(self, ResourceController))
         return await getattr(super(self.__class__, self), f.__name__)(*args, **kwargs)
     wrapper.__name__ = f.__name__

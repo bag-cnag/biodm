@@ -1,7 +1,15 @@
 *bak
-*env
-venv*
-*egg*
-__pycache__
+.vscode/
+
+# Envs
+.env
+venv*/
+
+# Caches
+__pycache__/
+.pytest_cache/
+
+# Build artifacts
 build/
 dist/
+*.egg-info/

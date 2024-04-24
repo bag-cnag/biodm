@@ -13,7 +13,7 @@ from starlette.schemas import SchemaGenerator
 from starlette.types import ASGIApp
 
 from biodm.basics import CORE_CONTROLLERS
-from biodm.components.managers import DatabaseManager, KeycloakManager, S3Manager
+from biodm.managers import DatabaseManager, KeycloakManager, S3Manager
 from biodm.components.controllers import Controller
 from biodm.components.services import UnaryEntityService, CompositeEntityService
 from biodm.errors import onerror
@@ -75,7 +75,7 @@ class Api(Starlette):
 
         ## Controllers
         self.controllers = []
-        routes.extend(self.adopt_controllers(controllers + CORE_CONTROLLERS))
+        routes.extend(self.adopt_controllers(CORE_CONTROLLERS + controllers))
 
         ## Schema Generator
         self.schema_generator = SchemaGenerator({

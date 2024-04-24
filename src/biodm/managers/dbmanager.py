@@ -1,15 +1,13 @@
 from contextlib import asynccontextmanager, AsyncExitStack
 from inspect import getfullargspec
-from typing import AsyncGenerator, Any, List
+from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession, create_async_engine, async_sessionmaker
 )
 
-from biodm.utils.utils import to_it, refresh_sqla_items
+from biodm.components import Base
 from biodm.exceptions import PostgresUnavailableError
-
-from ..table import Base
 
 
 class DatabaseManager(object):
@@ -88,9 +86,11 @@ class DatabaseManager(object):
 
                 if not serializer:
                     return res
-                # Important to session refresh items before serialization.
-                await refresh_sqla_items(res, obj.table, session, level=2)
-                return serializer(res)
+
+                # Serialization has to be run sync.
+                def serialize(_, res):
+                    return serializer(res)
+                return await session.run_sync(serialize, res)
 
         wrapper.__name__ = db_exec.__name__
         wrapper.__doc__ = db_exec.__doc__

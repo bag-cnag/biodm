@@ -10,7 +10,7 @@ from starlette.datastructures import QueryParams
 
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it
 from biodm.components import Base
-from biodm.components.managers import DatabaseManager
+from biodm.managers import DatabaseManager
 from biodm.exceptions import FailedRead, FailedDelete, FailedUpdate
 
 
