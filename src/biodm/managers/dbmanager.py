@@ -1,6 +1,7 @@
+from __future__ import annotations
 from contextlib import asynccontextmanager, AsyncExitStack
 from inspect import getfullargspec
-from typing import AsyncGenerator
+from typing import AsyncGenerator, TYPE_CHECKING, Callable
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession, create_async_engine, async_sessionmaker
@@ -9,11 +10,15 @@ from sqlalchemy.ext.asyncio import (
 from biodm.components import Base
 from biodm.exceptions import PostgresUnavailableError
 
+if TYPE_CHECKING:
+    from biodm.api import Api
+    from biodm.components.services import DatabaseService
 
-class DatabaseManager(object):
-    def __init__(self, app, sync=False) -> None:
-        self.app = app
-        self.database_url = app.config.DATABASE_URL if sync else self.async_database_url(app.config.DATABASE_URL)
+
+class DatabaseManager():
+    def __init__(self, app: Api) -> None:
+        self.app: Api = app
+        self.database_url: str = self.async_database_url(app.config.DATABASE_URL)
         try:
             self.engine = create_async_engine(
                 self.database_url,
@@ -49,7 +54,7 @@ class DatabaseManager(object):
             await conn.run_sync(Base.metadata.create_all)
 
     @staticmethod
-    def in_session(db_exec):
+    def in_session(db_exec: Callable):
         """Decorator that ensures db_exec receives a session.
 
         session object is either passed as an argument (from nested obj creation)
@@ -74,15 +79,11 @@ class DatabaseManager(object):
         assert('session' in argspec.args)
 
         # Callable.
-        async def wrapper(obj, arg, session: AsyncSession=None, serializer=None, **kwargs):
-            if obj.app.config.DEV and serializer:
-                from biodm.components.services import DatabaseService
-                assert(isinstance(obj, DatabaseService))
-
+        async def wrapper(svc: DatabaseService, arg, session: AsyncSession=None, serializer: Callable=None, **kwargs):
             async with AsyncExitStack() as stack:
                 session = session if session else (
-                    await stack.enter_async_context(obj.session()))
-                res = await db_exec(obj, arg, session=session, **kwargs)
+                    await stack.enter_async_context(svc.app.db.session()))
+                res = await db_exec(svc, arg, session=session, **kwargs)
 
                 if not serializer:
                     return res

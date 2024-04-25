@@ -1,4 +1,6 @@
+from __future__ import annotations
 from typing import TYPE_CHECKING
+
 
 from sqlalchemy import (
     inspect, Column, Integer, text, String, TIMESTAMP, ForeignKey,
@@ -10,12 +12,13 @@ from sqlalchemy.orm.relationships import Relationship
 
 if TYPE_CHECKING:
     from biodm.tables import User, Group, ListGroup
+    from biodm.components.services import DatabaseService
 
 
 class Base(DeclarativeBase, AsyncAttrs):
     """Base class for ORM declarative Tables."""
     # Enable entity - service linkage.
-    svc = None
+    svc: DatabaseService = None
 
     @classmethod
     def relationships(cls):
@@ -26,6 +29,13 @@ class Base(DeclarativeBase, AsyncAttrs):
         """Returns target table of a property."""
         c = cls.col(name).property
         return c.target if isinstance(c, Relationship) else None
+
+    @classmethod
+    def pk(cls):
+        return (
+            str(pk).split('.')[-1] 
+            for pk in cls.__table__.primary_key.columns
+        )
 
     @classmethod
     def col(cls, name):
@@ -44,7 +54,7 @@ class Base(DeclarativeBase, AsyncAttrs):
         return cls.__name__.upper()
 
 
-class S3File(object):
+class S3File():
     """Class to use in order to have a file managed on S3 bucket associated to this table
         
         Defaults internal fields that are expected by S3Service."""
@@ -66,7 +76,7 @@ class S3File(object):
     validated_at = Column(TIMESTAMP(timezone=True), nullable=True)
 
 
-class Permission(object):
+class Permission():
     """Class that produces necessary fields to declare ressource permissions for an entity.
     
         for each action in [CREATE, READ, UPDATE, DELETE, DOWNLOAD]:

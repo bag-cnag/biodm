@@ -1,13 +1,17 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 from keycloak import KeycloakAdmin
 from keycloak import KeycloakOpenIDConnection
 from keycloak import KeycloakOpenID
 from keycloak.exceptions import KeycloakError, KeycloakDeleteError
 
 from biodm.exceptions import KeycloakUnavailableError, FailedDelete, FailedUpdate, FailedCreate
+if TYPE_CHECKING:
+    from biodm.api import Api
 
-
-class KeycloakManager(object):
-    def __init__(self, app) -> None:
+class KeycloakManager():
+    def __init__(self, app: Api) -> None:
         self.app = app
         try:
             self._connexion = KeycloakOpenIDConnection(
@@ -35,7 +39,7 @@ class KeycloakManager(object):
 
     async def auth_url(self, redirect_uri):
         return self.openid.auth_url(redirect_uri=redirect_uri, scope="openid", state="")
-    
+
     async def redeem_code_for_token(self, code, redirect_uri):
         return self.openid.token(grant_type="authorization_code", code=code, redirect_uri=redirect_uri)
 
@@ -47,12 +51,19 @@ class KeycloakManager(object):
 			key=enclose_idrsa(self.app.config.KC_PUBLIC_KEY), 
             options=self.app.config.JWT_OPTIONS
         )
-    
-    def _data_to_payload(self, data):
+
+    def _user_data_to_payload(self, data):
         USER_FIELDS = ("username", "email", "firstName", "lastName")
         return {
             field: data.get(field, "")
             for field in USER_FIELDS
+        }
+
+    def _group_data_to_payload(self, data):
+        GROUP_FIELDS = ("name", "name_parent")
+        return {
+            field: data.get(field, "")
+            for field in GROUP_FIELDS
         }
 
     async def create_user(self, data, groups=[]) -> str:
@@ -70,7 +81,7 @@ class KeycloakManager(object):
 
     async def update_user(self, id, data):
         try:
-            payload = self._data_to_payload(data)
+            payload = self._user_data_to_payload(data)
             return self.admin.update_user(user_id=id, payload=payload)
         except KeycloakError as e:
             raise FailedUpdate(f"Could not update Keycloak User(id={id}) with data: {data} -- msg: {e.error_message}.")
@@ -89,7 +100,7 @@ class KeycloakManager(object):
 
     async def update_group(self, id, data):
         try:
-            payload = self._data_to_payload(data)
+            payload = self._group_data_to_payload(data)
             return self.admin.update_group(group_id=id, payload=payload)
         except KeycloakError as e:
             raise FailedUpdate(f"Could not update Keycloak Group(id={id}) with data: {data} -- msg: {e.error_message}.")

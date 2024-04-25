@@ -1,18 +1,17 @@
+from __future__ import annotations
 from functools import partial
-from typing import Any, Tuple
+from typing import Any, Tuple, TYPE_CHECKING
 
-from marshmallow.schema import Schema
 from starlette.routing import Mount, Route
-from biodm.components import Base
-from biodm.components.services import (
-    DatabaseService, 
-    UnaryEntityService, 
-    CompositeEntityService,
-)
+
+from biodm.components.services import DatabaseService, UnaryEntityService, CompositeEntityService
 from biodm.exceptions import InvalidCollectionMethod, EmptyPayloadException
 from biodm.utils.utils import json_response
-
 from .controller import HttpMethod, EntityController
+
+if TYPE_CHECKING:
+    from biodm.components import Base
+    from marshmallow.schema import Schema
 
 
 def overload_docstring(f):
@@ -46,13 +45,10 @@ class ResourceController(EntityController):
                  entity: str=None,
                  table: Base=None,
                  schema: Schema=None):
-        self.entity = entity if entity else self._infer_entity_name()
+        self.resource = entity if entity else self._infer_entity_name()
         self.table = table if table else self._infer_table()
-        self.pk: Tuple[str, ...] = tuple(
-            str(pk).split('.')[-1] 
-            for pk in self.table.__table__.primary_key.columns
-        )
-        self.svc = self._infer_svc()(app=self.app, table=self.table, pk=self.pk)
+        self.pk = tuple(self.table.pk())
+        self.svc = self._infer_svc()(app=self.app, table=self.table)
         self.schema = schema() if schema else self._infer_schema()
 
     def _infer_entity_name(self) -> str:
@@ -60,12 +56,12 @@ class ResourceController(EntityController):
         return self.__class__.__name__.split("Controller")[0]
 
     @property
-    def prefix(self):
+    def prefix(self) -> str:
         """Computes route path prefix from entity name."""
-        return '/' + self.entity.lower() + 's'
+        return '/' + self.resource.lower() + 's'
     
     @property
-    def qp_id(self):
+    def qp_id(self) -> str:
         """Put primary key in queryparam form."""
         return "".join(["{" + k + "}_" for k in self.pk])[:-1]
 
@@ -79,16 +75,16 @@ class ResourceController(EntityController):
 
     def _infer_table(self) -> Base:
         try:
-            return self.app.tables.__dict__[self.entity]
+            return self.app.tables.__dict__[self.resource]
         except:
             raise ValueError(
-                f"{self.__class__.__name__} could not find {self.entity} Table."
+                f"{self.__class__.__name__} could not find {self.resource} Table."
                 " Alternatively if you are following another naming convention "
                 "you should provide it as 'table' arg when creating a new controller"
             )
 
     def _infer_schema(self) -> Schema:
-        isn = f"{self.entity}Schema"
+        isn = f"{self.resource}Schema"
         try:
             return self.app.schemas.__dict__[isn]()
         except:

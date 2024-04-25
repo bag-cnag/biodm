@@ -7,7 +7,7 @@ from biodm.exceptions import ImplementionErrror
 class KCController(ResourceController):
     """Controller for entities managed by keycloak (i.e. User/Group)."""
     def _infer_svc(self) -> KCService:
-        match self.entity.lower():
+        match self.resource.lower():
             case "user":
                 return KCUserService
             case "group":

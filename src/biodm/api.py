@@ -1,7 +1,7 @@
 from asyncio import wait_for, TimeoutError
 import logging
 import logging.config
-from typing import List
+from typing import List, Optional
 
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware, DispatchFunction, RequestResponseEndpoint
@@ -32,9 +32,7 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request, call_next):
         try:
-            return await wait_for(
-                call_next(request), 
-                timeout=self.timeout)
+            return await wait_for(call_next(request), timeout=self.timeout)
         except TimeoutError:
             return HTMLResponse("Request reached timeout.", status_code=504)
 
@@ -44,8 +42,8 @@ class HistoryMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, server_host: str) -> None:
         self.server_host = server_host
         super().__init__(app, self.dispatch)
-    
-    async def dispatch(self, request: Request, call_next) -> Response:
+
+    async def dispatch(self, request, call_next):
         if auth_header(request):
             app = History.svc.app
             username, _, _ = await extract_and_decode_token(app.kc, request)
@@ -56,7 +54,7 @@ class HistoryMiddleware(BaseHTTPMiddleware):
                 'method': request.method,
                 'content': body if body else ""
             }
-            await History.svc.create(h, stmt_only=False, serializer=None)
+            await History.svc.create(h, stmt_only=False)
         return await call_next(request)
 
 
@@ -71,7 +69,13 @@ class Api(Starlette):
     """
     logger = logging.getLogger(__name__)
 
-    def __init__(self, config=None, controllers=[], routes=[], tables=None, schemas=None, *args, **kwargs):
+    def __init__(self,
+                 config=None,
+                 controllers: Optional[List[Controller]]=[],
+                 routes: Optional[List[Route]]=[],
+                 tables=None,
+                 schemas=None,
+                 *args, **kwargs):
         self.tables = tables
         self.schemas = schemas
         self.config = config
@@ -102,8 +106,8 @@ class Api(Starlette):
             because the services needs to access the app instance.
             If more useful cases for this show up we might want to design a cleaner solution.
         """
-        History.svc = UnaryEntityService(app=self, table=History, pk=('timestamp', 'username_user'))
-        ListGroup.svc = CompositeEntityService(app=self, table=ListGroup, pk=('id',))
+        History.svc = UnaryEntityService(app=self, table=History)
+        ListGroup.svc = CompositeEntityService(app=self, table=ListGroup)
 
         super(Api, self).__init__(routes=routes, *args, **kwargs)
 

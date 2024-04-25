@@ -2,12 +2,13 @@ import io
 import json
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from marshmallow.schema import Schema, EXCLUDE
 
 from biodm.utils.utils import json_response
-
+if TYPE_CHECKING:
+    from biodm.api import Api
 
 class HttpMethod(Enum):
     GET = "GET"
@@ -20,7 +21,7 @@ class HttpMethod(Enum):
 class Controller(ABC):
     @classmethod
     def init(cls, app) -> None:
-        cls.app = app
+        cls.app: Api = app
         return cls()
 
     # Routes

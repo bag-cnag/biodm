@@ -1,5 +1,6 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import List, Any, overload, Tuple
+from typing import List, Any, Tuple, TYPE_CHECKING
 from contextlib import AsyncExitStack
 
 from sqlalchemy import select, update, delete
@@ -12,6 +13,8 @@ from biodm.utils.utils import unevalled_all, unevalled_or, to_it
 from biodm.components import Base
 from biodm.managers import DatabaseManager
 from biodm.exceptions import FailedRead, FailedDelete, FailedUpdate
+if TYPE_CHECKING:
+    from biodm.api import Api
 
 
 SUPPORTED_INT_OPERATORS = ('gt', 'ge', 'lt', 'le')
@@ -21,7 +24,7 @@ class DatabaseService(ABC):
     """Root Service class: manages database transactions for entities."""
     def __init__(self, app):
         self.logger = app.logger
-        self.app = app
+        self.app: Api = app
 
     @abstractmethod
     async def create(self, data, stmt_only=False, **kwargs):
@@ -100,10 +103,10 @@ class DatabaseService(ABC):
 
 class UnaryEntityService(DatabaseService):
     """Generic Service class for non-composite entities."""
-    def __init__(self, app, table: Base, pk: Tuple[str, ...], *args, **kwargs):
+    def __init__(self, app, table: Base, *args, **kwargs):
         # Entity info.
         self._table = table
-        self.pk = tuple(table.col(key) for key in pk)
+        self.pk = tuple(table.col(name) for name in table.pk())
         self.relationships = table.relationships()
         # Enable entity - service - table linkage so everything is conveniently available.
         table.svc = self
@@ -112,26 +115,13 @@ class UnaryEntityService(DatabaseService):
         super(UnaryEntityService, self).__init__(app=app, *args, **kwargs)
 
     def __repr__(self) -> str:
-        return("{}({!r})".format(self.__class__.__name__, self._table.__name__))
+        return "{}({!r})".format(self.__class__.__name__, self._table.__name__)
 
     @property
     def table(self) -> Base:
         return self._table
 
-    @property
-    def db(self):
-        return self.app.db
-
-    @property
-    def session(self) -> AsyncSession:
-        """Important for when @in_session is applied on a service method."""
-        return self.db.session
-
-    @overload
-    async def create(self, data, stmt_only: bool=True, **kwargs) -> Insert:
-        """..."""
-
-    async def create(self, data, stmt_only: bool=False, **kwargs) -> Base | List[Base]:
+    async def create(self, data, stmt_only: bool=False, **kwargs) -> Insert | Base | List[Base]:
         """CREATE one or many rows. data: schema validation result."""
         stmt = insert(self.table)
 
@@ -182,7 +172,7 @@ class UnaryEntityService(DatabaseService):
         item = self.table(**kw, **data)
         return await self._merge(item)
 
-    def _parse_int_operators(self, attr):
+    def _parse_int_operators(self, attr) -> Tuple[str, str]:
         input_op = attr.pop()
         match input_op.strip(')').split('('):
             case [('gt'| 'ge' | 'lt' | 'le') as op, arg]:
@@ -282,7 +272,7 @@ class UnaryEntityService(DatabaseService):
 
 class CompositeEntityService(UnaryEntityService):
     """Special case for Composite Entities (i.e. containing nested entities attributes)."""
-    class CompositeInsert(object):
+    class CompositeInsert():
         """Class to manage composite entities insertions."""
         def __init__(self, item: Insert, nested: dict={}, delayed: dict={}) -> None:
             self.item = item
@@ -290,7 +280,7 @@ class CompositeEntityService(UnaryEntityService):
             self.delayed = delayed
 
     @DatabaseManager.in_session
-    async def _insert_composite(self, composite: CompositeInsert, session: AsyncSession) -> Base | None:
+    async def _insert_composite(self, composite: CompositeInsert, session: AsyncSession) -> Base:
         # Insert all nested objects, and keep track.
         for key, sub in composite.nested.items():
             composite.nested[key] = await self._insert(sub, session)
@@ -319,21 +309,24 @@ class CompositeEntityService(UnaryEntityService):
             await session.commit()
         return item
 
-    async def _insert(self, stmt: Insert | CompositeInsert, session: AsyncSession=None) -> Base | None:
+    async def _insert(self, stmt: Insert | CompositeInsert, session: AsyncSession) -> Base:
         """Redirect in case of composite insert. Mid-level: No need for in_session decorator."""
         if isinstance(stmt, self.CompositeInsert):
             return await self._insert_composite(stmt, session)
-        else:
-            return await super(CompositeEntityService, self)._insert(stmt, session)
+        return await super(CompositeEntityService, self)._insert(stmt, session)
 
-    async def _insert_many(self, stmt: Insert | List[CompositeInsert], session: AsyncSession=None) -> List[Base]:
+    async def _insert_many(self,
+                           stmt: Insert | List[CompositeInsert],
+                           session: AsyncSession) -> List[Base]:
         """Redirect in case of composite insert. Mid-level: No need for in_session decorator."""
         if isinstance(stmt, Insert):
             return await super(CompositeEntityService, self)._insert_many(stmt, session)
-        else:
-            return [await self._insert_composite(composite, session) for composite in stmt]
+        return [await self._insert_composite(composite, session) for composite in stmt]
 
-    async def _create_one(self, data: dict, stmt_only: bool=False, **kwargs) -> Base | CompositeInsert:
+    async def _create_one(self,
+                          data: dict,
+                          stmt_only: bool=False,
+                          **kwargs) -> Base | CompositeInsert:
         """CREATE, accounting for nested entitites."""
         nested = {}
         delayed = {}
@@ -368,12 +361,16 @@ class CompositeEntityService(UnaryEntityService):
         return composite if stmt_only else await self._insert_composite(composite, **kwargs)
 
     # @DatabaseManager.in_session
-    async def _create_many(self, data: List[dict], stmt_only: bool=False, session: AsyncSession = None, **kwargs) -> List[Base] | List[CompositeInsert]:
+    async def _create_many(self,
+                           data: List[dict],
+                           stmt_only: bool=False,
+                           session: AsyncSession = None,
+                           **kwargs) -> List[Base] | List[CompositeInsert]:
         """Share session & top level stmt_only=True for list creation.
            Issues a session.commit() after each insertion."""
         async with AsyncExitStack() as stack:
             session = session if session else (
-                    await stack.enter_async_context(self.session()))
+                    await stack.enter_async_context(self.app.db.session()))
             composites = []
             for one in data:
                 composites.append(
@@ -384,7 +381,8 @@ class CompositeEntityService(UnaryEntityService):
                     await session.commit()
             return composites
 
-    async def create(self, data: List[dict] | dict, **kwargs) -> Base | CompositeInsert | List[Base] | List[CompositeInsert]:
+    async def create(self, data: List[dict] | dict, **kwargs) -> (
+            Base | CompositeInsert | List[Base] | List[CompositeInsert]):
         """CREATE, Handle list and single case."""
         f = self._create_many if isinstance(data, list) else self._create_one
         return await f(data, **kwargs)

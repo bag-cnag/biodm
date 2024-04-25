@@ -1,11 +1,14 @@
+from __future__ import annotations
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from boto3 import client 
+from boto3 import client
 from botocore.exceptions import ClientError
+if TYPE_CHECKING:
+    from biodm.api import Api
 
-
-class S3Manager(object):
-    def __init__(self, app) -> None:
+class S3Manager():
+    def __init__(self, app: Api):
         self.app = app
         self.s3_client = client('s3')
 

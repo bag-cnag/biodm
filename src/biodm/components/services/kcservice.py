@@ -15,13 +15,13 @@ class KCService(CompositeEntityService):
         return self.app.kc
 
     @abstractmethod
-    async def _read_or_create(self, **kwargs):
+    async def _read_or_create(self, **kwargs) -> str:
         """Try to read from DB, create on keycloak side if not present. Return id."""
         raise NotImplementedError
 
 
 class KCGroupService(KCService):
-    async def _read_or_create(self, data: dict):
+    async def _read_or_create(self, data: dict) -> str:
         try:
             return (await self.read(data["name"])).id
         except FailedRead:
@@ -53,7 +53,7 @@ class KCGroupService(KCService):
 
 
 class KCUserService(KCService):
-    async def _read_or_create(self, data, groups=[], group_ids=[]):
+    async def _read_or_create(self, data, groups=[], group_ids=[]) -> str:
         try:
             user = await self.read(data["username"])
             for gid in group_ids:
