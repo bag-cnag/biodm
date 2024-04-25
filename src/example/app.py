@@ -7,8 +7,7 @@ from biodm.api import Api
 
 from example.entities.controllers import CONTROLLERS
 from example.entities import tables, schemas
-sys.path.append(os.path.join(os.path.dirname(__file__), "config"))
-import config
+from example import config
 
 
 def main():

@@ -24,23 +24,23 @@ class AdminController(ResourceController):
         super().__init__(entity, table, schema)
 
     @admin_required
-    def create(self, *args, **kwargs):
+    async def create(self, *args, **kwargs):
         return super().create(*args, **kwargs)
 
-    def read(self, *args, **kwargs):
+    async def read(self, *args, **kwargs):
         return super().read(*args, **kwargs)
 
     @admin_required
-    def update(self, *args, **kwargs):
+    async def update(self, *args, **kwargs):
         return super().update(*args, **kwargs)
 
     @admin_required
-    def delete(self, *args, **kwargs):
+    async def delete(self, *args, **kwargs):
         return super().delete(*args, **kwargs)
     
     @admin_required
-    def create_update(self, *args, **kwargs):
+    async def create_update(self, *args, **kwargs):
         return super().create_update(*args, **kwargs)
     
-    def query(self, *args, **kwargs):
+    async def query(self, *args, **kwargs):
         return super().query(*args, **kwargs)

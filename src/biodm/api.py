@@ -52,7 +52,7 @@ class HistoryMiddleware(BaseHTTPMiddleware):
             body = await request.body()
             h = {
                 'username_user': username,
-                'endpoint': str(request.url).split(self.server_host)[-1],
+                'endpoint': str(request.url).rsplit(self.server_host, maxsplit=1)[-1],
                 'method': request.method,
                 'content': body if body else ""
             }
@@ -61,6 +61,14 @@ class HistoryMiddleware(BaseHTTPMiddleware):
 
 
 class Api(Starlette):
+    """ Main Server class.
+
+    - Sets up and holds managers + OpenAPI schema generator
+    - Instanciates CORE_CONTROLLERS and passed controllers
+      - Sets up routes
+    - adds our middlewares
+    - listens on events
+    """
     logger = logging.getLogger(__name__)
 
     def __init__(self, config=None, controllers=[], routes=[], tables=None, schemas=None, *args, **kwargs):

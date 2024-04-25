@@ -24,32 +24,32 @@ class DatabaseService(ABC):
         self.app = app
 
     @abstractmethod
-    async def create(self, stmt_only=False, **kwargs):
-        """CREATE one row."""
+    async def create(self, data, stmt_only=False, **kwargs):
+        """CREATE."""
         raise NotImplementedError
 
     @abstractmethod
-    async def read(self, **kwargs):
+    async def read(self, pk_val, **kwargs):
         """READ one row."""
         raise NotImplementedError
 
     @abstractmethod
-    async def update(self, **kwargs):
+    async def update(self, pk_val, data: dict, **kwargs):
         """UPDATE one row."""
         raise NotImplementedError
 
     @abstractmethod
-    async def create_update(self, **kwargs):
+    async def create_update(self, pk_val, data: dict):
         """CREATE UPDATE."""
         raise NotImplementedError
 
     @abstractmethod
-    async def delete(self, **kwargs):
+    async def delete(self, pk_val, **kwargs):
         """DELETE."""
         raise NotImplementedError
 
     @abstractmethod
-    async def filter(self, **kwargs):
+    async def filter(self, query_params: QueryParams, **kwargs):
         """FILTER."""
         raise NotImplementedError
 
@@ -389,10 +389,10 @@ class CompositeEntityService(UnaryEntityService):
         f = self._create_many if isinstance(data, list) else self._create_one
         return await f(data, **kwargs)
 
-    async def update(self, pk_val, data: dict) -> Base:
-        # TODO
-        raise NotImplementedError
+    # async def update(self, pk_val, data: dict) -> Base:
+    #     # TODO
+    #     raise NotImplementedError
 
-    async def delete(self, pk_val) -> Any:
-        # TODO
-        raise NotImplementedError
+    # async def delete(self, pk_val, **kwargs) -> Any:
+    #     # TODO
+    #     raise NotImplementedError

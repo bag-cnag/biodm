@@ -22,6 +22,7 @@ class RootController(Controller):
             Route("/schema", endpoint=self.openapi_schema),
         ]
 
+    @staticmethod
     async def live(_):
         """
         description: Liveness check endpoint

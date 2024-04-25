@@ -76,25 +76,25 @@ class EntityController(Controller, ABC):
 
     # CRUD operations
     @abstractmethod
-    def create(self, request):
+    async def create(self, request):
         raise NotImplementedError
 
     @abstractmethod
-    def read(self, request):
+    async def read(self, request):
         raise NotImplementedError
 
     @abstractmethod
-    def update(self, request):
+    async def update(self, request):
         raise NotImplementedError
 
     @abstractmethod
-    def delete(self, request):
+    async def delete(self, request):
         raise NotImplementedError
     
     @abstractmethod
-    def create_update(self, request):
+    async def create_update(self, request):
         raise NotImplementedError
     
     @abstractmethod
-    def query(self, request):
+    async def query(self, request):
         raise NotImplementedError

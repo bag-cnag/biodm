@@ -1,11 +1,12 @@
 import sys
 import pytest
+from pathlib import Path
 
 from starlette.responses import HTMLResponse
 from starlette.testclient import TestClient
 
-sys.path.append('../')
-import app
+
+from example import app
 
 
 # @pytest.fixture
@@ -14,6 +15,6 @@ import app
 
 def test_liveness():
     with TestClient(app.main(), backend_options={"use_uvloop": True}) as client:
-        response = client.get('/')
+        response = client.get('/live')
         assert response.status_code == 200
         assert response.text == 'live\n'
