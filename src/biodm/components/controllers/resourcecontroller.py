@@ -41,10 +41,7 @@ class ResourceController(EntityController):
     """Class for controllers exposing as a ressource.
 
     Implements and exposes routes under a prefix named as the resource and acts as a standard REST-to-CRUD."""
-    def __init__(self,
-                 entity: str=None,
-                 table: Base=None,
-                 schema: Schema=None):
+    def __init__(self, entity: str=None, table: Base=None, schema: Schema=None):
         self.resource = entity if entity else self._infer_entity_name()
         self.table = table if table else self._infer_table()
         self.pk = tuple(self.table.pk())
@@ -58,12 +55,12 @@ class ResourceController(EntityController):
     @property
     def prefix(self) -> str:
         """Computes route path prefix from entity name."""
-        return '/' + self.resource.lower() + 's'
-    
+        return f"/{self.resource.lower()}s"
+
     @property
     def qp_id(self) -> str:
         """Put primary key in queryparam form."""
-        return "".join(["{" + k + "}_" for k in self.pk])[:-1]
+        return "".join(["{" + f"{k}" + "}_" for k in self.pk])[:-1]
 
     def _infer_svc(self) -> DatabaseService:
         """Set approriate service for given controller.
@@ -96,11 +93,11 @@ class ResourceController(EntityController):
 
     def deserialize(self, data: Any):
         """Deserialize through an instanciated controller."""
-        return super(ResourceController, self).deserialize(data=data, schema=self.schema)
+        return super().deserialize(data=data, schema=self.schema)
 
     def serialize(self, data: Any, many: bool) -> (str | Any):
         """Serialize through an instanciated controller."""
-        return super(ResourceController, self).serialize(data, self.schema, many)
+        return super().serialize(data, self.schema, many)
 
     # https://restfulapi.net/http-methods/
     def routes(self, child_routes=[]) -> Mount:
@@ -121,7 +118,7 @@ class ResourceController(EntityController):
         if not pk_val:
             raise InvalidCollectionMethod
         return pk_val
-    
+
     async def _extract_body(self, request):
         body = await request.body()
         if not body:
@@ -144,10 +141,11 @@ class ResourceController(EntityController):
                 data=validated_data,
                 stmt_only=False,
                 serializer=partial(
-                    self.serialize,
-                    **{"many": isinstance(validated_data, list)}
-                )
-            ), status_code=201)
+                    self.serialize, **{"many": isinstance(validated_data, list)}
+                ),
+            ),
+            status_code=201,
+        )
 
     async def read(self, request):
         """
@@ -166,8 +164,10 @@ class ResourceController(EntityController):
         return json_response(
             data=await self.svc.read(
                 pk_val=self._extract_pk_val(request),
-                serializer=partial(self.serialize, **{"many": False})
-            ), status_code=200)
+                serializer=partial(self.serialize, **{"many": False}),
+            ),
+            status_code=200,
+        )
 
     async def update(self, request):
         # TODO: Implement PATCH ?
@@ -192,16 +192,19 @@ class ResourceController(EntityController):
         validated_data = self.deserialize(await self._extract_body(request))
         return json_response(
             data=await self.svc.create_update(
-                pk_val=self._extract_pk_val(request),
-                data=validated_data
-            ), status_code=200)
+                pk_val=self._extract_pk_val(request), data=validated_data
+            ),
+            status_code=200,
+        )
 
     async def query(self, request):
         return json_response(
             await self.svc.filter(
                 query_params=request.query_params,
-                serializer=partial(self.serialize, many=True)
-            ), status_code=200)
+                serializer=partial(self.serialize, many=True),
+            ),
+            status_code=200,
+        )
 
         # Parses a querystring on the route /ressources/search?{querystring}
         # querystring shape:

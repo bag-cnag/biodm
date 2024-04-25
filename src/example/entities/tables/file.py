@@ -4,6 +4,7 @@ from sqlalchemy import Column, Integer, ForeignKey, Boolean, String, ForeignKeyC
 from sqlalchemy.orm import Mapped, relationship
 from biodm.components.table import Base, S3File, Permission
 # from .asso import asso_dataset_tag
+
 if TYPE_CHECKING:
     from .dataset import Dataset
 

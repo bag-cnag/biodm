@@ -15,7 +15,8 @@ if TYPE_CHECKING:
     from biodm.components.services import DatabaseService
 
 
-class DatabaseManager():
+class DatabaseManager:
+    """Manages DB side query execution."""
     def __init__(self, app: Api) -> None:
         self.app: Api = app
         self.database_url: str = self.async_database_url(app.config.DATABASE_URL)
@@ -25,12 +26,12 @@ class DatabaseManager():
                 echo=app.config.DEBUG,
             )
             self.async_session = async_sessionmaker(
-                self.engine, 
+                self.engine,
                 class_=AsyncSession,
                 expire_on_commit=False,
             )
         except Exception as e:
-            raise PostgresUnavailableError(f"Failed to initialize connection to Postgres: {e.error_message}")
+            raise PostgresUnavailableError(f"Failed to connect to Postgres: {e.error_message}")
 
     @staticmethod
     def async_database_url(url) -> str:
@@ -58,7 +59,7 @@ class DatabaseManager():
         """Decorator that ensures db_exec receives a session.
 
         session object is either passed as an argument (from nested obj creation)
-            or a new context manager is opened. 
+            or a new context manager is opened.
         This decorator guarantees exactly 1 session per request, contextlib.AsyncExitStack() below allows for conditional context management.
 
         Also performs serialization **within the session**: important for lazy nested attributes) when passed a serializer.
@@ -76,20 +77,31 @@ class DatabaseManager():
             'item'      in argspec.args,
             'composite' in argspec.args
         )))
-        assert('session' in argspec.args)
+        assert 'session' in argspec.args
 
-        # Callable.
-        async def wrapper(svc: DatabaseService, arg, session: AsyncSession=None, serializer: Callable=None, **kwargs):
+        # Callable.
+        async def wrapper(
+            svc: DatabaseService,
+            arg,
+            session: AsyncSession = None,
+            serializer: Callable = None,
+            **kwargs,
+        ):
             async with AsyncExitStack() as stack:
-                session = session if session else (
-                    await stack.enter_async_context(svc.app.db.session()))
+                # Produce session
+                session = (
+                    session if session
+                    else await stack.enter_async_context(svc.app.db.session())
+                )
+                # Execute DB Query
                 res = await db_exec(svc, arg, session=session, **kwargs)
 
                 if not serializer:
                     return res
 
-                # Serialization has to be run sync.
+                # Serialize in a sync session.
                 def serialize(_, res):
+                    """recieves an unused session argument from run_sync."""
                     return serializer(res)
                 return await session.run_sync(serialize, res)
 

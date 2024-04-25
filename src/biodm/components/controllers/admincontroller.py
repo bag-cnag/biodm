@@ -12,11 +12,13 @@ class AdminController(ResourceController):
         - READ require an admin token based on read_public flag 
         - CREATE/UPDATE/DELETE require an admin token 
     """
-    def __init__(self, 
-                 entity: str = None, 
-                 table: Base = None, 
-                 schema: Schema = None, 
-                 read_public: bool=True):
+    def __init__(
+        self,
+        entity: str = None,
+        table: Base = None,
+        schema: Schema = None,
+        read_public: bool = True,
+    ):
         if not read_public:
             self.read = admin_required(self.create)
             self.query = admin_required(self.query)
@@ -37,10 +39,10 @@ class AdminController(ResourceController):
     @admin_required
     async def delete(self, *args, **kwargs):
         return super().delete(*args, **kwargs)
-    
+
     @admin_required
     async def create_update(self, *args, **kwargs):
         return super().create_update(*args, **kwargs)
-    
+
     async def query(self, *args, **kwargs):
         return super().query(*args, **kwargs)

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped, relationship
 
 from biodm.components.table import Base
 from .asso import asso_user_group
+
 if TYPE_CHECKING:
     from .group import Group
 

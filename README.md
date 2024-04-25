@@ -25,15 +25,15 @@ BioDM is a fast, stateless and asynchronous REST API framework with the followin
   - OpenAPI schema generation
 
 ## Install
-
-### Build wheel
+### Using pip
 ```bash
-python3 -m build
-pip3 install dist/biodm-*-py3-none-any.whl [--force-reinstall] [--no-deps]
+pip3 install git+https://github.com/bag-cnag/biodm
 ```
 
 ### Dev: Editable mode
 ```bash
+git clone https://github.com/bag-cnag/biodm
+cd biodm/
 pip3 install -e .
 ```
 

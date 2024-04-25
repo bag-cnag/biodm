@@ -7,6 +7,7 @@ from typing import Any, TYPE_CHECKING
 from marshmallow.schema import Schema, EXCLUDE
 
 from biodm.utils.utils import json_response
+
 if TYPE_CHECKING:
     from biodm.api import Api
 
@@ -45,10 +46,13 @@ class Controller(ABC):
           200:
               description: Returns the Schema as a JSON response.
         """
-        return json_response(json.dumps(
-            self.schema_gen.get_schema(routes=self.routes().routes),
-            indent=self.app.config.INDENT
-        ), status_code=200)
+        return json_response(
+            json.dumps(
+                self.schema_gen.get_schema(routes=self.routes().routes),
+                indent=self.app.config.INDENT,
+            ),
+            status_code=200,
+        )
 
 
 class EntityController(Controller, ABC):

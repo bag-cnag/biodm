@@ -13,11 +13,12 @@ from biodm.utils.utils import unevalled_all, unevalled_or, to_it
 from biodm.components import Base
 from biodm.managers import DatabaseManager
 from biodm.exceptions import FailedRead, FailedDelete, FailedUpdate
+
 if TYPE_CHECKING:
     from biodm.api import Api
 
 
-SUPPORTED_INT_OPERATORS = ('gt', 'ge', 'lt', 'le')
+SUPPORTED_INT_OPERATORS = ("gt", "ge", "lt", "le")
 
 
 class DatabaseService(ABC):
@@ -104,7 +105,7 @@ class DatabaseService(ABC):
 class UnaryEntityService(DatabaseService):
     """Generic Service class for non-composite entities."""
     def __init__(self, app, table: Base, *args, **kwargs):
-        # Entity info.
+        # Entity info.
         self._table = table
         self.pk = tuple(table.col(name) for name in table.pk())
         self.relationships = table.relationships()
@@ -121,7 +122,9 @@ class UnaryEntityService(DatabaseService):
     def table(self) -> Base:
         return self._table
 
-    async def create(self, data, stmt_only: bool=False, **kwargs) -> Insert | Base | List[Base]:
+    async def create(
+        self, data, stmt_only: bool = False, **kwargs
+    ) -> Insert | Base | List[Base]:
         """CREATE one or many rows. data: schema validation result."""
         stmt = insert(self.table)
 
@@ -147,10 +150,7 @@ class UnaryEntityService(DatabaseService):
 
     def gen_cond(self, pk_val):
         """Generates WHERE condition from pk definition and values."""
-        return unevalled_all([
-                pk == pk.type.python_type(val)
-                for pk, val in zip(self.pk, pk_val)
-            ])
+        return unevalled_all([pk == pk.type.python_type(val) for pk, val in zip(self.pk, pk_val)])
 
     async def create_update(self, pk_val, data: dict) -> Base:
         """CREATE or UPDATE one row."""
@@ -175,7 +175,7 @@ class UnaryEntityService(DatabaseService):
     def _parse_int_operators(self, attr) -> Tuple[str, str]:
         input_op = attr.pop()
         match input_op.strip(')').split('('):
-            case [('gt'| 'ge' | 'lt' | 'le') as op, arg]:
+            case [("gt" | "ge" | "lt" | "le") as op, arg]:
                 return (op, arg)
             case _:
                 raise ValueError(
@@ -186,7 +186,7 @@ class UnaryEntityService(DatabaseService):
         """READ rows filted on query parameters."""
         stmt = select(self.table)
         for dskey, csval in query_params.items():
-            attr, values = dskey.split('.'), csval.split(',')
+            attr, values = dskey.split("."), csval.split(",")
             # exclude = False
             # if attr == 'exclude' and values == 'True':
             #     exclude = True
@@ -206,7 +206,7 @@ class UnaryEntityService(DatabaseService):
                 stmt = stmt.join(jtable)
                 table = jtable
 
-            # Get field info from last joined table.
+            # Get field info from last joined table.
             col, ctype = table.colinfo(attr[-1])
 
             # Numerical operators.
@@ -220,18 +220,18 @@ class UnaryEntityService(DatabaseService):
                 op = getattr(col, f"__{op}__")
                 stmt = stmt.where(op(ctype(val)))
 
-            ## Filters
+            ## Filters
             # Wildcards.
             wildcards = []
             for i, v in enumerate(values):
-                if '*' in v:
+                if "*" in v:
                     wildcards.append(values.pop(i))
-                elif v == '':
+                elif v == "":
                     values.pop(i)
 
             if wildcards and ctype is not str:
                 raise ValueError(
-                    f"Using wildcards '*' in /search is only allowed"
+                    f"Using wildcard symbol '*' in /search is only allowed"
                      " for text fields.")
 
             stmt = stmt.where(
@@ -240,7 +240,7 @@ class UnaryEntityService(DatabaseService):
                     for w in wildcards
             )) if wildcards else stmt
 
-            # Regular equality conditions.
+            # Regular equality conditions.
             stmt = stmt.where(
                 unevalled_or(
                     col == ctype(v)
@@ -258,10 +258,10 @@ class UnaryEntityService(DatabaseService):
 
     async def update(self, pk_val, data: dict, **kwargs) -> Base:
         """UPDATE one row."""
-        stmt = update(self.table
-                ).where(self.gen_cond(pk_val)
-                    ).values(**data
-                        ).returning(self.table)
+        stmt = (update(self.table)
+                .where(self.gen_cond(pk_val))
+                .values(**data)
+                .returning(self.table))
         return await self._update(stmt, **kwargs)
 
     async def delete(self, pk_val, **kwargs) -> Any:
@@ -274,13 +274,17 @@ class CompositeEntityService(UnaryEntityService):
     """Special case for Composite Entities (i.e. containing nested entities attributes)."""
     class CompositeInsert():
         """Class to manage composite entities insertions."""
-        def __init__(self, item: Insert, nested: dict={}, delayed: dict={}) -> None:
+        def __init__(self, item: Insert, nested: dict={}, delayed: dict={}):
             self.item = item
             self.nested = nested
             self.delayed = delayed
 
     @DatabaseManager.in_session
-    async def _insert_composite(self, composite: CompositeInsert, session: AsyncSession) -> Base:
+    async def _insert_composite(
+        self, 
+        composite: CompositeInsert, 
+        session: AsyncSession
+    ) -> Base:
         # Insert all nested objects, and keep track.
         for key, sub in composite.nested.items():
             composite.nested[key] = await self._insert(sub, session)
@@ -292,7 +296,7 @@ class CompositeEntityService(UnaryEntityService):
         # Populate main object with nested object id if matching field is found.
         # TODO: hypehen the importance of that convention in the documentation.
         for key, sub in composite.nested.items():
-            attr = f'id_{key}'
+            attr = f"id_{key}"
             if hasattr(item, attr):
                 item.__setattr__(attr, sub.id)
         await session.commit()
@@ -315,18 +319,22 @@ class CompositeEntityService(UnaryEntityService):
             return await self._insert_composite(stmt, session)
         return await super()._insert(stmt, session)
 
-    async def _insert_many(self,
-                           stmt: Insert | List[CompositeInsert],
-                           session: AsyncSession) -> List[Base]:
+    async def _insert_many(
+        self,
+        stmt: Insert | List[CompositeInsert],
+        session: AsyncSession
+    ) -> List[Base]:
         """Redirect in case of composite insert. Mid-level: No need for in_session decorator."""
         if isinstance(stmt, Insert):
             return await super()._insert_many(stmt, session)
         return [await self._insert_composite(composite, session) for composite in stmt]
 
-    async def _create_one(self,
-                          data: dict,
-                          stmt_only: bool=False,
-                          **kwargs) -> Base | CompositeInsert:
+    async def _create_one(
+        self,
+        data: dict,
+        stmt_only: bool=False,
+        **kwargs,
+    ) -> Base | CompositeInsert:
         """CREATE, accounting for nested entitites."""
         nested = {}
         delayed = {}
@@ -334,7 +342,8 @@ class CompositeEntityService(UnaryEntityService):
         # For all table relationships, check whether data contains that item.
         for key, rel in self.relationships.items():
             sub = data.get(key)
-            if not sub: continue
+            if not sub: 
+                continue
 
             # Retrieve associated service.
             svc = rel.target.decl_class.svc
@@ -360,12 +369,13 @@ class CompositeEntityService(UnaryEntityService):
         composite = self.CompositeInsert(item=stmt, nested=nested, delayed=delayed)
         return composite if stmt_only else await self._insert_composite(composite, **kwargs)
 
-    # @DatabaseManager.in_session
-    async def _create_many(self,
-                           data: List[dict],
-                           stmt_only: bool=False,
-                           session: AsyncSession = None,
-                           **kwargs) -> List[Base] | List[CompositeInsert]:
+    async def _create_many(
+        self,
+        data: List[dict],
+        stmt_only: bool = False,
+        session: AsyncSession = None,
+        **kwargs,
+    ) -> List[Base] | List[CompositeInsert]:
         """Share session & top level stmt_only=True for list creation.
            Issues a session.commit() after each insertion."""
         async with AsyncExitStack() as stack:
@@ -381,8 +391,9 @@ class CompositeEntityService(UnaryEntityService):
                     await session.commit()
             return composites
 
-    async def create(self, data: List[dict] | dict, **kwargs) -> (
-            Base | CompositeInsert | List[Base] | List[CompositeInsert]):
+    async def create(
+        self, data: List[dict] | dict, **kwargs
+    ) -> Base | CompositeInsert | List[Base] | List[CompositeInsert]:
         """CREATE, Handle list and single case."""
         f = self._create_many if isinstance(data, list) else self._create_one
         return await f(data, **kwargs)

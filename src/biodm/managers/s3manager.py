@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from boto3 import client
 from botocore.exceptions import ClientError
+
 if TYPE_CHECKING:
     from biodm.api import Api
 
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
 """
 
 
-class S3Manager():
+class S3Manager:
     """Manages requests with an S3 storage instance."""
     def __init__(self, app: Api):
         self.app = app

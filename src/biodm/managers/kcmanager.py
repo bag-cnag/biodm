@@ -7,10 +7,12 @@ from keycloak import KeycloakOpenID
 from keycloak.exceptions import KeycloakError, KeycloakDeleteError
 
 from biodm.exceptions import KeycloakUnavailableError, FailedDelete, FailedUpdate, FailedCreate
+
 if TYPE_CHECKING:
     from biodm.api import Api
 
-class KeycloakManager():
+
+class KeycloakManager:
     def __init__(self, app: Api) -> None:
         self.app = app
         try:
@@ -20,14 +22,18 @@ class KeycloakManager():
                 password=self.app.config.KC_ADMIN_PASSWORD,
                 user_realm_name="master",
                 realm_name=self.app.config.KC_REALM,
-                verify=(not self.app.config.DEV)
+                verify=(not self.app.config.DEV),
             )
-            self._openid = KeycloakOpenID(server_url=self.app.config.KC_HOST,
-                                    client_id=self.app.config.CLIENT_ID,
-                                    realm_name=self.app.config.KC_REALM,
-                                    client_secret_key=self.app.config.CLIENT_SECRET)
+            self._openid = KeycloakOpenID(
+                server_url=self.app.config.KC_HOST,
+                client_id=self.app.config.CLIENT_ID,
+                realm_name=self.app.config.KC_REALM,
+                client_secret_key=self.app.config.CLIENT_SECRET,
+            )
         except KeycloakError as e:
-            raise KeycloakUnavailableError(f"Failed to initialize connection to Keycloak: {e.error_message}")
+            raise KeycloakUnavailableError(
+                f"Failed to initialize connection to Keycloak: {e.error_message}"
+            )
 
     @property
     def admin(self):

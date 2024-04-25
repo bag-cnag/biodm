@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped, relationship
 
 from biodm.components.table import Base
 from .asso import asso_dataset_tag
+
 if TYPE_CHECKING:
     from .dataset import Dataset
 
