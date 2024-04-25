@@ -1,12 +1,6 @@
-from typing import Optional, List, TYPE_CHECKING
-
-from sqlalchemy import Column, String, Integer, ForeignKey, TIMESTAMP, text
-from sqlalchemy.orm import Mapped, relationship
+from sqlalchemy import Column, String, ForeignKey, TIMESTAMP, text
 
 from biodm.components import Base
-
-if TYPE_CHECKING:
-    from .user import User
 
 
 class History(Base):

@@ -17,7 +17,7 @@ class S3Service(UnaryEntityService):
     async def create(self, data, **kwargs):
         """CREATE accounting for generation of presigned url for 2step file upload."""
         name = data.get("name")
-        url = self.create_presigned_post(name)
+        url = self.app.s3.create_presigned_post(name)
         if not url:
             raise Exception("Could not generate presigned url.")
         data["url"] = url

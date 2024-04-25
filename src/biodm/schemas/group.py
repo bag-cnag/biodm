@@ -5,10 +5,6 @@ from marshmallow.fields import String, List, Nested, Integer
 class GroupSchema(Schema):
     """Schema for Keycloak Groups. 
        id field is purposefully left out as it is managed internally."""
-    # class Meta:
-    #     model = Group
-    #     include_fk = True
-    #     load_instance = True
     name = String(required=True)
     # Test
     n_members = Integer(required=False)

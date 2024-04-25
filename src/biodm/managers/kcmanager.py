@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from keycloak import KeycloakAdmin
 from keycloak import KeycloakOpenIDConnection
@@ -37,13 +37,13 @@ class KeycloakManager():
     def openid(self):
         return self._openid
 
-    async def auth_url(self, redirect_uri):
+    async def auth_url(self, redirect_uri: str):
         return self.openid.auth_url(redirect_uri=redirect_uri, scope="openid", state="")
 
-    async def redeem_code_for_token(self, code, redirect_uri):
+    async def redeem_code_for_token(self, code: str, redirect_uri: str):
         return self.openid.token(grant_type="authorization_code", code=code, redirect_uri=redirect_uri)
 
-    async def decode_token(self, token):
+    async def decode_token(self, token: str):
         def enclose_idrsa(idrsa) -> str:
             return f"-----BEGIN PUBLIC KEY-----\n {idrsa} \n-----END PUBLIC KEY-----"
 
@@ -52,21 +52,21 @@ class KeycloakManager():
             options=self.app.config.JWT_OPTIONS
         )
 
-    def _user_data_to_payload(self, data):
+    def _user_data_to_payload(self, data: dict):
         USER_FIELDS = ("username", "email", "firstName", "lastName")
         return {
             field: data.get(field, "")
             for field in USER_FIELDS
         }
 
-    def _group_data_to_payload(self, data):
+    def _group_data_to_payload(self, data: dict):
         GROUP_FIELDS = ("name", "name_parent")
         return {
             field: data.get(field, "")
             for field in GROUP_FIELDS
         }
 
-    async def create_user(self, data, groups=[]) -> str:
+    async def create_user(self, data: dict, groups: List[str]=[]) -> str:
         payload = self._data_to_payload(data)
         payload.update({
             "enabled": True,
@@ -79,39 +79,39 @@ class KeycloakManager():
         except KeycloakError as e:
             raise FailedCreate(f"Could not create Keycloak Group with data: {payload} -- msg: {e.error_message}")
 
-    async def update_user(self, id, data):
+    async def update_user(self, id: str, data: dict):
         try:
             payload = self._user_data_to_payload(data)
             return self.admin.update_user(user_id=id, payload=payload)
         except KeycloakError as e:
             raise FailedUpdate(f"Could not update Keycloak User(id={id}) with data: {data} -- msg: {e.error_message}.")
 
-    async def delete_user(self, id) -> None:
+    async def delete_user(self, id: str) -> None:
         try:
             self.admin.delete_user(id)
         except KeycloakDeleteError as e:
             raise FailedDelete(f"Could not delete Keycloak User(id={id}): {e.error_message}.")
 
-    async def create_group(self, data) -> str:
+    async def create_group(self, data: dict) -> str:
         try:
             return self.admin.create_group({"name": data["name"]})
         except KeycloakError as e:
             raise FailedCreate(f"Could not create Keycloak Group with data: {data} -- msg: {e.error_message}")
 
-    async def update_group(self, id, data):
+    async def update_group(self, id: str, data: dict):
         try:
             payload = self._group_data_to_payload(data)
             return self.admin.update_group(group_id=id, payload=payload)
         except KeycloakError as e:
             raise FailedUpdate(f"Could not update Keycloak Group(id={id}) with data: {data} -- msg: {e.error_message}.")
 
-    async def delete_group(self, id):
+    async def delete_group(self, id: str):
         try:
             return self.admin.delete_group(id)
         except KeycloakDeleteError as e:
             raise FailedDelete(f"Could not delete Keycloak Group(id={id}): {e.error_message}.")
 
-    async def group_user_add(self, user_id, group_id):
+    async def group_user_add(self, user_id: str, group_id: str):
         try:
             return self.admin.group_user_add(user_id, group_id)
         except KeycloakError as e:

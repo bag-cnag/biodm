@@ -112,7 +112,7 @@ class UnaryEntityService(DatabaseService):
         table.svc = self
         table.__table__.decl_class = table
 
-        super(UnaryEntityService, self).__init__(app=app, *args, **kwargs)
+        super().__init__(app=app, *args, **kwargs)
 
     def __repr__(self) -> str:
         return "{}({!r})".format(self.__class__.__name__, self._table.__name__)
@@ -217,7 +217,7 @@ class UnaryEntityService(DatabaseService):
                         " only allowed for numerical fields."
                     )
                 op, val = operator
-                op = col.__getattr__(f"__{op}__")
+                op = getattr(col, f"__{op}__")
                 stmt = stmt.where(op(ctype(val)))
 
             ## Filters
@@ -300,7 +300,7 @@ class CompositeEntityService(UnaryEntityService):
         # Populate many-to-one fields with delayed lists.
         for key in composite.delayed.keys():
             items = await self._insert_many(composite.delayed[key], session)
-            mto = await item.awaitable_attrs.__getattr__(key)
+            mto = await getattr(item.awaitable_attrs, key)
             if isinstance(mto, list):
                 mto.extend(items)
             else:
@@ -313,14 +313,14 @@ class CompositeEntityService(UnaryEntityService):
         """Redirect in case of composite insert. Mid-level: No need for in_session decorator."""
         if isinstance(stmt, self.CompositeInsert):
             return await self._insert_composite(stmt, session)
-        return await super(CompositeEntityService, self)._insert(stmt, session)
+        return await super()._insert(stmt, session)
 
     async def _insert_many(self,
                            stmt: Insert | List[CompositeInsert],
                            session: AsyncSession) -> List[Base]:
         """Redirect in case of composite insert. Mid-level: No need for in_session decorator."""
         if isinstance(stmt, Insert):
-            return await super(CompositeEntityService, self)._insert_many(stmt, session)
+            return await super()._insert_many(stmt, session)
         return [await self._insert_composite(composite, session) for composite in stmt]
 
     async def _create_one(self,
