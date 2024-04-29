@@ -1,9 +1,3 @@
-class MissingService(RuntimeError):
-    """Raised when a controller expects a service that is not present."""
-
-class ImplementionErrror(RuntimeError):
-    """Raised when a wrong use of components is detected."""
-
 class RequestError(RuntimeError):
     detail = None
     orig = None
@@ -18,17 +12,37 @@ class DBError(RuntimeError):
     sa_error = None
 
 
+class ImplementionErrror(RuntimeError):
+    """Raised when a wrong use of components is detected."""
+
+
+##Services
+class MissingService(RuntimeError):
+    """Raised when a controller expects a service that is not present."""
+
+
 class PostgresUnavailableError(RuntimeError):
     """Raised when Postgres failed to initialize."""
+
 
 class KeycloakUnavailableError(RuntimeError):
     """Raised when Keycloak failed to initialize."""
 
 
-class EmptyPayloadException(RuntimeError):
+## Payload
+class PayloadEmptyError(RuntimeError):
     """Raised when a route expecting a payload, is reached without one."""
 
 
+class PayloadJSONDecodingError(RuntimeError):
+    """Raised when payload data failed to be parsed in JSON format."""
+
+
+class PayloadValidationError(RuntimeError):
+    """Raised when input data could not be coerced into an entity.""" 
+
+
+## Routing
 class InvalidCollectionMethod(RuntimeError):
     """Raised when a unit method is accesed as a collection."""
     def __init__(self, _, orig=None):
@@ -40,20 +54,26 @@ class UnauthorizedError(RequestError):
     """Raised when a request on a group restricted route is sent by an unauthorized user."""
 
 
-class FailedCreate(RequestError):
+
+## DB
+class FailedCreate(DBError):
     """Could not create record."""
 
 
-class FailedRead(RequestError):
+class FailedRead(DBError):
     """Requested record doesn't exist."""
 
 
-class FailedUpdate(RequestError):
+class FailedUpdate(DBError):
     """Raised when an update operation is not successful."""
 
 
-class FailedDelete(RequestError):
+class FailedDelete(DBError):
     """Raised when a delete operation is not successful."""
+
+
+class AsyncDBError(DBError):
+    """Raised when asyncpg fails."""
 
 
 class MissingDB(RequestError):

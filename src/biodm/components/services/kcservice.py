@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Any, List
 
 from biodm.components import Base
@@ -8,7 +8,7 @@ from biodm.utils.utils import to_it
 from .dbservice import CompositeEntityService
 
 
-class KCService(CompositeEntityService, ABC):
+class KCService(CompositeEntityService):
     """Abstract class for local keycloak entities."""
     @property
     def kc(self):
@@ -17,13 +17,13 @@ class KCService(CompositeEntityService, ABC):
 
     @abstractmethod
     async def read_or_create(self, *args, **kwargs) -> str:
-        """Try to read from DB, create on keycloak side if not present. Return id."""
+        """Try to read from DB, create on keycloak side if not present.
+           Return id: UUID in string form."""
         raise NotImplementedError
 
 
 class KCGroupService(KCService):
     async def read_or_create(self, data: dict) -> str:
-        """"""
         try:
             return (await self.read(data["name"])).id
         except FailedRead:
@@ -38,9 +38,9 @@ class KCGroupService(KCService):
                 group['id'] = await self.read_or_create(group)
                 # Then Users.
                 for user in group.get("users", []):
-                    user['id'] = await User.svc.read_or_create(user,
-                                                                [group["name"]],
-                                                                [group['id']])
+                    user['id'] = await User.svc.read_or_create(
+                        user, [group["name"]], [group['id']]
+                    )
         # DB
         return await super().create(data, stmt_only=stmt_only, **kwargs)
 
@@ -58,7 +58,6 @@ class KCGroupService(KCService):
 
 class KCUserService(KCService):
     async def read_or_create(self, data, groups: List[str]=[], group_ids=[]) -> str:
-        """"""
         try:
             user = await self.read(data["username"])
             for gid in group_ids:

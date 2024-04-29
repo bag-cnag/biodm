@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession, create_async_engine, async_sessionmaker
 )
 
-from biodm.components import Component, Base
+from biodm.component import ApiComponent
+from biodm.components import Base
 from biodm.exceptions import PostgresUnavailableError
 
 if TYPE_CHECKING:
@@ -15,9 +16,9 @@ if TYPE_CHECKING:
     from biodm.components.services import DatabaseService
 
 
-class DatabaseManager(Component):
+class DatabaseManager(ApiComponent):
     """Manages DB side query execution."""
-    def __init__(self, app: Api) -> None:
+    def __init__(self, app: Api):
         super().__init__(app=app)
         self.database_url: str = self.async_database_url(app.config.DATABASE_URL)
         try:
@@ -90,8 +91,10 @@ class DatabaseManager(Component):
             """ Applies a bit of arguments manipulation whose goal is to maximize
                 convenience of use of the decorator by allowing explicing or implicit 
                 argument calling.
-
                 Relevant doc: https://docs.python.org/3/library/inspect.html#inspect.Signature.bind
+
+                Then produces and passes down a session if needed.
+                Finally after the function returns, serialization is applied if needed.
             """ 
             serializer = kwargs.pop('serializer', None)
             bound_args = signature(db_exec).bind_partial(*args, **kwargs)

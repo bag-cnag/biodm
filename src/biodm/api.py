@@ -16,12 +16,17 @@ from biodm.basics import CORE_CONTROLLERS, k8scontroller
 from biodm.managers import DatabaseManager, KeycloakManager, S3Manager, K8sManager
 from biodm.components.controllers import Controller
 from biodm.components.services import UnaryEntityService, CompositeEntityService
-from biodm.errors import onerror
+from biodm.error import onerror
 from biodm.exceptions import RequestError
 from biodm.utils.utils import to_it
 from biodm.utils.security import extract_and_decode_token, auth_header
 from biodm.tables import History, ListGroup
 from biodm import __version__ as CORE_VERSION
+try:
+    import kubernetes as k8s
+    HAS_K8s = True
+except:
+    HAS_K8s = False
 
 
 class TimeoutMiddleware(BaseHTTPMiddleware):
@@ -81,13 +86,12 @@ class Api(Starlette):
         self.schemas = schemas
         self.config = config
 
-        self._k8s_enabled = self._detect_k8s()
-
         ## Managers.
         self.db = DatabaseManager(app=self)
         self.kc = KeycloakManager(app=self)
         self.s3 = S3Manager(app=self)
-        self.k8s = K8sManager(app=self)
+        if HAS_K8s:
+            self.k8s = K8sManager(app=self)
 
         ## Controllers.
         self.controllers = []
@@ -96,7 +100,7 @@ class Api(Starlette):
             self.adopt_controllers(
                 CORE_CONTROLLERS  +
                 controllers or [] +
-                [k8scontroller] if self._k8s_enabled else []
+                [k8scontroller] if HAS_K8s else []
             )
         )
 
@@ -142,23 +146,10 @@ class Api(Starlette):
         # self.add_exception_handler(DatabaseError, on_error)
         # self.add_exception_handler(Exception, on_error)
 
-    # def scan_entities(self, ) -> List[Controller]:
-    #     """Make a pass over entities defined in instance to infer controllers"""
-    # TODO ?
-    #     ls = []
-    #     return ls
-
-    def _detect_k8s(self):
-        try:
-            import kubernetes
-            return True
-        except:
-            return False
-
-    def adopt_controllers(self, controllers: List[Controller]=None) -> List:
+    def adopt_controllers(self, controllers: List[Controller]) -> List:
         """Adopts controllers, and their associated routes."""
         routes = []
-        for controller in controllers or []:
+        for controller in controllers:
             # Instanciate.
             c = controller(app=self)
             # Fetch and add routes.

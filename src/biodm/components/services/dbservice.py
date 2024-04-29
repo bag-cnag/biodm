@@ -1,7 +1,4 @@
-from __future__ import annotations
-from abc import ABC, abstractmethod
-from typing import List, Any, Tuple, TYPE_CHECKING
-from contextlib import AsyncExitStack
+from typing import List, Any, Tuple
 
 from sqlalchemy import select, update, delete
 from sqlalchemy.dialects.postgresql import insert
@@ -10,18 +7,16 @@ from sqlalchemy.sql import Insert, Update, Delete, Select
 from starlette.datastructures import QueryParams
 
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it
-from biodm.components import Base, CRUDComponent
+from biodm.component import CRUDApiComponent
+from biodm.components import Base
 from biodm.managers import DatabaseManager
 from biodm.exceptions import FailedRead, FailedDelete, FailedUpdate
-
-if TYPE_CHECKING:
-    from biodm.api import Api
 
 
 SUPPORTED_INT_OPERATORS = ("gt", "ge", "lt", "le")
 
 
-class DatabaseService(CRUDComponent):
+class DatabaseService(CRUDApiComponent):
     """Root Service class: manages database transactions for entities."""
     @DatabaseManager.in_session
     async def _insert(self, stmt: Insert, session: AsyncSession) -> (Any | None):
@@ -240,7 +235,7 @@ class UnaryEntityService(DatabaseService):
 class CompositeEntityService(UnaryEntityService):
     """Special case for Composite Entities (i.e. containing nested entities attributes)."""
     class CompositeInsert:
-        """Class to manage composite entities insertions."""
+        """Class to hold composite entities statements before insertion."""
         def __init__(self, item: Insert, nested: dict, delayed: dict):
             self.item = item
             self.nested = nested or {}

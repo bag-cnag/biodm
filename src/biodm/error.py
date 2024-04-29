@@ -7,7 +7,7 @@ from .exceptions import (
     RequestError,
     FailedDelete,
     InvalidCollectionMethod,
-    EmptyPayloadException,
+    PayloadEmptyError,
     UnauthorizedError,
 )
 
@@ -27,7 +27,7 @@ class Error:
         return Response(
             content=json.dumps(
                 self.__dict__, 
-                indent=2 # TODO: take from config
+                indent=2
             ), status_code=self.status
         )
 
@@ -44,7 +44,7 @@ async def onerror(_, exc):
                 status = 404
             case InvalidCollectionMethod():
                 status = 405
-            case EmptyPayloadException():
+            case PayloadEmptyError():
                 status = 204
             case UnauthorizedError():
                 status = 511

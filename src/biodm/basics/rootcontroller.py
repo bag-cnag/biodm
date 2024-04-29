@@ -25,13 +25,13 @@ class RootController(Controller):
     @staticmethod
     async def live(_):
         """
-        description: Liveness check endpoint
+        description: Liveness check endpoint.
         """
         return PlainTextResponse("live\n")
 
     async def openapi_schema(self, _):
         """
-        description: Returns the full schema
+        description: Returns full API schema.
         """
         return json_response(json.dumps(
             self.schema_gen.get_schema(routes=self.app.routes),
@@ -52,7 +52,6 @@ class RootController(Controller):
                 https://mykeycloak/realms/myrealm/protocol/openid-connect/auth?scope=openid&response_type=code&client_id=myclientid&redirect_uri=http://myapp/syn_ack
         """
         auth_url = await self.app.kc.auth_url(redirect_uri=self.handshake())
-        # print(auth_url == login_url)
         return PlainTextResponse(auth_url + "\n")
 
 
@@ -61,6 +60,13 @@ class RootController(Controller):
 
             We get an authorization code that we redeem to keycloak for a token.
             This way the client_secret remains hidden to the user.
+        ---
+        description:
+        responses:
+          200:
+            description: Access token 'ey...verylongtoken'.
+          403:
+            description: Unauthorized.
         """
         code = request.query_params['code']
         token = await self.app.kc.redeem_code_for_token(code, redirect_uri=self.handshake())
@@ -69,5 +75,12 @@ class RootController(Controller):
 
     @login_required
     async def authenticated(self, request, userid, groups, projects):
-        """Route to check token validity."""
+        """
+        description: Route to check token validity.
+        responses:
+          200:
+            description: Userinfo - (user_id, groups, projects).
+          403:
+            description: Unauthorized.        
+        """
         return PlainTextResponse(f"{userid}, {groups}, {projects}\n")

@@ -1,18 +1,20 @@
 import io
 import json
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from enum import Enum
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from marshmallow.schema import Schema, EXCLUDE
+from marshmallow.exceptions import ValidationError
+from sqlalchemy.exc import MissingGreenlet
 
-from biodm.components import Component, CRUDComponent
+from biodm.component import ApiComponent, CRUDApiComponent
+from biodm.exceptions import PayloadJSONDecodingError, PayloadValidationError, AsyncDBError
 from biodm.utils.utils import json_response
 
-if TYPE_CHECKING:
-    from biodm.api import Api
 
 class HttpMethod(Enum):
+    """HTTP Methods."""
     GET = "GET"
     POST = "POST"
     PUT = "PUT"
@@ -20,7 +22,7 @@ class HttpMethod(Enum):
     DELETE = "DELETE"
 
 
-class Controller(Component):
+class Controller(ApiComponent):
     """Controller - An APP Component exposing:
       - a set of routes mapped to method endpoints
         - openapi schema generation for that given set
@@ -54,28 +56,32 @@ class Controller(Component):
         )
 
 
-class EntityController(Controller, CRUDComponent):
+class EntityController(Controller, CRUDApiComponent):
     """EntityController - A controller performing validation and serialization given a schema.
        Also requires CRUD methods implementation for that entity. 
     """
-    @staticmethod
-    def deserialize(data: Any, schema: Schema) -> (Any | list | dict | None):
-        """Deserialize statically passing a schema."""
+    schema: Schema
+
+    @classmethod
+    def deserialize(cls, data: Any) -> (Any | list | dict | None):
+        """Deserialize."""
         try:
             json_data = json.load(io.BytesIO(data))
-            schema.many = isinstance(json_data, list)
-            schema.unknown = EXCLUDE
-            return schema.loads(json_data=data)
-        # TODO: Finer error handling
-        # except ValidationError as e:
-        #     raise PayloadValidationError(e.messages)
-        # except JSONDecodeError as e:
-        #     raise PayloadDecodeError(e)
+            cls.schema.many = isinstance(json_data, list)
+            cls.schema.unknown = EXCLUDE
+            return cls.schema.loads(json_data=data)
+        except ValidationError as e:
+            raise PayloadValidationError(e)
+        except json.JSONDecodeError as e:
+            raise PayloadJSONDecodingError(e.messages)
         except Exception as e:
             raise e
 
-    @staticmethod
-    def serialize(data: Any, schema: Schema, many: bool) -> (str | Any):
-        """Serialize statically passing a schema."""
-        serialized = schema.dump(data, many=many)
-        return json.dumps(serialized, indent=2) # TODO: take from config
+    @classmethod
+    def serialize(cls, data: Any, many: bool) -> (str | Any):
+        """Serialize."""
+        try:
+            serialized = cls.schema.dump(data, many=many)
+            return json.dumps(serialized, indent=cls.app.config.INDENT)
+        except MissingGreenlet as e:
+            raise AsyncDBError(e)

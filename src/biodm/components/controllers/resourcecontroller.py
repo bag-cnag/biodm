@@ -4,8 +4,14 @@ from typing import Any, Tuple, TYPE_CHECKING
 
 from starlette.routing import Mount, Route
 
-from biodm.components.services import DatabaseService, UnaryEntityService, CompositeEntityService
-from biodm.exceptions import InvalidCollectionMethod, EmptyPayloadException
+from biodm.components.services import (
+    DatabaseService, 
+    UnaryEntityService, 
+    CompositeEntityService,
+    KCGroupService,
+    KCUserService
+)
+from biodm.exceptions import InvalidCollectionMethod, PayloadEmptyError
 from biodm.utils.utils import json_response
 from .controller import HttpMethod, EntityController
 
@@ -48,7 +54,7 @@ class ResourceController(EntityController):
         self.table = table if table else self._infer_table()
         self.pk = tuple(self.table.pk())
         self.svc = self._infer_svc()(app=self.app, table=self.table)
-        self.schema = schema() if schema else self._infer_schema()
+        self.__class__.schema = schema() if schema else self._infer_schema()
 
     def _infer_entity_name(self) -> str:
         """Infer entity name from controller name."""
@@ -68,11 +74,19 @@ class ResourceController(EntityController):
         """Set approriate service for given controller.
 
            Upon subclassing Controller, this method should be overloaded to provide
-           matching service. E.g. see KCController below or S3Controller.
+           matching service. This match case may be further populated with edge cases.
         """
-        return CompositeEntityService if self.table.relationships() else UnaryEntityService
+        match self.resource.lower():
+            case "user":
+                return KCUserService
+            case "group":
+                return KCGroupService
+            case _:
+                return CompositeEntityService if self.table.relationships() else UnaryEntityService
+
 
     def _infer_table(self) -> Base:
+        """Tries to import from instance module reference."""
         try:
             return self.app.tables.__dict__[self.resource]
         except:
@@ -83,6 +97,7 @@ class ResourceController(EntityController):
             )
 
     def _infer_schema(self) -> Schema:
+        """Tries to import from instance module reference."""
         isn = f"{self.resource}Schema"
         try:
             return self.app.schemas.__dict__[isn]()
@@ -93,16 +108,10 @@ class ResourceController(EntityController):
                 "you should provide it as 'schema' arg when creating a new controller"
             )
 
-    def deserialize(self, data: Any):
-        """Deserialize through an instanciated controller."""
-        return super().deserialize(data=data, schema=self.schema)
-
-    def serialize(self, data: Any, many: bool) -> (str | Any):
-        """Serialize through an instanciated controller."""
-        return super().serialize(data, self.schema, many)
-
-    # https://restfulapi.net/http-methods/
     def routes(self, child_routes=[]) -> Mount:
+        """Sets up standard RESTful endpoints. 
+
+        relevant doc: https://restfulapi.net/http-methods/"""
         return Mount(self.prefix, routes=[
             Route( '/',             self.create,         methods=[HttpMethod.POST.value]),
             Route( '/',             self.filter,         methods=[HttpMethod.GET.value]),
@@ -124,7 +133,7 @@ class ResourceController(EntityController):
     async def _extract_body(self, request):
         body = await request.body()
         if not body:
-            raise EmptyPayloadException
+            raise PayloadEmptyError
         return body
 
     async def create(self, request):

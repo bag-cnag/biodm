@@ -6,14 +6,14 @@ from keycloak import KeycloakOpenIDConnection
 from keycloak import KeycloakOpenID
 from keycloak.exceptions import KeycloakError, KeycloakDeleteError
 
-from biodm.components import Component
+from biodm.component import ApiComponent
 from biodm.exceptions import KeycloakUnavailableError, FailedDelete, FailedUpdate, FailedCreate
 
 if TYPE_CHECKING:
     from biodm.api import Api
 
 
-class KeycloakManager(Component):
+class KeycloakManager(ApiComponent):
     """Manages a service account connection and an admin connection.
     Use the first to authenticate tokens and the second to manage the realm.
     """
