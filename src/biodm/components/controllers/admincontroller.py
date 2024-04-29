@@ -19,30 +19,14 @@ class AdminController(ResourceController):
         schema: Schema = None,
         read_public: bool = True,
     ):
+        self.create = admin_required(self.create)
+        self.update = admin_required(self.update)
+        self.delete = admin_required(self.delete)
+        self.create_update = admin_required(self.create_update)
+
         if not read_public:
             self.read = admin_required(self.create)
-            self.query = admin_required(self.query)
+            self.filter = admin_required(self.filter)
+
 
         super().__init__(entity, table, schema)
-
-    @admin_required
-    async def create(self, *args, **kwargs):
-        return super().create(*args, **kwargs)
-
-    async def read(self, *args, **kwargs):
-        return super().read(*args, **kwargs)
-
-    @admin_required
-    async def update(self, *args, **kwargs):
-        return super().update(*args, **kwargs)
-
-    @admin_required
-    async def delete(self, *args, **kwargs):
-        return super().delete(*args, **kwargs)
-
-    @admin_required
-    async def create_update(self, *args, **kwargs):
-        return super().create_update(*args, **kwargs)
-
-    async def query(self, *args, **kwargs):
-        return super().query(*args, **kwargs)

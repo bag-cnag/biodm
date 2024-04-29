@@ -59,7 +59,7 @@ class ResourceController(EntityController):
 
     def _infer_entity_name(self) -> str:
         """Infer entity name from controller name."""
-        return self.__class__.__name__.split("Controller")[0]
+        return self.__class__.__name__.split('Controller', maxsplit=1)[0]
 
     @property
     def prefix(self) -> str:
@@ -90,24 +90,24 @@ class ResourceController(EntityController):
         """Tries to import from instance module reference."""
         try:
             return self.app.tables.__dict__[self.resource]
-        except:
+        except Exception as e:
             raise ValueError(
                 f"{self.__class__.__name__} could not find {self.resource} Table."
                 " Alternatively if you are following another naming convention "
                 "you should provide it as 'table' arg when creating a new controller"
-            )
+            ) from e
 
     def _infer_schema(self) -> Schema:
         """Tries to import from instance module reference."""
         isn = f"{self.resource}Schema"
         try:
             return self.app.schemas.__dict__[isn]()
-        except:
+        except Exception as e:
             raise ValueError(
                 f"{self.__class__.__name__} could not find {isn} Schema. "
                 "Alternatively if you are following another naming convention "
                 "you should provide it as 'schema' arg when creating a new controller"
-            )
+            ) from e
 
     def routes(self, child_routes=None) -> Mount:
         """Sets up standard RESTful endpoints. 

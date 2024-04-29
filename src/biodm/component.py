@@ -19,7 +19,6 @@ class ApiComponent(ABC):
 
 class CRUDApiComponent(ApiComponent, ABC):
     """API CRUD component Interface. Enforces CRUD methods on children classes."""
-    # pylint: disable=W0221
     @abstractmethod
     async def create(self, *args, **kwargs) -> Response:
         raise NotImplementedError

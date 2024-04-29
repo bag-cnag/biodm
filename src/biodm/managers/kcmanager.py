@@ -37,7 +37,7 @@ class KeycloakManager(ApiComponent):
         except KeycloakError as e:
             raise KeycloakUnavailableError(
                 f"Failed to initialize connection to Keycloak: {e.error_message}"
-            )
+            )  from e
 
     @property
     def admin(self):
@@ -55,7 +55,9 @@ class KeycloakManager(ApiComponent):
 
     async def redeem_code_for_token(self, code: str, redirect_uri: str):
         """Code for token."""
-        return self.openid.token(grant_type="authorization_code", code=code, redirect_uri=redirect_uri)
+        return self.openid.token(
+            grant_type="authorization_code", code=code, redirect_uri=redirect_uri
+        )
 
     async def decode_token(self, token: str):
         """Decode token."""
@@ -91,48 +93,69 @@ class KeycloakManager(ApiComponent):
         try:
             return self.admin.create_user(payload, exist_ok=True)
         except KeycloakError as e:
-            raise FailedCreate(f"Could not create Keycloak Group with data: {payload} -- msg: {e.error_message}")
+            raise FailedCreate(
+                "Could not create Keycloak Group with data: "
+                f"{payload} -- msg: {e.error_message}"
+            ) from e
 
-    async def update_user(self, id: str, data: dict):
+    async def update_user(self, user_id: str, data: dict):
         """Update user."""
         try:
             payload = self._user_data_to_payload(data)
-            return self.admin.update_user(user_id=id, payload=payload)
+            return self.admin.update_user(user_id=user_id, payload=payload)
         except KeycloakError as e:
-            raise FailedUpdate(f"Could not update Keycloak User(id={id}) with data: {data} -- msg: {e.error_message}.")
+            raise FailedUpdate(
+                "Could not update Keycloak "
+                f"User(id={user_id}) with data: {data} -- msg: {e.error_message}."
+            ) from e
 
-    async def delete_user(self, id: str) -> None:
+    async def delete_user(self, user_id: str) -> None:
         """Delete user with this id."""
         try:
-            self.admin.delete_user(id)
+            self.admin.delete_user(user_id)
         except KeycloakDeleteError as e:
-            raise FailedDelete(f"Could not delete Keycloak User(id={id}): {e.error_message}.")
+            raise FailedDelete(
+                "Could not delete Keycloak "
+                f"User(id={user_id}): {e.error_message}."
+            ) from e
 
     async def create_group(self, data: dict) -> str:
         """Create group."""
         try:
             return self.admin.create_group({"name": data["name"]})
         except KeycloakError as e:
-            raise FailedCreate(f"Could not create Keycloak Group with data: {data} -- msg: {e.error_message}")
+            raise FailedCreate(
+                "Could not create Keycloak Group with data: "
+                f"{data} -- msg: {e.error_message}"
+            ) from e
 
-    async def update_group(self, id: str, data: dict):
+    async def update_group(self, group_id: str, data: dict):
         """Update group."""
         try:
             payload = self._group_data_to_payload(data)
-            return self.admin.update_group(group_id=id, payload=payload)
+            return self.admin.update_group(group_id=group_id, payload=payload)
         except KeycloakError as e:
-            raise FailedUpdate(f"Could not update Keycloak Group(id={id}) with data: {data} -- msg: {e.error_message}.")
+            raise FailedUpdate(
+                "Could not update Keycloak "
+                f"Group(id={group_id}) with data: {data} -- msg: {e.error_message}."
+            ) from e
 
-    async def delete_group(self, id: str):
+    async def delete_group(self, user_id: str):
         """Delete group with this id."""
         try:
-            return self.admin.delete_group(id)
+            return self.admin.delete_group(user_id)
         except KeycloakDeleteError as e:
-            raise FailedDelete(f"Could not delete Keycloak Group(id={id}): {e.error_message}.")
+            raise FailedDelete(
+                "Could not delete Keycloak "
+                f"Group(id={user_id}): {e.error_message}."
+            ) from e
 
     async def group_user_add(self, user_id: str, group_id: str):
         """Add user with user_id to group with group_id."""
         try:
             return self.admin.group_user_add(user_id, group_id)
         except KeycloakError as e:
-            raise FailedCreate(f"Keycloak failed adding User(id={user_id}) to Group(id={group_id}): {e.error_message}")
+            raise FailedCreate(
+                "Keycloak failed adding "
+                f"User(id={user_id}) to Group(id={group_id}): {e.error_message}"
+            ) from e

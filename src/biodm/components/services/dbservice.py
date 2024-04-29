@@ -260,7 +260,7 @@ class CompositeEntityService(UnaryEntityService):
         for key, sub in composite.nested.items():
             attr = f"id_{key}"
             if hasattr(item, attr):
-                item.__setattr__(attr, sub.id)
+                setattr(item, attr, sub.id)
         await session.commit()
 
         # Populate many-to-one fields with delayed lists.

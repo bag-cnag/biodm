@@ -29,10 +29,12 @@ class Controller(ApiComponent):
     """
     @abstractmethod
     def routes(self, **kwargs):
+        """"""
         raise NotImplementedError
 
     @property
     def schema_gen(self):
+        """"""
         return self.app.schema_generator
 
     async def openapi_schema(self, _):
@@ -71,9 +73,9 @@ class EntityController(Controller, CRUDApiComponent):
             cls.schema.unknown = EXCLUDE
             return cls.schema.loads(json_data=data)
         except ValidationError as e:
-            raise PayloadValidationError(e)
+            raise PayloadValidationError(e) from e
         except json.JSONDecodeError as e:
-            raise PayloadJSONDecodingError(e.messages)
+            raise PayloadJSONDecodingError(e) from e
         except Exception as e:
             raise e
 
@@ -84,4 +86,4 @@ class EntityController(Controller, CRUDApiComponent):
             serialized = cls.schema.dump(data, many=many)
             return json.dumps(serialized, indent=cls.app.config.INDENT)
         except MissingGreenlet as e:
-            raise AsyncDBError(e)
+            raise AsyncDBError(e) from e
