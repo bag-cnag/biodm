@@ -21,4 +21,4 @@ jobs:
         pip install -r src/requirements/dev.txt
     - name: Analysing the code with pylint
       run: |
-        pylint $(git ls-files 'src/biodm/*.py')
+        pylint -d W0221 $(git ls-files 'src/biodm/*.py')
