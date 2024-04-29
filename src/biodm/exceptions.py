@@ -47,7 +47,7 @@ class InvalidCollectionMethod(RuntimeError):
     """Raised when a unit method is accesed as a collection."""
     def __init__(self, _, orig=None):
         detail = "Method not allowed on a collection."
-        return super().__init__(detail=detail)
+        super().__init__(detail=detail)
 
 
 class UnauthorizedError(RequestError):

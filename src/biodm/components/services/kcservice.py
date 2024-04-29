@@ -57,9 +57,10 @@ class KCGroupService(KCService):
 
 
 class KCUserService(KCService):
-    async def read_or_create(self, data, groups: List[str]=[], group_ids=[]) -> str:
+    async def read_or_create(self, data, groups: List[str]=None, group_ids=None) -> str:
         try:
             user = await self.read(data["username"])
+            group_ids = group_ids or []
             for gid in group_ids:
                 await self.kc.group_user_add(user.id, gid)
             return user.id

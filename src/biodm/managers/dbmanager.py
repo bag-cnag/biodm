@@ -3,9 +3,8 @@ from contextlib import asynccontextmanager, AsyncExitStack
 from inspect import getfullargspec, signature
 from typing import AsyncGenerator, TYPE_CHECKING, Callable
 
-from sqlalchemy.ext.asyncio import (
-    AsyncSession, create_async_engine, async_sessionmaker
-)
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from biodm.component import ApiComponent
 from biodm.components import Base
@@ -31,8 +30,8 @@ class DatabaseManager(ApiComponent):
                 class_=AsyncSession,
                 expire_on_commit=False,
             )
-        except Exception as e:
-            raise PostgresUnavailableError(f"Failed to connect to Postgres: {e.error_message}")
+        except SQLAlchemyError as e:
+            raise PostgresUnavailableError(f"Failed to connect to Postgres: {e}") from e
 
     @staticmethod
     def async_database_url(url) -> str:

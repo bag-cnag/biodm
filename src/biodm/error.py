@@ -26,7 +26,7 @@ class Error:
     def response(self):
         return Response(
             content=json.dumps(
-                self.__dict__, 
+                self.__dict__,
                 indent=2
             ), status_code=self.status
         )

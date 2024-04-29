@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class Base(DeclarativeBase, AsyncAttrs):
     """Base class for ORM declarative Tables."""
     # Enable entity - service linkage.
-    svc: DatabaseService = None
+    svc: DatabaseService
 
     @classmethod
     def relationships(cls):
@@ -33,13 +33,13 @@ class Base(DeclarativeBase, AsyncAttrs):
     @classmethod
     def pk(cls):
         return (
-            str(pk).split('.')[-1] 
+            str(pk).rsplit('.', maxsplit=1)[-1] 
             for pk in cls.__table__.primary_key.columns
         )
 
     @classmethod
     def col(cls, name):
-        """Returns columns object from name."""
+        """Return columns object from name."""
         return cls.__dict__[name]
 
     @classmethod
@@ -49,6 +49,7 @@ class Base(DeclarativeBase, AsyncAttrs):
         return c, c.type.python_type
 
     @declared_attr
+    @classmethod
     def __tablename__(cls) -> str:
         """Generate tablename."""
         return cls.__name__.upper()

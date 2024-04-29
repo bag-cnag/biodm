@@ -1,12 +1,12 @@
 from __future__ import annotations
 from functools import partial
-from typing import Any, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from starlette.routing import Mount, Route
 
 from biodm.components.services import (
-    DatabaseService, 
-    UnaryEntityService, 
+    DatabaseService,
+    UnaryEntityService,
     CompositeEntityService,
     KCGroupService,
     KCUserService
@@ -37,7 +37,7 @@ def overload_docstring(f):
     """
     async def wrapper(self, *args, **kwargs):
         if self.app.config.DEV:
-            assert(isinstance(self, ResourceController))
+            assert isinstance(self, ResourceController)
         return await getattr(super(self.__class__, self), f.__name__)(*args, **kwargs)
     wrapper.__name__ = f.__name__
     wrapper.__doc__ = f.__doc__
@@ -47,7 +47,8 @@ def overload_docstring(f):
 class ResourceController(EntityController):
     """Class for controllers exposing routes constituting a ressource.
 
-    Implements and exposes routes under a prefix named as the resource and acts as a standard REST-to-CRUD."""
+    Implements and exposes routes under a prefix named as the resource pluralized
+    that act as a standard REST-to-CRUD interface."""
     def __init__(self, app: Api, entity: str=None, table: Base=None, schema: Schema=None):
         super().__init__(app=app)
         self.resource = entity if entity else self._infer_entity_name()
@@ -108,10 +109,11 @@ class ResourceController(EntityController):
                 "you should provide it as 'schema' arg when creating a new controller"
             )
 
-    def routes(self, child_routes=[]) -> Mount:
+    def routes(self, child_routes=None) -> Mount:
         """Sets up standard RESTful endpoints. 
 
         relevant doc: https://restfulapi.net/http-methods/"""
+        child_routes = child_routes or []
         return Mount(self.prefix, routes=[
             Route( '/',             self.create,         methods=[HttpMethod.POST.value]),
             Route( '/',             self.filter,         methods=[HttpMethod.GET.value]),

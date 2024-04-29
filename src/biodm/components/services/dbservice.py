@@ -81,7 +81,7 @@ class UnaryEntityService(DatabaseService):
 
     def __repr__(self) -> str:
         """"""
-        return f"{self.__class__.__name__}({self._table.__name__})"
+        return f"{self.__class__.__name__}({self.table.__name__})"
 
     async def create(
         self, data, stmt_only: bool = False, **kwargs
