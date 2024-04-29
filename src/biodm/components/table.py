@@ -48,8 +48,8 @@ class Base(DeclarativeBase, AsyncAttrs):
         c = cls.col(name)
         return c, c.type.python_type
 
-    @declared_attr
     @classmethod
+    @declared_attr
     def __tablename__(cls) -> str:
         """Generate tablename."""
         return cls.__name__.upper()
