@@ -49,7 +49,6 @@ class Base(DeclarativeBase, AsyncAttrs):
         return c, c.type.python_type
 
     @declared_attr
-    @classmethod
     def __tablename__(cls) -> str:
         """Generate tablename."""
         return cls.__name__.upper()

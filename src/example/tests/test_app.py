@@ -1,10 +1,9 @@
 import sys
-import pytest
 from pathlib import Path
 
+import pytest
 from starlette.responses import HTMLResponse
 from starlette.testclient import TestClient
-
 
 from example import app
 
