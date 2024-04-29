@@ -39,17 +39,19 @@ class KCGroupService(KCService):
                 # Then Users.
                 for user in group.get("users", []):
                     user['id'] = await User.svc.read_or_create(user,
-                                                                [group["name"]], 
+                                                                [group["name"]],
                                                                 [group['id']])
         # DB
         return await super().create(data, stmt_only=stmt_only, **kwargs)
 
     async def update(self, pk_val, data: dict, **kwargs) -> Base:
+        """"""
         raise NotImplementedError
         await self.kc.update_group(await self.read(pk_val).id, data)
         return await super().update(id, data, **kwargs)
 
     async def delete(self, pk_val) -> Any:
+        """"""
         await self.kc.delete_group(await self.read(pk_val).id)
         return await super().delete(pk_val)
 

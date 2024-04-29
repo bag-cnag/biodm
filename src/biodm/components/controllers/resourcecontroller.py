@@ -10,6 +10,7 @@ from biodm.utils.utils import json_response
 from .controller import HttpMethod, EntityController
 
 if TYPE_CHECKING:
+    from biodm import Api
     from biodm.components import Base
     from marshmallow.schema import Schema
 
@@ -38,10 +39,11 @@ def overload_docstring(f):
 
 
 class ResourceController(EntityController):
-    """Class for controllers exposing as a ressource.
+    """Class for controllers exposing routes constituting a ressource.
 
     Implements and exposes routes under a prefix named as the resource and acts as a standard REST-to-CRUD."""
-    def __init__(self, entity: str=None, table: Base=None, schema: Schema=None):
+    def __init__(self, app: Api, entity: str=None, table: Base=None, schema: Schema=None):
+        super().__init__(app=app)
         self.resource = entity if entity else self._infer_entity_name()
         self.table = table if table else self._infer_table()
         self.pk = tuple(self.table.pk())
@@ -103,8 +105,8 @@ class ResourceController(EntityController):
     def routes(self, child_routes=[]) -> Mount:
         return Mount(self.prefix, routes=[
             Route( '/',             self.create,         methods=[HttpMethod.POST.value]),
-            Route( '/',             self.query,          methods=[HttpMethod.GET.value]),
-            Route( '/search',       self.query,          methods=[HttpMethod.GET.value]),
+            Route( '/',             self.filter,         methods=[HttpMethod.GET.value]),
+            Route( '/search',       self.filter,         methods=[HttpMethod.GET.value]),
             Route( '/schema',       self.openapi_schema, methods=[HttpMethod.GET.value]),
             Route(f'/{self.qp_id}', self.read,           methods=[HttpMethod.GET.value]),
             Route(f'/{self.qp_id}', self.delete,         methods=[HttpMethod.DELETE.value]),
@@ -189,6 +191,7 @@ class ResourceController(EntityController):
         return json_response("Deleted.", status_code=200)
 
     async def create_update(self, request):
+        """"""
         validated_data = self.deserialize(await self._extract_body(request))
         return json_response(
             data=await self.svc.create_update(
@@ -197,7 +200,23 @@ class ResourceController(EntityController):
             status_code=200,
         )
 
-    async def query(self, request):
+    async def filter(self, request):
+        """
+        querystring shape:
+            prop1=val1: query for entries where prop1 = val1
+            prop2=valx,valy: query for entries where prop2 = valx or arg2 = valy
+            prop3.propx=vala: query for entries where nested entity prop3 has property propx = vala
+            prop4.[lt|gt|le|ge](valu): query for numerical comparison operators
+            prop5=foo*: wildcard symbol '*' for string search 
+
+            all at once - separate using '&':
+                ?prop1=val1&prop2=valx,valy&prop3.propx=vala 
+        if querystring is empty -> return all
+        -> /ressource/search <==> /ressource/
+
+        ---
+        description: Parses a querystring on the route /ressources/search?{querystring}
+        """
         return json_response(
             await self.svc.filter(
                 query_params=request.query_params,
@@ -205,16 +224,3 @@ class ResourceController(EntityController):
             ),
             status_code=200,
         )
-
-        # Parses a querystring on the route /ressources/search?{querystring}
-        # querystring shape:
-        #     prop1=val1: query for entries where prop1 = val1
-        #     prop2=valx,valy: query for entries where prop2 = valx or arg2 = valy
-        #     prop3.propx=vala: query for entries where nested entity prop3 has property propx = vala
-        #     prop4.[lt|gt|le|ge](valu): query for numerical comparison operators
-        #     prop5=foo*: wildcard symbol '*' for string search 
-
-        #     all at once - separate using '&':
-        #         ?prop1=val1&prop2=valx,valy&prop3.propx=vala 
-        # if querystring is empty -> return all
-        # -> /ressource/search <==> /ressource/

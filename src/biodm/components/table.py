@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 
 from sqlalchemy import (
-    inspect, Column, Integer, text, String, TIMESTAMP, ForeignKey,
+    inspect, Column, Integer, text, String, TIMESTAMP, ForeignKey, UUID
 )
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
@@ -49,12 +49,13 @@ class Base(DeclarativeBase, AsyncAttrs):
         return c, c.type.python_type
 
     @declared_attr
+    @classmethod
     def __tablename__(cls) -> str:
         """Generate tablename."""
         return cls.__name__.upper()
 
 
-class S3File():
+class S3File:
     """Class to use in order to have a file managed on S3 bucket associated to this table
         
         Defaults internal fields that are expected by S3Service."""
@@ -68,15 +69,17 @@ class S3File():
         return Column(ForeignKey("USER.id"),    nullable=False)
 
     @declared_attr
+    @classmethod
     def user(cls) -> Mapped["User"]:
         return relationship(foreign_keys=[cls.id_user_uploader], lazy="immediate")
 
-    emited_at = Column(TIMESTAMP(timezone=True), server_default=text('now()'), 
+    emited_at = Column(TIMESTAMP(timezone=True),
+                       server_default=text('now()'), 
                        nullable=False)
-    validated_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    validated_at = Column(TIMESTAMP(timezone=True))
 
 
-class Permission():
+class Permission:
     """Class that produces necessary fields to declare ressource permissions for an entity.
     
         for each action in [CREATE, READ, UPDATE, DELETE, DOWNLOAD]:
@@ -95,6 +98,7 @@ class Permission():
         return Column(ForeignKey("LISTGROUP.id"), nullable=True)
 
     @declared_attr
+    @classmethod
     def ls_download(cls) -> Mapped["ListGroup"]:
         return relationship("ListGroup", foreign_keys=[cls.id_ls_download], lazy="joined")
 
@@ -103,6 +107,7 @@ class Permission():
         return Column(ForeignKey("LISTGROUP.id"), nullable=True)
 
     @declared_attr
+    @classmethod
     def ls_create(cls) -> Mapped["ListGroup"]:
         return relationship("ListGroup", foreign_keys=[cls.id_ls_create], lazy="joined")
 
@@ -111,6 +116,7 @@ class Permission():
         return Column(ForeignKey("LISTGROUP.id"), nullable=True)
 
     @declared_attr
+    @classmethod
     def ls_read(cls) -> Mapped["ListGroup"]:
         return relationship("ListGroup", foreign_keys=[cls.id_ls_read], lazy="joined")
     
@@ -119,6 +125,7 @@ class Permission():
         return Column(ForeignKey("LISTGROUP.id"), nullable=True)
 
     @declared_attr
+    @classmethod
     def ls_update(cls) -> Mapped["ListGroup"]:
         return relationship("ListGroup", foreign_keys=[cls.id_ls_update], lazy="joined")
 
@@ -127,5 +134,6 @@ class Permission():
         return Column(ForeignKey("GROUP.name"), nullable=True)
 
     @declared_attr
+    @classmethod
     def owner_group(cls) -> Mapped["Group"]:
         return relationship(foreign_keys=[cls.name_owner_group], lazy="joined")

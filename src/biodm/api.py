@@ -12,8 +12,8 @@ from starlette.routing import Route
 from starlette.schemas import SchemaGenerator
 from starlette.types import ASGIApp
 
-from biodm.basics import CORE_CONTROLLERS
-from biodm.managers import DatabaseManager, KeycloakManager, S3Manager
+from biodm.basics import CORE_CONTROLLERS, k8scontroller
+from biodm.managers import DatabaseManager, KeycloakManager, S3Manager, K8sManager
 from biodm.components.controllers import Controller
 from biodm.components.services import UnaryEntityService, CompositeEntityService
 from biodm.errors import onerror
@@ -71,25 +71,36 @@ class Api(Starlette):
 
     def __init__(self,
                  config=None,
-                 controllers: Optional[List[Controller]]=[],
-                 routes: Optional[List[Route]]=[],
+                 controllers: Optional[List[Controller]]=None,
+                 routes: Optional[List[Route]]=None,
                  tables=None,
                  schemas=None,
                  *args, **kwargs):
+        ## Instance Info.
         self.tables = tables
         self.schemas = schemas
         self.config = config
 
-        ## Managers
+        self._k8s_enabled = self._detect_k8s()
+
+        ## Managers.
         self.db = DatabaseManager(app=self)
         self.kc = KeycloakManager(app=self)
         self.s3 = S3Manager(app=self)
+        self.k8s = K8sManager(app=self)
 
-        ## Controllers
+        ## Controllers.
         self.controllers = []
-        routes.extend(self.adopt_controllers(CORE_CONTROLLERS + controllers))
+        routes = routes or []
+        routes.extend(
+            self.adopt_controllers(
+                CORE_CONTROLLERS  +
+                controllers or [] +
+                [k8scontroller] if self._k8s_enabled else []
+            )
+        )
 
-        ## Schema Generator
+        ## Schema Generator.
         self.schema_generator = SchemaGenerator({
             "openapi": "3.0.0", "info": {
                 "name": config.API_NAME, 
@@ -98,8 +109,9 @@ class Api(Starlette):
                 "backend_version": CORE_VERSION
         }})
 
-        ## Headless Services
-        """For entities that are managed internally: not exposing routes 
+        """Headless Services
+
+            For entities that are managed internally: not exposing routes 
             i.e. only ListGroups and History atm
 
             Since the controller normally instanciates the service, and it does so
@@ -112,17 +124,12 @@ class Api(Starlette):
         super(Api, self).__init__(routes=routes, *args, **kwargs)
 
         ## Middlewares
-        # History
         self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
-        # CORS
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
             allow_origins=[config.SERVER_HOST, config.KC_HOST, "*"], 
             allow_methods=["*"], allow_headers=["*"]
         )
-        # Session ?
-        # app.add_middleware(SessionMiddleware, secret_key=config.SECRET_KEY)
-        # Request timeout in production
         if not config.DEV:
             self.add_middleware(TimeoutMiddleware, timeout=config.SERVER_TIMEOUT)
 
@@ -141,12 +148,19 @@ class Api(Starlette):
     #     ls = []
     #     return ls
 
-    def adopt_controllers(self, controllers: List[Controller]=[]) -> List:
+    def _detect_k8s(self):
+        try:
+            import kubernetes
+            return True
+        except:
+            return False
+
+    def adopt_controllers(self, controllers: List[Controller]=None) -> List:
         """Adopts controllers, and their associated routes."""
         routes = []
-        for controller in controllers:
+        for controller in controllers or []:
             # Instanciate.
-            c = controller.init(app=self)
+            c = controller(app=self)
             # Fetch and add routes.
             routes.extend(to_it(c.routes()))
             # Keep Track of controllers.

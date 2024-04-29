@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 
 class Group(Base):
+    """Group table."""
     id = Column(Uuid, unique=True)
     name: Mapped[str] = Column(String(100), primary_key=True)
     # test

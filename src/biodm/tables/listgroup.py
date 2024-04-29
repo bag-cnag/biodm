@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from .group import Group
 
 class ListGroup(Base):
+    """ListGroup table."""
     id = Column(Integer, primary_key=True)
 
     groups: Mapped[List["Group"]] = relationship(

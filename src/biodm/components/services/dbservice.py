@@ -10,7 +10,7 @@ from sqlalchemy.sql import Insert, Update, Delete, Select
 from starlette.datastructures import QueryParams
 
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it
-from biodm.components import Base
+from biodm.components import Base, CRUDComponent
 from biodm.managers import DatabaseManager
 from biodm.exceptions import FailedRead, FailedDelete, FailedUpdate
 
@@ -21,42 +21,8 @@ if TYPE_CHECKING:
 SUPPORTED_INT_OPERATORS = ("gt", "ge", "lt", "le")
 
 
-class DatabaseService(ABC):
+class DatabaseService(CRUDComponent):
     """Root Service class: manages database transactions for entities."""
-    def __init__(self, app):
-        self.logger = app.logger
-        self.app: Api = app
-
-    @abstractmethod
-    async def create(self, data, stmt_only=False, **kwargs):
-        """CREATE."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def read(self, pk_val, **kwargs):
-        """READ one row."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def update(self, pk_val, data: dict, **kwargs):
-        """UPDATE one row."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def create_update(self, pk_val, data: dict):
-        """CREATE UPDATE."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def delete(self, pk_val, **kwargs):
-        """DELETE."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def filter(self, query_params: QueryParams, **kwargs):
-        """FILTER."""
-        raise NotImplementedError
-
     @DatabaseManager.in_session
     async def _insert(self, stmt: Insert, session: AsyncSession) -> (Any | None):
         """INSERT one into database."""
@@ -71,7 +37,8 @@ class DatabaseService(ABC):
     async def _select(self, stmt: Select, session: AsyncSession) -> (Any | None):
         """SELECT one from database."""
         row = await session.scalar(stmt)
-        if row: return row
+        if row:
+            return row
         raise FailedRead("Query returned no result.")
 
     @DatabaseManager.in_session
@@ -84,14 +51,16 @@ class DatabaseService(ABC):
         """UPDATE database entry."""
         result = await session.scalar(stmt)
         # result = (await session.execute(stmt)).scalar()
-        if result: return result
+        if result:
+            return result
         raise FailedUpdate("Query updated no result.")
 
     @DatabaseManager.in_session
     async def _merge(self, item: Base, session: AsyncSession) -> Base:
         """Use session.merge feature: sync local object with one from db."""
         item = await session.merge(item)
-        if item: return item
+        if item:
+            return item
         raise FailedUpdate("Query updated no result.")
 
     @DatabaseManager.in_session
@@ -106,7 +75,7 @@ class UnaryEntityService(DatabaseService):
     """Generic Service class for non-composite entities."""
     def __init__(self, app, table: Base, *args, **kwargs):
         # Entity info.
-        self._table = table
+        self.table = table
         self.pk = tuple(table.col(name) for name in table.pk())
         self.relationships = table.relationships()
         # Enable entity - service - table linkage so everything is conveniently available.
@@ -116,11 +85,8 @@ class UnaryEntityService(DatabaseService):
         super().__init__(app=app, *args, **kwargs)
 
     def __repr__(self) -> str:
-        return "{}({!r})".format(self.__class__.__name__, self._table.__name__)
-
-    @property
-    def table(self) -> Base:
-        return self._table
+        """"""
+        return f"{self.__class__.__name__}({self._table.__name__})"
 
     async def create(
         self, data, stmt_only: bool = False, **kwargs
@@ -173,6 +139,7 @@ class UnaryEntityService(DatabaseService):
         return await self._merge(item)
 
     def _parse_int_operators(self, attr) -> Tuple[str, str]:
+        """"""
         input_op = attr.pop()
         match input_op.strip(')').split('('):
             case [("gt" | "ge" | "lt" | "le") as op, arg]:
@@ -272,17 +239,17 @@ class UnaryEntityService(DatabaseService):
 
 class CompositeEntityService(UnaryEntityService):
     """Special case for Composite Entities (i.e. containing nested entities attributes)."""
-    class CompositeInsert():
+    class CompositeInsert:
         """Class to manage composite entities insertions."""
-        def __init__(self, item: Insert, nested: dict={}, delayed: dict={}):
+        def __init__(self, item: Insert, nested: dict, delayed: dict):
             self.item = item
-            self.nested = nested
-            self.delayed = delayed
+            self.nested = nested or {}
+            self.delayed = delayed or {}
 
     @DatabaseManager.in_session
     async def _insert_composite(
         self, 
-        composite: CompositeInsert, 
+        composite: CompositeInsert,
         session: AsyncSession
     ) -> Base:
         # Insert all nested objects, and keep track.
@@ -342,7 +309,7 @@ class CompositeEntityService(UnaryEntityService):
         # For all table relationships, check whether data contains that item.
         for key, rel in self.relationships.items():
             sub = data.get(key)
-            if not sub: 
+            if not sub:
                 continue
 
             # Retrieve associated service.
@@ -369,34 +336,34 @@ class CompositeEntityService(UnaryEntityService):
         composite = self.CompositeInsert(item=stmt, nested=nested, delayed=delayed)
         return composite if stmt_only else await self._insert_composite(composite, **kwargs)
 
+
+    @DatabaseManager.in_session
     async def _create_many(
         self,
         data: List[dict],
-        stmt_only: bool = False,
+        stmt_only: bool=False,
         session: AsyncSession = None,
         **kwargs,
     ) -> List[Base] | List[CompositeInsert]:
         """Share session & top level stmt_only=True for list creation.
-           Issues a session.commit() after each insertion."""
-        async with AsyncExitStack() as stack:
-            session = session if session else (
-                    await stack.enter_async_context(self.app.db.session()))
-            composites = []
-            for one in data:
-                composites.append(
-                    await self._create_one(
-                        one, stmt_only=stmt_only, session=session, **kwargs
-                ))
-                if not stmt_only:
-                    await session.commit()
-            return composites
+           Issues a session.commit() after each insertion.
+        """
+        composites = []
+        for one in data:
+            composites.append(
+                await self._create_one(
+                    one, stmt_only=stmt_only, session=session, **kwargs
+            ))
+            if not stmt_only:
+                await session.commit()
+        return composites
 
     async def create(
-        self, data: List[dict] | dict, **kwargs
+        self, data: List[dict] | dict, stmt_only: bool=False, **kwargs
     ) -> Base | CompositeInsert | List[Base] | List[CompositeInsert]:
         """CREATE, Handle list and single case."""
         f = self._create_many if isinstance(data, list) else self._create_one
-        return await f(data, **kwargs)
+        return await f(data, stmt_only, **kwargs)
 
     # async def update(self, pk_val, data: dict) -> Base:
     #     # TODO

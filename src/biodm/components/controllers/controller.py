@@ -6,6 +6,7 @@ from typing import Any, TYPE_CHECKING
 
 from marshmallow.schema import Schema, EXCLUDE
 
+from biodm.components import Component, CRUDComponent
 from biodm.utils.utils import json_response
 
 if TYPE_CHECKING:
@@ -19,13 +20,11 @@ class HttpMethod(Enum):
     DELETE = "DELETE"
 
 
-class Controller(ABC):
-    @classmethod
-    def init(cls, app) -> None:
-        cls.app: Api = app
-        return cls()
-
-    # Routes
+class Controller(Component):
+    """Controller - An APP Component exposing:
+      - a set of routes mapped to method endpoints
+        - openapi schema generation for that given set
+    """
     @abstractmethod
     def routes(self, **kwargs):
         raise NotImplementedError
@@ -55,8 +54,10 @@ class Controller(ABC):
         )
 
 
-class EntityController(Controller, ABC):
-    # Validation & Serialization
+class EntityController(Controller, CRUDComponent):
+    """EntityController - A controller performing validation and serialization given a schema.
+       Also requires CRUD methods implementation for that entity. 
+    """
     @staticmethod
     def deserialize(data: Any, schema: Schema) -> (Any | list | dict | None):
         """Deserialize statically passing a schema."""
@@ -78,28 +79,3 @@ class EntityController(Controller, ABC):
         """Serialize statically passing a schema."""
         serialized = schema.dump(data, many=many)
         return json.dumps(serialized, indent=2) # TODO: take from config
-
-    # CRUD operations
-    @abstractmethod
-    async def create(self, request):
-        raise NotImplementedError
-
-    @abstractmethod
-    async def read(self, request):
-        raise NotImplementedError
-
-    @abstractmethod
-    async def update(self, request):
-        raise NotImplementedError
-
-    @abstractmethod
-    async def delete(self, request):
-        raise NotImplementedError
-    
-    @abstractmethod
-    async def create_update(self, request):
-        raise NotImplementedError
-    
-    @abstractmethod
-    async def query(self, request):
-        raise NotImplementedError

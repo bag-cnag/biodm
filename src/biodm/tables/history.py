@@ -4,6 +4,7 @@ from biodm.components import Base
 
 
 class History(Base):
+    """History table."""
     timestamp = Column(TIMESTAMP(timezone=True), server_default=text('now()'), 
                        nullable=False, primary_key=True)
     username_user = Column(ForeignKey('USER.username'), primary_key=True)

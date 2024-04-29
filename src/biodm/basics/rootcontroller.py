@@ -11,7 +11,7 @@ from biodm.utils.utils import json_response
 
 class RootController(Controller):
     """
-    Bundles Routes located at the root of the app i.e. '/'
+    Bundles Routes located at the root of the app i.e. '/'.
     """
     def routes(self, **_) -> List[Route]:
         return [

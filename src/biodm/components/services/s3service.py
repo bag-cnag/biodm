@@ -38,6 +38,3 @@ class S3Service(UnaryEntityService):
     async def delete(self, **kwargs):
         """DELETE."""
         raise NotImplementedError
-
-
-

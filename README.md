@@ -30,6 +30,11 @@ BioDM is a fast, stateless and asynchronous REST API framework with the followin
 pip3 install git+https://github.com/bag-cnag/biodm
 ```
 
+To enable kubernetes functionalities you may use the following
+```bash
+pip3 install "biodm[kubernetes] @ git+https://github.com/bag-cnag/biodm"
+```
+
 ### Dev: Editable mode
 ```bash
 git clone https://github.com/bag-cnag/biodm
