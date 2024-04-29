@@ -1,4 +1,3 @@
-from abc import ABCMeta
 from functools import reduce
 import operator
 from os import path, utime
@@ -45,7 +44,12 @@ def unevalled_or(ls: List[Any]):
     return reduce(operator.or_, ls)
 
 
-async def refresh_sqla_items(item, table, session: AsyncSession, reverse_property: str=None, level: int=0):
+async def refresh_sqla_items(item, 
+                             table, 
+                             session: AsyncSession, 
+                             reverse_property: str=None, 
+                             level: int=0
+):
     """Ensures that lazy nested fields are loaded on n levels.
 
     No cleaner way of doing it with SQLAlchemy
@@ -65,7 +69,7 @@ async def refresh_sqla_items(item, table, session: AsyncSession, reverse_propert
             rev = None
             if rel._reverse_property:
                 rev = next(iter(rel._reverse_property))
-                rev = str(rev).split('.')[-1]
+                rev = str(rev).rsplit('.', maxsplit=1)[-1]
 
             target = one.target_table(attr_name).decl_class
             await refresh_sqla_items(

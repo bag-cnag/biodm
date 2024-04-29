@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 
 class User(Base):
+    """User table."""
     # KC ENDPOINT: /auth/admin/realms/{realm-name}/users/{id}
     id = Column(Uuid, unique=True)
     username = Column(String(50), nullable=False, primary_key=True)
@@ -19,6 +20,6 @@ class User(Base):
     lastName = Column(String(50))
 
     groups: Mapped[List["Group"]] = relationship(
-        secondary=asso_user_group, 
+        secondary=asso_user_group,
         back_populates="users"
     )

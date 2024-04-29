@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 from boto3 import client
 from botocore.exceptions import ClientError
 
+from biodm.components import Component
+
 if TYPE_CHECKING:
     from biodm.api import Api
 
@@ -26,21 +28,23 @@ if TYPE_CHECKING:
 """
 
 
-class S3Manager:
+class S3Manager(Component):
     """Manages requests with an S3 storage instance."""
     def __init__(self, app: Api):
-        self.app = app
+        super().__init__(app=app)
         self.s3_client = client('s3')
 
     def create_presigned_post(self,
                               object_name,
-                              fields=[],
-                              conditions=[],
+                              fields=None,
+                              condition=None,
                               expiration=None):
         """
         From boto3 official doc:
         - https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-presigned-urls.html
         """
+        fields = fields or []
+        conditions = conditions or []
         expiration = expiration if expiration else self.app.config.S3_URL_EXPIRATION
         conditions.append({"success_action_redirect": 
                            Path(self.app.config.SERVER_HOST, "success_file_upload")})

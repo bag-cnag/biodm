@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession, create_async_engine, async_sessionmaker
 )
 
-from biodm.components import Base
+from biodm.components import Component, Base
 from biodm.exceptions import PostgresUnavailableError
 
 if TYPE_CHECKING:
@@ -15,10 +15,10 @@ if TYPE_CHECKING:
     from biodm.components.services import DatabaseService
 
 
-class DatabaseManager:
+class DatabaseManager(Component):
     """Manages DB side query execution."""
     def __init__(self, app: Api) -> None:
-        self.app: Api = app
+        super().__init__(app=app)
         self.database_url: str = self.async_database_url(app.config.DATABASE_URL)
         try:
             self.engine = create_async_engine(

@@ -6,6 +6,7 @@ from biodm.exceptions import UnauthorizedError
 
 
 def auth_header(request) -> str | None:
+    """Check and return token from headers if present else returns None."""
     header = request.headers.get("Authorization")
     if not header:
         return None
@@ -15,8 +16,9 @@ def auth_header(request) -> str | None:
 @lru_cache(128)
 async def extract_and_decode_token(kc, request) -> tuple[str, List, List]:
     """Cached because it may be called twice per request:
-    1. history middleware
-    2. protected function decorator."""
+      1. history middleware
+      2. protected function decorator.
+    """
 
     def extract_items(token, name, default=""):
         n = token.get(name, [])
@@ -26,9 +28,9 @@ async def extract_and_decode_token(kc, request) -> tuple[str, List, List]:
     token = auth_header(request)
     if not token:
         raise UnauthorizedError(
-            f"This route is token protected. "
-            f"Please provide it in header: "
-            f"Authorization: Bearer <token>"
+            "This route is token protected. "
+            "Please provide it in header: "
+            "Authorization: Bearer <token>"
         )
     decoded = await kc.decode_token(token)
 
@@ -41,7 +43,6 @@ async def extract_and_decode_token(kc, request) -> tuple[str, List, List]:
 
 def group_required(f, groups: List):
     """Decorator for function expecting groups: decorates a controller CRUD function."""
-
     @wraps(f)
     async def wrapper(controller, request, *args, **kwargs):
         _, user_groups, _ = await extract_and_decode_token(controller.app.kc, request)
@@ -53,6 +54,7 @@ def group_required(f, groups: List):
 
 
 def admin_required(f):
+    """group_required special case for admin group."""
     return group_required(f, groups=["admin"])
 
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from biodm.api import Api
@@ -12,7 +12,7 @@ class Component(ABC):
         self.logger = app.logger
 
 class CRUDComponent(Component, ABC):
-    """API CRUD component Interface. Enforces CRUD methods on children classes.."""
+    """API CRUD component Interface. Enforces CRUD methods on children classes."""
     @abstractmethod
     async def create(self, *args, **kwargs):
         raise NotImplementedError
