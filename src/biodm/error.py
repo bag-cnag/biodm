@@ -2,7 +2,7 @@ import json
 from http import HTTPStatus
 
 from starlette.responses import Response
-# from sqlalchemy.exc import DatabaseError
+
 from .exceptions import (
     RequestError,
     FailedDelete,
@@ -13,6 +13,7 @@ from .exceptions import (
 
 
 class Error:
+    """Error class."""
     def __init__(self, status, detail=None):
         self.status = status
         self.detail = detail
@@ -32,8 +33,10 @@ class Error:
         )
 
 
-# https://restfulapi.net/http-status-codes/
 async def onerror(_, exc):
+    """Error event handler.
+
+    Relevant documentation: https://restfulapi.net/http-status-codes/"""
     status = 500
     detail = None
 

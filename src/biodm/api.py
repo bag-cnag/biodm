@@ -23,7 +23,7 @@ from biodm.utils.security import extract_and_decode_token, auth_header
 from biodm.tables import History, ListGroup
 from biodm import __version__ as CORE_VERSION
 try:
-    import kubernetes as k8s
+    import kubernetes
     HAS_K8s = True
 except:
     HAS_K8s = False

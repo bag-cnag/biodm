@@ -43,11 +43,10 @@ class PayloadValidationError(RuntimeError):
 
 
 ## Routing
-class InvalidCollectionMethod(RuntimeError):
+class InvalidCollectionMethod(RequestError):
     """Raised when a unit method is accesed as a collection."""
-    def __init__(self, _, orig=None):
-        detail = "Method not allowed on a collection."
-        super().__init__(detail=detail)
+    def __init__(self, *_):
+        super().__init__(detail="Method not allowed on a collection.")
 
 
 class UnauthorizedError(RequestError):

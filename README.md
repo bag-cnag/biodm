@@ -6,6 +6,8 @@
 
 **Source Code**: <a href="https://github.com/bag-cnag/biodm" target="_blank">https://github.com/bag-cnag/biodm</a>
 
+**Documentation**: Not hosted yet, please refer to [build documentation](#build-documentation).
+
 ---
 
 BioDM is a fast, stateless and asynchronous REST API framework with the following core features:
@@ -46,8 +48,9 @@ Then you may run our `example` after populating  `src/example/config.py` with yo
 python3 src/example/app.py
 ```
 
-### Generate documentation
+### Build documentation
 ```bash
+pip3 install -r src/requirements/docs.txt
 sphinx-apidoc --implicit-namespaces -fo docs/biodm/ src/biodm -H "API Reference"
 python3 -m sphinx -b html docs/ docs/build/html
 ```
@@ -121,7 +124,7 @@ then
 docker run --name local_keycloak -e KEYCLOAK_USER=admin -e KEYCLOAK_PASSWORD=admin -p 8443:8080 keycloak:22.0.5_local-certs
 ```
 
-**Configuration:**
+- **Configuration**:
 
 Once keycloak is running you need to configure a realm and a client for the app to log in.
 Default values are:
