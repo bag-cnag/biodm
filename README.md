@@ -11,8 +11,8 @@
 BioDM is a fast, stateless and asynchronous REST API framework with the following core features:
 
 - Provide standard HTTP REST-to-CRUD endpoints from **developper provided** entity definitions:
-  - _SQLAlchemy_ tables
-  - _marshmallow_ schemas
+  - _[SQLAlchemy](https://github.com/sqlalchemy/sqlalchemy/)_ tables
+  - _[marshmallow](https://github.com/marshmallow-code/marshmallow)_ schemas
 
 - Abstract services ecosystem:
   - Permissions leveraging _Keycloak_
@@ -35,44 +35,51 @@ To enable kubernetes functionalities you may use the following
 pip3 install "biodm[kubernetes] @ git+https://github.com/bag-cnag/biodm"
 ```
 
-### Dev: Editable mode
-```bash
-git clone https://github.com/bag-cnag/biodm
-cd biodm/
-pip3 install -e .
-```
-
-### API Dependencies
-
-Python
-
-```bash
-pip3 install sqlalchemy[asyncio]
-pip3 install python-keycloak
-pip3 install starlette
-pip3 install marshmallow
-pip3 install psycopg2
-pip3 install asyncpg
-pip3 install boto3
-```
-
+### Run app
 To run the API you will also need an ASGI server i.e.
 ```bash
 pip3 install uvicorn[uvloop]
 ```
 
-### Dev: Mock service dependencies
-#### Recommended: Quick setup
+Then you may run our `example` after populating  `src/example/config.py` with your infrastructure settings:
+```bash
+python3 src/example/app.py
+```
+
+### Generate documentation
+```bash
+sphinx-apidoc --implicit-namespaces -fo docs/biodm/ src/biodm -H "API Reference"
+python3 -m sphinx -b html docs/ docs/build/html
+```
+
+### Setup development environment
+
+#### Install in editable mode
+```bash
+git clone https://github.com/bag-cnag/biodm
+cd biodm/
+pip3 install -r src/requirements/dev.txt
+pip3 install -e .
+```
+
+#### Mock service dependencies
+- **Recommended: Quick setup**
 
 To start all at once and skip individual configuration below you may use the provided `compose.yml`.
 You may start all services using
 ```bash
 docker compose up -d
 ```
-*Note*: You need to build up the docker container as explained in the keycloak secton below. 
-_Note_: You need to perform keycloak realm and client configuration on the admin interface by default located at `https://keycloak.local:8443/admin/`
 
-It bundles those services in a local subnet **i.e.** `biodm-dev` by default located at `10.10.0.1/16` for an easy quick setup it is advised to add the following lines to your `/etc/hosts` file as they are matching default config settings.
+**!! Notes**: 
+- You need to build up the docker container as explained in the 
+[keycloak](#keycloak) secton below. 
+- You need to perform keycloak realm and client configuration on the admin interface by default located at `https://keycloak.local:8443/admin/`
+
+
+
+
+Those services are bundled in a local subnet **i.e.** `biodm-dev` by default. Located at `10.10.0.1/16` for an easy quick setup it is advised to add the following lines to your `/etc/hosts` file as they are matching default config settings.
 
 ```bash
 sudo su
@@ -89,14 +96,16 @@ cat >> /etc/hosts <<EOF
 EOF
 ```
 
-#### Postgres DB
+Alternatively you may set up indivudal containers  
+
+##### Postgres DB
 ```bash
 docker pull postgres:16-bookworm
 docker run --name biodm-pg -e POSTGRES_PASSWORD=pass -d postgres:16-bookworm
 docker exec -u postgres biodm-pg createdb biodm
 ```
 
-#### Keycloak
+##### Keycloak
 
 First you need to build the image yourself according to the [documentation](https://www.keycloak.org/server/containers) :
 
@@ -113,6 +122,7 @@ docker run --name local_keycloak -e KEYCLOAK_USER=admin -e KEYCLOAK_PASSWORD=adm
 ```
 
 **Configuration:**
+
 Once keycloak is running you need to configure a realm and a client for the app to log in.
 Default values are:
 
@@ -143,24 +153,13 @@ KC_ADMIN={KEYCLOAK_ADMIN}
 KC_ADMIN_PASSWORD={KEYCLOAK_ADMIN_SECRET}
 ```
 
-#### S3Mock
+##### S3Mock
 ```bash
 docker pull adobe/s3mock
 docker run -e initialBuckets=3trdevopal -e debug=true -p 9090:9090 -p 9191:9191 adobe/s3mock
 ```
 
-### Generate documentation
-
-```bash
-python -m sphinx -b html docs/ docs/build/html
-```
-
 ## Quickstart
-### Run app
-You may start the app like this
-```bash
-python3 src/example/app.py
-```
 
 ### Architecture
 The app _adopts_ Controllers in `app.py`

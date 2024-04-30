@@ -1,8 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
-
-from starlette.responses import Response
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     import logging
@@ -20,25 +18,25 @@ class ApiComponent(ABC):
 class CRUDApiComponent(ApiComponent, ABC):
     """API CRUD component Interface. Enforces CRUD methods on children classes."""
     @abstractmethod
-    async def create(self, *args, **kwargs) -> Response:
+    async def create(self, *args, **kwargs) -> Any:
         raise NotImplementedError
 
     @abstractmethod
-    async def read(self, *args, **kwargs) -> Response:
+    async def read(self, *args, **kwargs) -> Any:
         raise NotImplementedError
 
     @abstractmethod
-    async def update(self, *args, **kwargs) -> Response:
+    async def update(self, *args, **kwargs) -> Any:
         raise NotImplementedError
 
     @abstractmethod
-    async def delete(self, *args, **kwargs) -> Response:
+    async def delete(self, *args, **kwargs) -> Any:
         raise NotImplementedError
     
     @abstractmethod
-    async def create_update(self, *args, **kwargs) -> Response:
+    async def create_update(self, *args, **kwargs) -> Any:
         raise NotImplementedError
     
     @abstractmethod
-    async def filter(self, *args, **kwargs) -> Response:
+    async def filter(self, *args, **kwargs) -> Any:
         raise NotImplementedError

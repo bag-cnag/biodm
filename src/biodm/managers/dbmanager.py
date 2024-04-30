@@ -76,13 +76,13 @@ class DatabaseManager(ApiComponent):
         """
         # Weak protection: restrict decorator on functions that looks like this.
         argspec = getfullargspec(db_exec)
-        assert('self' in argspec.args)
-        assert(any((
+        assert 'self' in argspec.args
+        assert any((
             'data'      in argspec.args,
             'stmt'      in argspec.args,
             'item'      in argspec.args,
             'composite' in argspec.args
-        )))
+        ))
         assert 'session' in argspec.args
 
         # Callable.

@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "biodm"
+description = "A fast and RESTful Data Management framework"
 authors = [
   {name = "Etienne Jodry", email = "etienne.jodry@cnag.eu"},
 ]
