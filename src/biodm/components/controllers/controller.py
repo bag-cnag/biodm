@@ -28,9 +28,8 @@ class HttpMethod(Enum):
 
 
 class Controller(ApiComponent):
-    """Controller - An APP Component exposing:
-      - a set of routes mapped to method endpoints
-        - openapi schema generation for that given set
+    """Controller - An APP Component exposing a set of routes mapped to method endpoints and an 
+    openapi schema generation for that given set.
     """
     @abstractmethod
     def routes(self, **kwargs):

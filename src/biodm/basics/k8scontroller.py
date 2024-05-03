@@ -59,11 +59,10 @@ class K8sController(Controller):
     async def create(self, request: Request) -> Response:
         """
         ---
-        description: Deploys manifest matching identifier and tie it to the user
+        description: Deploy manifest matching identifier and tie it to requesting user.
         parameters:
           - in: path
             id: manifest id
-                e.g. /k8s_instances/busybox
           - in: header
             X-User-Token: user token
         """

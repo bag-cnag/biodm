@@ -232,6 +232,7 @@ class ResourceController(EntityController):
 
     async def delete(self, request: Request):
         """
+        ---
         description: Delete DB entry for entity with matching id.
         parameters:
           - in: path
@@ -268,7 +269,6 @@ class ResourceController(EntityController):
                 ?prop1=val1&prop2=valx,valy&prop3.propx=vala 
         if querystring is empty -> return all
         -> /ressource/search <==> /ressource/
-
         ---
         description: Parses a querystring on the route /ressources/search?{querystring}
         """
