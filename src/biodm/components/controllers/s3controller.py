@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from starlette.routing import Route, Mount
+from starlette.requests import Request
 
 from biodm.components.services import S3Service
 from .controller import HttpMethod
@@ -24,18 +25,18 @@ class S3Controller(ResourceController):
         return super().routes(child_routes=child_routes + file_routes)
 
     # TODO: Decorate with permissions.
-    async def download(self, request):
+    async def download(self, request: Request):
         """Returns aws s3 direct download URL with a redirect header.  
         """
         # TODO: Implement
         pass
 
-    async def file_download_success(self, request):
+    async def file_download_success(self, request: Request):
         """Used as a callback in s3 presigned download urls for statistics."""
         # TODO: Implement
         pass
 
-    async def file_upload_success(self, request):
+    async def file_upload_success(self, request: Request):
         """ Used as a callback in the s3 presigned upload urls that are emitted.
             Uppon receival, update entity status in the DB."""
 

@@ -1,4 +1,4 @@
-from typing import List, Any, Tuple
+from typing import List, Any, Tuple, Dict
 
 from sqlalchemy import select, update, delete
 from sqlalchemy.dialects.postgresql import insert
@@ -88,7 +88,8 @@ class DatabaseService(CRUDApiComponent):
 
 
 class UnaryEntityService(DatabaseService):
-    """Generic Service class for non-composite entities."""
+    """Generic Service class for non-composite entities.
+    """
     def __init__(self, app, table: Base, *args, **kwargs):
         # Entity info.
         self.table = table
@@ -247,8 +248,16 @@ class UnaryEntityService(DatabaseService):
         stmt = stmt.offset(offset).limit(limit)
         return await self._select_many(stmt, **kwargs)
 
-    async def read(self, pk_val, fields=None, **kwargs) -> Base:
-        """READ one row."""
+    async def read(self, pk_val: List[Any], fields:List[str]=None, **kwargs) -> Base:
+        """READ one item from the value of it's primary key (components)
+
+        :param pk_val: entity primary key values in order
+        :type pk_val: List[Any]
+        :param fields: fields to restrict the query on, defaults to None
+        :type fields: List[str], optional
+        :return: SQLAlchemy result item.
+        :rtype: Base
+        """
         if fields:
             stmt = select(
                 Bundle(
@@ -262,7 +271,15 @@ class UnaryEntityService(DatabaseService):
         return await self._select(stmt, **kwargs)
 
     async def update(self, pk_val, data: dict, **kwargs) -> Base:
-        """UPDATE one row."""
+        """UPDATE one row.
+
+        :param pk_val: _description_
+        :type pk_val: _type_
+        :param data: _description_
+        :type data: dict
+        :return: _description_
+        :rtype: Base
+        """
         stmt = update(self.table)\
               .where(self.gen_cond(pk_val))\
               .values(**data)\
@@ -278,8 +295,20 @@ class UnaryEntityService(DatabaseService):
 class CompositeEntityService(UnaryEntityService):
     """Special case for Composite Entities (i.e. containing nested entities attributes)."""
     class CompositeInsert:
-        """Class to hold composite entities statements before insertion."""
-        def __init__(self, item: Insert, nested: dict, delayed: dict):
+        """Class to hold composite entities statements before insertion.
+        
+        :param item: Parent item insert statement
+        :type item: Insert
+        :param nested: Nested items insert statement indexed by attribute name
+        :type nested: Dict[str, Insert]
+        :param delayed: Nested list of items insert statements indexed by attribute name
+        :type delayed: Dict[str, Insert]
+        """
+        def __init__(self,
+                     item: Insert,
+                     nested: Dict[str, Insert],
+                     delayed: Dict[str, Insert]):
+            """Constructor."""
             self.item = item
             self.nested = nested or {}
             self.delayed = delayed or {}
@@ -288,8 +317,18 @@ class CompositeEntityService(UnaryEntityService):
     async def _insert_composite(
         self, 
         composite: CompositeInsert,
-        session: AsyncSession
-    ) -> Base:
+        session: AsyncSession) -> Base:
+        """Insert a composite entity into the db, accounting for nested entities, 
+        populating ids, and inserting in order according to cardinality.
+
+        :param composite: Statements representing the object before insertion
+        :type composite: CompositeInsert
+        :param session: SQLAlchemy session
+        :type session: AsyncSession
+        :return: Inserted item
+        :rtype: Base
+        """
+
         # Insert all nested objects, and keep track.
         for key, sub in composite.nested.items():
             composite.nested[key] = await self._insert(sub, session)

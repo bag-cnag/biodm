@@ -2,6 +2,7 @@ import json
 from copy import deepcopy
 
 from starlette.routing import Mount, Route
+from starlette.requests import Request
 from starlette.responses import Response
 
 from biodm.components.controllers import Controller, HttpMethod
@@ -18,8 +19,11 @@ class K8sController(Controller):
         return "/k8s_instances"
 
     def routes(self, schema=False) -> Mount:
-        """
-        schema:
+        """Routes for k8s instances management
+
+        :param schema: when called from schema generation, defaults to False
+        :type schema: bool
+        :rtype: starlette.routing.Mount
         """
         m = Mount(self.prefix, routes=[
             Route( "/{manifest}",     self.create,         methods=[HttpMethod.POST.value]),
@@ -36,7 +40,6 @@ class K8sController(Controller):
             for key in keys:
                 r_view = deepcopy(r_create)
                 r_view.path = f"/{key}"
-                # dummy = function()
                 def dummy():
                     """"""
                 dummy.__doc__ = mans.__dict__[key].__doc__
@@ -48,12 +51,12 @@ class K8sController(Controller):
     def k8s(self):
         return self.app.k8s
 
-    async def list_instances(self, request) -> Response:
+    async def list_instances(self, request: Request) -> Response:
         """
         """
         return '{}'
 
-    async def create(self, request) -> Response:
+    async def create(self, request: Request) -> Response:
         """
         ---
         description: Deploys manifest matching identifier and tie it to the user
@@ -69,7 +72,7 @@ class K8sController(Controller):
             return self.svc.create(self.k8s.manifests.__dict__[manifest])
         raise ManifestError
 
-    async def instance_info(self, request) -> Response:
+    async def instance_info(self, request: Request) -> Response:
         """
         """
         return '{}'

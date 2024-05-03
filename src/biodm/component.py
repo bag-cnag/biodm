@@ -7,7 +7,11 @@ if TYPE_CHECKING:
     from biodm.api import Api
 
 class ApiComponent(ABC):
-    """Abstract API component, refrencing main server class and its loggger."""
+    """Abstract API component, refrencing main server class and its loggger.
+
+    :param app: Reference to running server class.
+    :type app: class:`biodm.Api`
+    """
     app: Api
     logger: logging.logger
 

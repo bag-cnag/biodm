@@ -1,8 +1,10 @@
 from __future__ import annotations
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Any
 
 from starlette.routing import Mount, Route
+from starlette.requests import Request
+from starlette.responses import Response
 
 from biodm.components.services import (
     DatabaseService,
@@ -34,6 +36,9 @@ def overload_docstring(f):
     Relevant SO posts:
     - https://stackoverflow.com/questions/38125271/extending-or-overwriting-a-docstring-when-composing-classes
     - https://stackoverflow.com/questions/1782843/python-decorator-handling-docstrings
+
+    :param f: The method we overload the docstrings of.  
+    :type f: Callable
     """
     async def wrapper(self, *args, **kwargs):
         if self.app.config.DEV:
@@ -48,8 +53,19 @@ class ResourceController(EntityController):
     """Class for controllers exposing routes constituting a ressource.
 
     Implements and exposes routes under a prefix named as the resource pluralized
-    that act as a standard REST-to-CRUD interface."""
+    that act as a standard REST-to-CRUD interface.
+    
+    :param app: running server
+    :type app: Api
+    :param entity: entity name, defaults to None, inferred if None
+    :type entity: str, optional
+    :param table: entity table, defaults to None, inferred if None
+    :type table: Base, optional
+    :param schema: entity schema, defaults to None, inferred if None
+    :type schema: Schema, optional
+    """
     def __init__(self, app: Api, entity: str=None, table: Base=None, schema: Schema=None):
+        """Constructor."""
         super().__init__(app=app)
         self.resource = entity if entity else self._infer_entity_name()
         self.table = table if table else self._infer_table()
@@ -126,21 +142,35 @@ class ResourceController(EntityController):
             Route(f'/{self.qp_id}', self.update,              methods=[HttpMethod.PATCH.value]),
         ] + child_routes)
 
-    def _extract_pk_val(self, request):
+    def _extract_pk_val(self, request: Request) -> List[Any]:
         """Extracts id from request, raise exception if not found."""
         pk_val = [request.path_params.get(k) for k in self.pk]
         if not pk_val:
             raise InvalidCollectionMethod
         return pk_val
 
-    async def _extract_body(self, request):
+    async def _extract_body(self, request: Request) -> bytes:
+        """Extracts body from request.
+
+        :param request: incomming request
+        :type request: Request
+        :raises PayloadEmptyError: in case payload is empty
+        :return: request body
+        :rtype: bytes
+        """
         body = await request.body()
         if not body:
             raise PayloadEmptyError
         return body
 
-    async def create(self, request):
-        """
+    async def create(self, request: Request) -> Response:
+        """Creates associated entity.
+
+        :param request: incomming request
+        :type request: Request
+        :return: created object in JSON form
+        :rtype: Response
+        ---
         responses:
           201:
               description: Creates associated entity.
@@ -149,7 +179,7 @@ class ResourceController(EntityController):
           204:
               description: Empty Payload
         """
-        validated_data = self.deserialize(await self._extract_body(request))
+        validated_data = self.validate(await self._extract_body(request))
         return json_response(
             data=await self.svc.create(
                 data=validated_data,
@@ -161,8 +191,14 @@ class ResourceController(EntityController):
             status_code=201,
         )
 
-    async def read(self, request):
-        """
+    async def read(self, request: Request) -> Response:
+        """Fetch associated entity matching id in the path.
+
+        :param request: incomming request
+        :type request: Request
+        :return: JSON reprentation of the object
+        :rtype: Response
+        ---
         description: Query DB for entity with matching id.
         parameters:
           - in: path
@@ -179,6 +215,7 @@ class ResourceController(EntityController):
           404:
               description: Not Found
         """
+
         fields = request.query_params.get('fields')
         return json_response(
             data=await self.svc.read(
@@ -189,11 +226,11 @@ class ResourceController(EntityController):
             status_code=200,
         )
 
-    async def update(self, request):
+    async def update(self, request: Request):
         # TODO: Implement PATCH ?
         raise NotImplementedError
 
-    async def delete(self, request):
+    async def delete(self, request: Request):
         """
         description: Delete DB entry for entity with matching id.
         parameters:
@@ -208,9 +245,9 @@ class ResourceController(EntityController):
         await self.svc.delete(pk_val=self._extract_pk_val(request))
         return json_response("Deleted.", status_code=200)
 
-    async def create_update(self, request):
+    async def create_update(self, request: Request):
         """"""
-        validated_data = self.deserialize(await self._extract_body(request))
+        validated_data = self.validate(await self._extract_body(request))
         return json_response(
             data=await self.svc.create_update(
                 pk_val=self._extract_pk_val(request), data=validated_data
@@ -218,7 +255,7 @@ class ResourceController(EntityController):
             status_code=200,
         )
 
-    async def filter(self, request):
+    async def filter(self, request: Request):
         """
         querystring shape:
             prop1=val1: query for entries where prop1 = val1

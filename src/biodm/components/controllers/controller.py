@@ -1,8 +1,9 @@
+from __future__ import annotations
 import io
 import json
 from abc import abstractmethod
 from enum import Enum
-from typing import Any
+from typing import Any, List, TYPE_CHECKING
 
 from marshmallow.schema import Schema, EXCLUDE, INCLUDE
 from marshmallow.exceptions import ValidationError
@@ -11,6 +12,10 @@ from sqlalchemy.exc import MissingGreenlet
 from biodm.component import ApiComponent, CRUDApiComponent
 from biodm.exceptions import PayloadJSONDecodingError, PayloadValidationError, AsyncDBError
 from biodm.utils.utils import json_response
+
+if TYPE_CHECKING:
+    from biodm.component import Base
+
 
 
 class HttpMethod(Enum):
@@ -38,7 +43,8 @@ class Controller(ApiComponent):
         return self.app.schema_generator
 
     async def openapi_schema(self, _):
-        """
+        """ Generates openapi schema for this controllers' routes.
+
         Relevant Documentation:
          - starlette: https://www.starlette.io/schemas/
          - doctrings: https://apispec.readthedocs.io/en/stable/
@@ -63,12 +69,19 @@ class Controller(ApiComponent):
 class EntityController(Controller, CRUDApiComponent):
     """EntityController - A controller performing validation and serialization given a schema.
        Also requires CRUD methods implementation for that entity. 
+
+    :param schema: Entity schema class
+    :type schema: class:`marshmallow.schema.Schema`
     """
     schema: Schema
 
     @classmethod
-    def deserialize(cls, data: Any) -> (Any | list | dict | None):
-        """Deserialize."""
+    def validate(cls, data: bytes) -> (Any | list | dict | None):
+        """Checks incoming data against class schema and marshall to python dict.
+
+        :param data: some request body
+        :type data: bytes
+        """
         try:
             json_data = json.load(io.BytesIO(data))
             cls.schema.many = isinstance(json_data, list)
@@ -82,8 +95,14 @@ class EntityController(Controller, CRUDApiComponent):
             raise e
 
     @classmethod
-    def serialize(cls, data: Any, many: bool) -> (str | Any):
-        """Serialize."""
+    def serialize(cls, data: dict | Base | List[Base], many: bool) -> str:
+        """Serialize SQLAlchemy statement execution result to json.
+
+        :param data: some request body
+        :type data: dict, class:`biodm.components.Base`, List[class:`biodm.components.Base`]
+        :param many: plurality flag, essential to marshmallow
+        :type data: bool
+        """
         try:
             serialized = cls.schema.dump(data, many=many)
             return json.dumps(serialized, indent=cls.app.config.INDENT)
