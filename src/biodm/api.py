@@ -11,6 +11,7 @@ from starlette.responses import HTMLResponse, Response
 from starlette.routing import Route
 from starlette.schemas import SchemaGenerator
 from starlette.types import ASGIApp
+from starlette.config import Config
 
 from biodm.basics import CORE_CONTROLLERS, k8scontroller
 from biodm.managers import DatabaseManager, KeycloakManager, S3Manager, K8sManager
@@ -53,13 +54,13 @@ class HistoryMiddleware(BaseHTTPMiddleware):
             app = History.svc.app
             username, _, _ = await extract_and_decode_token(app.kc, request)
             body = await request.body()
-            h = {
+            entry = {
                 'username_user': username,
                 'endpoint': str(request.url).rsplit(self.server_host, maxsplit=1)[-1],
                 'method': request.method,
                 'content': body if body else ""
             }
-            await History.svc.create(h, stmt_only=False)
+            await History.svc.create(entry, stmt_only=False)
         return await call_next(request)
 
 
@@ -75,12 +76,13 @@ class Api(Starlette):
     logger = logging.getLogger(__name__)
 
     def __init__(self,
-                 config=None,
+                 config: Config,
                  controllers: Optional[List[Controller]]=None,
-                 routes: Optional[List[Route]]=None,
                  tables=None,
                  schemas=None,
-                 *args, **kwargs):
+                 *args,
+                 **kwargs
+    ):
         ## Instance Info.
         self.tables = tables
         self.schemas = schemas
@@ -95,7 +97,7 @@ class Api(Starlette):
 
         ## Controllers.
         self.controllers = []
-        routes = routes or []
+        routes = []
         routes.extend(
             self.adopt_controllers(
                 CORE_CONTROLLERS  +

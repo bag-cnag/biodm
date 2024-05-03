@@ -115,14 +115,15 @@ class ResourceController(EntityController):
         relevant doc: https://restfulapi.net/http-methods/"""
         child_routes = child_routes or []
         return Mount(self.prefix, routes=[
-            Route( '/',             self.create,         methods=[HttpMethod.POST.value]),
-            Route( '/',             self.filter,         methods=[HttpMethod.GET.value]),
-            Route( '/search',       self.filter,         methods=[HttpMethod.GET.value]),
-            Route( '/schema',       self.openapi_schema, methods=[HttpMethod.GET.value]),
-            Route(f'/{self.qp_id}', self.read,           methods=[HttpMethod.GET.value]),
-            Route(f'/{self.qp_id}', self.delete,         methods=[HttpMethod.DELETE.value]),
-            Route(f'/{self.qp_id}', self.create_update,  methods=[HttpMethod.PUT.value]),
-            Route(f'/{self.qp_id}', self.update,         methods=[HttpMethod.PATCH.value]),
+            Route( '/',             self.create,              methods=[HttpMethod.POST.value]),
+            Route( '/',             self.filter,              methods=[HttpMethod.GET.value]),
+            Route( '/search',       self.filter,              methods=[HttpMethod.GET.value]),
+            Route( '/schema',       self.openapi_schema,      methods=[HttpMethod.GET.value]),
+            Route(f'/{self.qp_id}', self.read,                methods=[HttpMethod.GET.value]),
+            Route(f'/{self.qp_id}/{{attribute}}', self.read,  methods=[HttpMethod.GET.value]),
+            Route(f'/{self.qp_id}', self.delete,              methods=[HttpMethod.DELETE.value]),
+            Route(f'/{self.qp_id}', self.create_update,       methods=[HttpMethod.PUT.value]),
+            Route(f'/{self.qp_id}', self.update,              methods=[HttpMethod.PATCH.value]),
         ] + child_routes)
 
     def _extract_pk_val(self, request):
@@ -165,7 +166,11 @@ class ResourceController(EntityController):
         description: Query DB for entity with matching id.
         parameters:
           - in: path
-            id: entity id
+            id: entity primary key elements separated by '_'
+                e.g. /datasets/1_1 returns dataset with id=1 and version=1
+          - in: query
+            fields: a comma separated list of fields to query only a subset of the resource 
+                    e.g. /datasets/1_1?name,description,contact,files
         responses:
           200:
               description: Found matching item
@@ -174,9 +179,11 @@ class ResourceController(EntityController):
           404:
               description: Not Found
         """
+        fields = request.query_params.get('fields')
         return json_response(
             data=await self.svc.read(
                 pk_val=self._extract_pk_val(request),
+                fields=fields.split(',') if fields else None,
                 serializer=partial(self.serialize, **{"many": False}),
             ),
             status_code=200,

@@ -31,7 +31,7 @@ class DatasetSchema(Schema):
         # )
     )
 
-    owner_group = Nested('GroupSchema', only=('name', 'n_members',))
+    owner_group = Nested('GroupSchema') # , only=('name', 'n_members',)
     contact = Nested('UserSchema', only=('username', ))
     tags = List(Nested('TagSchema'), only=('name', ))
 

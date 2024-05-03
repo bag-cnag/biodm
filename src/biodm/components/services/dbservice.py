@@ -3,14 +3,16 @@ from typing import List, Any, Tuple
 from sqlalchemy import select, update, delete
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Bundle
 from sqlalchemy.sql import Insert, Update, Delete, Select
 from starlette.datastructures import QueryParams
 
-from biodm.utils.utils import unevalled_all, unevalled_or, to_it
+from biodm.utils.utils import unevalled_all, unevalled_or, to_it, DictBundle, it_to
 from biodm.component import CRUDApiComponent
 from biodm.components import Base
 from biodm.managers import DatabaseManager
 from biodm.exceptions import FailedRead, FailedDelete, FailedUpdate
+from biodm.tables import User, Group
 
 
 SUPPORTED_INT_OPERATORS = ("gt", "ge", "lt", "le")
@@ -34,7 +36,27 @@ class DatabaseService(CRUDApiComponent):
         row = await session.scalar(stmt)
         if row:
             return row
-        raise FailedRead("Query returned no result.")
+        raise FailedRead("Select returned no result.")
+
+    @DatabaseManager.in_session
+    async def _query(self, stmt: Any, filter, joins: List[Any], session: AsyncSession) -> (Any | None):
+        """QUERY one from database.
+
+        Temporary measure -
+        > TODO: change when new sqlalchemy release comes out.
+        Query is part of sqlalchemy legacy API, it is not supported in async mode.
+        select has a bug for Bundle features. Refer to:
+        - https://github.com/sqlalchemy/sqlalchemy/discussions/11345
+        """
+        def sync_inner(session, stmt, filter, joins):
+            stmt = session.query(stmt).filter(filter)
+            for join in joins:
+                stmt = stmt.join(join)
+            row = stmt.one()
+            if row:
+                return it_to(row)
+            raise FailedRead("Query returned no result.")
+        return await session.run_sync(sync_inner, stmt, filter, joins)
 
     @DatabaseManager.in_session
     async def _select_many(self, stmt: Select, session: AsyncSession) -> List[Any]:
@@ -146,6 +168,13 @@ class UnaryEntityService(DatabaseService):
 
     async def filter(self, query_params: QueryParams, **kwargs) -> List[Base]:
         """READ rows filted on query parameters."""
+        fields = query_params.pop('fields')
+        # TODO: apply same as read
+        # if fields:
+        #     fields = fields.split(',') if fields else None
+        #     stmt = 
+
+
         stmt = select(self.table)
         for dskey, csval in query_params.items():
             attr, values = dskey.split("."), csval.split(",")
@@ -213,17 +242,26 @@ class UnaryEntityService(DatabaseService):
             #     stmt = select(self.table.not_in(stmt))
         return await self._select_many(stmt, **kwargs)
 
-    async def read(self, pk_val, **kwargs) -> Base:
+    async def read(self, pk_val, fields=None, **kwargs) -> Base:
         """READ one row."""
-        stmt = select(self.table).where(self.gen_cond(pk_val))
+        if fields:
+            stmt = select(
+                Bundle(
+                    self.table.__name__,  
+                    *[getattr(self.table, f) for f in fields]
+                )
+            )
+        else:
+            stmt = select(self.table)
+        stmt = stmt.where(self.gen_cond(pk_val))
         return await self._select(stmt, **kwargs)
 
     async def update(self, pk_val, data: dict, **kwargs) -> Base:
         """UPDATE one row."""
-        stmt = (update(self.table)
-                .where(self.gen_cond(pk_val))
-                .values(**data)
-                .returning(self.table))
+        stmt = update(self.table)\
+              .where(self.gen_cond(pk_val))\
+              .values(**data)\
+              .returning(self.table)
         return await self._update(stmt, **kwargs)
 
     async def delete(self, pk_val, **kwargs) -> Any:
@@ -263,7 +301,7 @@ class CompositeEntityService(UnaryEntityService):
                 setattr(item, attr, sub.id)
         await session.commit()
 
-        # Populate many-to-one fields with delayed lists.
+        # Populate many-to-item fields with delayed lists.
         for key in composite.delayed.keys():
             items = await self._insert_many(composite.delayed[key], session)
             mto = await getattr(item.awaitable_attrs, key)
@@ -359,6 +397,48 @@ class CompositeEntityService(UnaryEntityService):
         """CREATE, Handle list and single case."""
         f = self._create_many if isinstance(data, list) else self._create_one
         return await f(data, stmt_only, **kwargs)
+
+    async def read(self, pk_val, fields=None, **kwargs) -> Base:
+        fields = fields or []
+        rels = self.table.relationships()
+        nested = [f for f in fields if f in rels]
+        fields = [f for f in fields if f not in nested]
+        if not nested:
+            return await super().read(pk_val, fields, **kwargs)
+
+        nested_bundles = []
+        target_tables =  []
+        for nested_name in nested:
+            target = rels[nested_name].target
+            rel_fields = [x.name for x in target.columns]
+            nested_bundles.append(
+                DictBundle(
+                    nested_name,
+                    *[getattr(target.decl_class, f) for f in rel_fields],
+                )
+            )
+            target_tables.append(target.decl_class)
+
+        """Commented out code is the _select version, which should work with 
+            next release of sqlalchemy. See _query doc.
+        """
+        #stmt = select(
+        stmt = DictBundle(
+            # self.table,
+            self.table.__name__,  
+            *[getattr(self.table, f) for f in fields],
+            *nested_bundles,
+        )
+        # )#
+
+        # for target in target_tables:
+        #     stmt = stmt.join_from(self.table, target)
+        # joins = [for target in target_tables]
+
+        # stmt = stmt.where(self.gen_cond(pk_val))
+        # return await self._select(stmt, **kwargs)
+        return await self._query(stmt, filter=self.gen_cond(pk_val), joins=target_tables, **kwargs)
+
 
     # async def update(self, pk_val, data: dict) -> Base:
     #     # TODO

@@ -118,7 +118,7 @@ class Permission:
     @classmethod
     def ls_read(cls) -> Mapped["ListGroup"]:
         return relationship("ListGroup", foreign_keys=[cls.id_ls_read], lazy="joined")
-    
+
     @declared_attr
     def id_ls_update(_):
         return Column(ForeignKey("LISTGROUP.id"), nullable=True)

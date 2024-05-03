@@ -15,6 +15,7 @@ class ApiComponent(ABC):
         self.__class__.app = app
         self.__class__.logger = app.logger
 
+
 class CRUDApiComponent(ApiComponent, ABC):
     """API CRUD component Interface. Enforces CRUD methods on children classes."""
     @abstractmethod

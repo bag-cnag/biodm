@@ -27,10 +27,10 @@ class K8sManager(ApiComponent):
 
     def __init__(self, app):
         super().__init__(app=app)
-        self.authenticate()
         self._config = client.Configuration()
         self._client = client.ApiClient(self._config)
         self.namespace = self.app.config.K8_NAMESPACE
+        self.authenticate()
 
     def authenticate(self):
         """Set configuration with the credentials and certificate"""

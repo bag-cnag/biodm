@@ -12,7 +12,6 @@ def main():
     app = Api(
         config=config,
         debug=config.DEBUG, 
-        routes=[],
         controllers=CONTROLLERS,
         tables=tables,
         schemas=schemas
@@ -26,5 +25,6 @@ if __name__ == "__main__":
         factory=True,
         host=config.SERVER_HOST,
         port=config.SERVER_PORT,
+        loop="uvloop",
         log_level="debug" if config.DEBUG else "info"
     )

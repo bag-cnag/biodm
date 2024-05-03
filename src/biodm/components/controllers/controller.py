@@ -4,7 +4,7 @@ from abc import abstractmethod
 from enum import Enum
 from typing import Any
 
-from marshmallow.schema import Schema, EXCLUDE
+from marshmallow.schema import Schema, EXCLUDE, INCLUDE
 from marshmallow.exceptions import ValidationError
 from sqlalchemy.exc import MissingGreenlet
 

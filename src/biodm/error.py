@@ -21,7 +21,7 @@ class Error:
 
     @property
     def __dict__(self):
-        return dict(code=self.status, reason=self.reason, message=self.detail)
+        return {'code': self.status, 'reason': self.reason, 'message': self.detail}
 
     @property
     def response(self):

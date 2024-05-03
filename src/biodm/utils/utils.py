@@ -5,6 +5,7 @@ from typing import Any, List
 
 from starlette.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Bundle
 
 
 def json_response(data: str, status_code: int) -> Response:
@@ -42,6 +43,33 @@ def unevalled_all(ls: List[Any]):
 def unevalled_or(ls: List[Any]):
     """Build (ls[0] or ls[1] ... ls[n]) but does not evaluate like or() does."""
     return reduce(operator.or_, ls)
+
+
+class DictBundle(Bundle):
+    """
+    https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.Bundle.create_row_processor
+    """
+    # from biodm.components import Base
+    # table: Base
+    # def __init__(self, table, *args, **kwargs):
+    #     self.table = table
+    #     super().__init__(*args, **kwargs)
+
+    def create_row_processor(self, query, procs, labels):
+        """
+        Return dict object for a friendlier marshmallow serialization
+        + avoid contextual label incrementation from sqlalchemy so that field names are consistent.
+        """
+        # new_labels = []
+        # for label in labels:
+        #     no_ctx = label.split('_')[0]
+        #     new_labels.append(no_ctx if no_ctx in self.table.__table__.c else label)
+
+        def proc(row):
+            return dict(
+                zip(labels, (proc(row) for proc in procs))
+            )
+        return proc
 
 
 async def refresh_sqla_items(item, 
