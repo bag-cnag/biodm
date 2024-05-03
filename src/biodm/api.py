@@ -1,7 +1,8 @@
 from asyncio import wait_for, TimeoutError
 import logging
 import logging.config
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
+from types import ModuleType
 
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware, DispatchFunction, RequestResponseEndpoint
@@ -13,7 +14,7 @@ from starlette.schemas import SchemaGenerator
 from starlette.types import ASGIApp
 from starlette.config import Config
 
-from biodm.basics import CORE_CONTROLLERS, k8scontroller
+from biodm.basics import CORE_CONTROLLERS, K8sController
 from biodm.managers import DatabaseManager, KeycloakManager, S3Manager, K8sManager
 from biodm.components.controllers import Controller
 from biodm.components.services import UnaryEntityService, CompositeEntityService
@@ -76,41 +77,40 @@ class Api(Starlette):
     logger = logging.getLogger(__name__)
 
     def __init__(self,
-                 config: Config,
-                 controllers: Optional[List[Controller]]=None,
-                 tables=None,
-                 schemas=None,
+                 controllers: Optional[List[Controller]],
+                 instance: Optional[Dict[str, Config | ModuleType]],
                  *args,
                  **kwargs
     ):
         ## Instance Info.
-        self.tables = tables
-        self.schemas = schemas
-        self.config = config
+        self.tables: ModuleType = instance.get('tables')
+        self.schemas: ModuleType = instance.get('schemas')
+        self.config: Config = instance.get('config')
 
         ## Managers.
         self.db = DatabaseManager(app=self)
         self.kc = KeycloakManager(app=self)
         self.s3 = S3Manager(app=self)
         if HAS_K8s:
-            self.k8s = K8sManager(app=self)
+            self.k8s = K8sManager(app=self, manifests=instance.get('manifests'))
 
         ## Controllers.
         self.controllers = []
+        classes = CORE_CONTROLLERS + controllers or []
+        if HAS_K8s:
+            classes.append(K8sController)
         routes = []
         routes.extend(
             self.adopt_controllers(
-                CORE_CONTROLLERS  +
-                controllers or [] +
-                [k8scontroller] if HAS_K8s else []
+                classes
             )
         )
 
         ## Schema Generator.
         self.schema_generator = SchemaGenerator({
             "openapi": "3.0.0", "info": {
-                "name": config.API_NAME, 
-                "version": config.API_VERSION, 
+                "name": self.config.API_NAME, 
+                "version": self.config.API_VERSION, 
                 "backend": "biodm", 
                 "backend_version": CORE_VERSION
         }})
@@ -130,14 +130,14 @@ class Api(Starlette):
         super(Api, self).__init__(routes=routes, *args, **kwargs)
 
         ## Middlewares
-        self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
+        self.add_middleware(HistoryMiddleware, server_host=self.config.SERVER_HOST)
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
-            allow_origins=[config.SERVER_HOST, config.KC_HOST, "*"], 
+            allow_origins=[self.config.SERVER_HOST, self.config.KC_HOST, "*"], 
             allow_methods=["*"], allow_headers=["*"]
         )
-        if not config.DEV:
-            self.add_middleware(TimeoutMiddleware, timeout=config.SERVER_TIMEOUT)
+        if not self.config.DEV:
+            self.add_middleware(TimeoutMiddleware, timeout=self.config.SERVER_TIMEOUT)
 
         # Event handlers
         self.add_event_handler("startup", self.onstart)

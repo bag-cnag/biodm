@@ -25,12 +25,13 @@ class K8sManager(ApiComponent):
     _CustomObjectsApi: client.CustomObjectsApi
 
 
-    def __init__(self, app):
+    def __init__(self, app, manifests=None):
         super().__init__(app=app)
         self._config = client.Configuration()
         self._client = client.ApiClient(self._config)
         self.namespace = self.app.config.K8_NAMESPACE
         self.authenticate()
+        self.manifests = manifests
 
     def authenticate(self):
         """Set configuration with the credentials and certificate"""

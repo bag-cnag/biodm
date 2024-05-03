@@ -53,6 +53,9 @@ class UnauthorizedError(RequestError):
     """Raised when a request on a group restricted route is sent by an unauthorized user."""
 
 
+class ManifestError(RequestError):
+    """Raised when a request requiring a manifest id fails to find it in instance."""
+
 
 ## DB
 class FailedCreate(DBError):

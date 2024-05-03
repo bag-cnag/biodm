@@ -5,16 +5,20 @@ from biodm.api import Api
 
 from example.entities.controllers import CONTROLLERS
 from example.entities import tables, schemas
+from example import manifests
 from example import config
 
 
 def main():
     app = Api(
-        config=config,
         debug=config.DEBUG, 
         controllers=CONTROLLERS,
-        tables=tables,
-        schemas=schemas
+        instance={
+            'config': config,
+            'tables': tables,
+            'schemas': schemas,
+            'manifests': manifests
+        }
     )
     return app
 
