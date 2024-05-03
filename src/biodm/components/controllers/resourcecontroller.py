@@ -237,7 +237,7 @@ class ResourceController(EntityController):
         """
         return json_response(
             await self.svc.filter(
-                query_params=request.query_params,
+                query_params=dict(request.query_params),
                 serializer=partial(self.serialize, many=True),
             ),
             status_code=200,

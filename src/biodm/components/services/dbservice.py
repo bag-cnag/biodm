@@ -5,7 +5,6 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Bundle
 from sqlalchemy.sql import Insert, Update, Delete, Select
-from starlette.datastructures import QueryParams
 
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it, DictBundle, it_to
 from biodm.component import CRUDApiComponent
@@ -166,9 +165,14 @@ class UnaryEntityService(DatabaseService):
                     f"Expecting either 'field=v1,v2' pairs or integrer"
                     f" operators 'field.op(v)' op in {SUPPORTED_INT_OPERATORS}")
 
-    async def filter(self, query_params: QueryParams, **kwargs) -> List[Base]:
+    async def filter(self, query_params: dict, **kwargs) -> List[Base]:
         """READ rows filted on query parameters."""
-        fields = query_params.pop('fields')
+        # Get special parameters
+        fields = query_params.pop('fields', None)
+        offset = query_params.pop('start', None)
+        limit = query_params.pop('end', None)
+        # reverse = query_params.pop('reverse')
+
         # TODO: apply same as read
         # if fields:
         #     fields = fields.split(',') if fields else None
@@ -240,6 +244,7 @@ class UnaryEntityService(DatabaseService):
 
             # if exclude:
             #     stmt = select(self.table.not_in(stmt))
+        stmt = stmt.offset(offset).limit(limit)
         return await self._select_many(stmt, **kwargs)
 
     async def read(self, pk_val, fields=None, **kwargs) -> Base:
