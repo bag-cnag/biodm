@@ -12,7 +12,7 @@ class S3Controller(ResourceController):
     def _infer_svc(self) -> S3Service:
         return S3Service
 
-    def routes(self, child_routes=[]) -> Mount:
+    def routes(self, child_routes=[], **_) -> Mount:
         """Add an endpoint for successful file uploads and direct download."""
         # TODO: check if AWS calls back with POST or PUT
         file_routes = [

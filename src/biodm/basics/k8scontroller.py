@@ -17,13 +17,32 @@ class K8sController(Controller):
     def prefix(self):
         return "/k8s_instances"
 
-    def routes(self, **_) -> Mount:
-        return Mount(self.prefix, routes=[
-            Route( "/",               self.list_instances, methods=[HttpMethod.GET.value]),
+    def routes(self, schema=False) -> Mount:
+        """
+        schema:
+        """
+        m = Mount(self.prefix, routes=[
             Route( "/{manifest}",     self.create,         methods=[HttpMethod.POST.value]),
+            Route( "/",               self.list_instances, methods=[HttpMethod.GET.value]),
             Route( "/instance/{id}",  self.instance_info,  methods=[HttpMethod.GET.value]),
             Route( "/schema",         self.openapi_schema),
         ])
+        if schema:
+            # Mock up an individual route for each available manifest, copying it's doc.
+            r_create = m.routes[0]
+            mans = self.k8s.manifests
+            keys = [k for k in mans.__dict__.keys() if not k.startswith('__')]
+
+            for key in keys:
+                r_view = deepcopy(r_create)
+                r_view.path = f"/{key}"
+                # dummy = function()
+                def dummy():
+                    """"""
+                dummy.__doc__ = mans.__dict__[key].__doc__
+                r_view.endpoint = dummy
+                m.routes.append(r_view)
+        return m
 
     @property
     def k8s(self):
@@ -54,28 +73,3 @@ class K8sController(Controller):
         """
         """
         return '{}'
-
-    async def openapi_schema(self, _):
-        """
-        """
-        # TODO: move this to route, with an arg like 'view'
-        routes = self.routes().routes
-        r_create: Route = routes[1]
-        mans = self.k8s.manifests
-        keys = [k for k in mans.__dict__.keys() if not k.startswith('__')]
-        for key in keys:
-            r_view = deepcopy(r_create)
-            r_view.path = f"/create/{key}"
-            def dummy():
-                """"""
-            dummy.__doc__ = mans.__dict__[key].__doc__
-            r_view.endpoint = dummy
-            routes.append(r_view)
-
-        return json_response(
-            json.dumps(
-                self.schema_gen.get_schema(routes=routes),
-                indent=self.app.config.INDENT,
-            ),
-            status_code=200,
-        )

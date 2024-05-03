@@ -51,7 +51,9 @@ class Controller(ApiComponent):
         """
         return json_response(
             json.dumps(
-                self.schema_gen.get_schema(routes=self.routes().routes),
+                self.schema_gen.get_schema(
+                    routes=self.routes(schema=True).routes
+                ),
                 indent=self.app.config.INDENT,
             ),
             status_code=200,

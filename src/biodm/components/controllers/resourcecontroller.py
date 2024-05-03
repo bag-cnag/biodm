@@ -109,7 +109,7 @@ class ResourceController(EntityController):
                 "you should provide it as 'schema' arg when creating a new controller"
             ) from e
 
-    def routes(self, child_routes=None) -> Mount:
+    def routes(self, child_routes=None, **_) -> Mount:
         """Sets up standard RESTful endpoints. 
 
         relevant doc: https://restfulapi.net/http-methods/"""
