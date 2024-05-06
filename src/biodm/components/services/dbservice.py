@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Bundle
 from sqlalchemy.sql import Insert, Update, Delete, Select
 
-from biodm.utils.utils import unevalled_all, unevalled_or, to_it, DictBundle, it_to
+from biodm.utils.utils import unevalled_all, unevalled_or, to_it, DictBundle, it_to, partition
 from biodm.component import CRUDApiComponent
 from biodm.components import Base
 from biodm.managers import DatabaseManager
@@ -218,13 +218,7 @@ class UnaryEntityService(DatabaseService):
 
             ## Filters
             # Wildcards.
-            wildcards = []
-            for i, v in enumerate(values):
-                if "*" in v:
-                    wildcards.append(values.pop(i))
-                elif v == "":
-                    values.pop(i)
-
+            wildcards, values = partition(values, cond=lambda x: "*" in x)
             if wildcards and ctype is not str:
                 raise ValueError(
                     f"Using wildcard symbol '*' in /search is only allowed"
@@ -401,8 +395,6 @@ class CompositeEntityService(UnaryEntityService):
             # List of entities: one - to - many relationship.
             elif isinstance(sub, list):
                 delayed[key] = nested_stmt
-            else:
-                raise ValueError("Expecting nested entities to be either passed as dict or list.")
             # Remove from data dict to avoid errors on building item statement.
             del data[key]
 
@@ -445,44 +437,48 @@ class CompositeEntityService(UnaryEntityService):
     async def read(self, pk_val, fields=None, **kwargs) -> Base:
         fields = fields or []
         rels = self.table.relationships()
-        nested = [f for f in fields if f in rels]
-        fields = [f for f in fields if f not in nested]
-        if not nested:
+        nested, fields = partition(fields, lambda x: x in rels)
+
+        # If no complicated selection is happening, 1D case works.
+        if not fields or not nested:
             return await super().read(pk_val, fields, **kwargs)
 
-        nested_bundles = []
-        target_tables =  []
-        for nested_name in nested:
-            target = rels[nested_name].target
-            rel_fields = [x.name for x in target.columns]
-            nested_bundles.append(
-                DictBundle(
-                    nested_name,
-                    *[getattr(target.decl_class, f) for f in rel_fields],
-                )
+        ## Build partial statement.
+        stmt = select(
+            DictBundle(
+                self.table.__name__,  
+                *[getattr(self.table, f) for f in fields],
+                *[
+                    DictBundle(
+                        nes,
+                        *[
+                            getattr(rels[nes].target.decl_class, f) 
+                            for f in [
+                                x.name for x in rels[nes].target.columns
+                            ]
+                        ]
+                    )
+                    for nes in nested
+                ],
             )
-            target_tables.append(target.decl_class)
-
-        """Commented out code is the _select version, which should work with 
-            next release of sqlalchemy. See _query doc.
-        """
-        #stmt = select(
-        stmt = DictBundle(
-            # self.table,
-            self.table.__name__,  
-            *[getattr(self.table, f) for f in fields],
-            *nested_bundles,
         )
-        # )#
+        # joins = []
+        # Join tables.
+        for rel, nes in zip(rels, nested):
+            # Handle x-to-many (nested lists) relationships
+            if rel.secondary is not None:
+                # !TODO!: yields errors
+                stmt = stmt.join_from(self.table, rel.secondary)
+                stmt = stmt.join_from(rel.secondary, rel.target)
+                # joins.append(rel.secondary.selectable)
+            else:
+                stmt = stmt.join_from(self.table, rel.target)
+            # joins.append(rel.target.decl_class)
+        stmt = stmt.where(self.gen_cond(pk_val))
 
-        # for target in target_tables:
-        #     stmt = stmt.join_from(self.table, target)
-        # joins = [for target in target_tables]
-
-        # stmt = stmt.where(self.gen_cond(pk_val))
-        # return await self._select(stmt, **kwargs)
-        return await self._query(stmt, filter=self.gen_cond(pk_val), joins=target_tables, **kwargs)
-
+        # _query below tries to build a stmt from the where cond and the join conds and runs synchronously 
+        # return await self._query(stmt, filter=self.gen_cond(pk_val), joins=joins, **kwargs)
+        return await self._select(stmt, **kwargs)
 
     # async def update(self, pk_val, data: dict) -> Base:
     #     # TODO

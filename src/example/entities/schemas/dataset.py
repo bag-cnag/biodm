@@ -33,7 +33,7 @@ class DatasetSchema(Schema):
 
     owner_group = Nested('GroupSchema') # , only=('name', 'n_members',)
     contact = Nested('UserSchema', only=('username', ))
-    tags = List(Nested('TagSchema'), only=('name', ))
+    tags = List(Nested('TagSchema'))
 
     id_ls_download = Integer()
     ls_download = Nested('ListGroupSchema')

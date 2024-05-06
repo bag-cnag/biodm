@@ -9,7 +9,8 @@ asso_dataset_tag = Table(
     Base.metadata,
     Column("id_dataset",                                       primary_key=True),
     Column("version_dataset",                                  primary_key=True),
-    Column("name_tag",          ForeignKey("TAG.name"),        primary_key=True),
+    # Column("name_tag",          ForeignKey("TAG.name"),        primary_key=True),
+    Column("id_tag",          ForeignKey("TAG.id"),        primary_key=True),
     ForeignKeyConstraint(
         ['id_dataset', 'version_dataset'], ['DATASET.id', 'DATASET.version']
     )

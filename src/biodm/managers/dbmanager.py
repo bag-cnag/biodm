@@ -110,15 +110,12 @@ class DatabaseManager(ApiComponent):
                 )
                 # Execute DB Query
                 res = await db_exec(**bound_args)
-
-                if not serializer:
-                    return res
-
                 # Serialize in a sync session.
                 def serialize(_, res):
                     """recieves an unused session argument from run_sync."""
                     return serializer(res)
-                return await bound_args['session'].run_sync(serialize, res)
+                ser_res = await bound_args['session'].run_sync(serialize, res) if serializer else None
+                return await bound_args['session'].run_sync(serialize, res) if serializer else res
 
         wrapper.__name__ = db_exec.__name__
         wrapper.__doc__ = db_exec.__doc__

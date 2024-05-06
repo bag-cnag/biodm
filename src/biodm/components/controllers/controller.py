@@ -103,6 +103,7 @@ class EntityController(Controller, CRUDApiComponent):
         :type data: bool
         """
         try:
+            cls.schema.unknown = INCLUDE
             serialized = cls.schema.dump(data, many=many)
             return json.dumps(serialized, indent=cls.app.config.INDENT)
         except MissingGreenlet as e:
