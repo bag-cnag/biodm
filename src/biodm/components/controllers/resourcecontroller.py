@@ -2,6 +2,7 @@ from __future__ import annotations
 from functools import partial
 from typing import TYPE_CHECKING, List, Any
 
+from marshmallow.schema import EXCLUDE
 from starlette.routing import Mount, Route
 from starlette.requests import Request
 from starlette.responses import Response
@@ -69,9 +70,11 @@ class ResourceController(EntityController):
         super().__init__(app=app)
         self.resource = entity if entity else self._infer_entity_name()
         self.table = table if table else self._infer_table()
+
         self.pk = tuple(self.table.pk())
         self.svc = self._infer_svc()(app=self.app, table=self.table)
-        self.__class__.schema = schema() if schema else self._infer_schema()
+        # schema = schema if schema else self._infer_schema()
+        self.__class__.schema = (schema if schema else self._infer_schema())(unknown=EXCLUDE)
 
     def _infer_entity_name(self) -> str:
         """Infer entity name from controller name."""
@@ -117,7 +120,7 @@ class ResourceController(EntityController):
         """Tries to import from instance module reference."""
         isn = f"{self.resource}Schema"
         try:
-            return self.app.schemas.__dict__[isn]()
+            return self.app.schemas.__dict__[isn]
         except Exception as e:
             raise ValueError(
                 f"{self.__class__.__name__} could not find {isn} Schema. "

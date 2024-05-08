@@ -5,7 +5,7 @@ from abc import abstractmethod
 from enum import Enum
 from typing import Any, List, TYPE_CHECKING, Optional
 
-from marshmallow.schema import Schema, EXCLUDE, INCLUDE
+from marshmallow.schema import Schema
 from marshmallow.exceptions import ValidationError
 from sqlalchemy.exc import MissingGreenlet
 
@@ -84,14 +84,12 @@ class EntityController(Controller, CRUDApiComponent):
         try:
             json_data = json.load(io.BytesIO(data))
             cls.schema.many = isinstance(json_data, list)
-            cls.schema.unknown = EXCLUDE
             return cls.schema.loads(json_data=data)
+
         except ValidationError as e:
             raise PayloadValidationError(e) from e
         except json.JSONDecodeError as e:
             raise PayloadJSONDecodingError(e) from e
-        except Exception as e:
-            raise e
 
     @classmethod
     def serialize(cls, data: dict | Base | List[Base], many: bool, only: Optional[List[str]]=None) -> str:
@@ -101,20 +99,20 @@ class EntityController(Controller, CRUDApiComponent):
         :type data: dict, class:`biodm.components.Base`, List[class:`biodm.components.Base`]
         :param many: plurality flag, essential to marshmallow
         :type data: bool
+        :param only: List of fields to restrict serialization on, optional, defaults to None
+        :type only: List[str]
         """
         try:
-            # cls.schema.only = only
-            # cls.schema.partial = True
-            cls.schema.unknown = INCLUDE
+            # Save and plug in restristed fields.
             dump_fields = cls.schema.dump_fields
             if only:
                 cls.schema.dump_fields = {
                     k:v for k, v in dump_fields.items() if k in only 
                 }
             serialized = cls.schema.dump(data, many=many)
-            #  cls.schema.only = None
-            # cls.schema.partial = None
+            # Restore to full afterwards.
             cls.schema.dump_fields = dump_fields
             return json.dumps(serialized, indent=cls.app.config.INDENT)
+
         except MissingGreenlet as e:
             raise AsyncDBError(e) from e

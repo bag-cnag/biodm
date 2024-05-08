@@ -4,10 +4,10 @@ from typing import List, Any, Tuple, Dict, Callable
 from sqlalchemy import select, update, delete
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Bundle, Load, load_only, joinedload
+from sqlalchemy.orm import load_only, joinedload
 from sqlalchemy.sql import Insert, Update, Delete, Select
 
-from biodm.utils.utils import unevalled_all, unevalled_or, to_it, DictBundle, it_to, partition
+from biodm.utils.utils import unevalled_all, unevalled_or, to_it, it_to, partition
 from biodm.component import CRUDApiComponent
 from biodm.components import Base
 from biodm.managers import DatabaseManager
@@ -37,26 +37,6 @@ class DatabaseService(CRUDApiComponent):
         if row:
             return row
         raise FailedRead("Select returned no result.")
-
-    @DatabaseManager.in_session
-    async def _query(self, stmt: Any, filter, joins: List[Any], session: AsyncSession) -> (Any | None):
-        """QUERY one from database.
-
-        Temporary measure -
-        > TODO: change when new sqlalchemy release comes out.
-        Query is part of sqlalchemy legacy API, it is not supported in async mode.
-        select has a bug for Bundle features. Refer to:
-        - https://github.com/sqlalchemy/sqlalchemy/discussions/11345
-        """
-        def sync_inner(session, stmt, filter, joins):
-            stmt = session.query(stmt).filter(filter)
-            for join in joins:
-                stmt = stmt.join(join)
-            row = stmt.one()
-            if row:
-                return it_to(row)
-            raise FailedRead("Query returned no result.")
-        return await session.run_sync(sync_inner, stmt, filter, joins)
 
     @DatabaseManager.in_session
     async def _select_many(self, stmt: Select, session: AsyncSession) -> List[Any]:
@@ -167,21 +147,80 @@ class UnaryEntityService(DatabaseService):
                     f"Expecting either 'field=v1,v2' pairs or integrer"
                     f" operators 'field.op(v)' op in {SUPPORTED_INT_OPERATORS}")
 
-    async def filter(self, query_params: dict, **kwargs) -> List[Base]:
+    def _filter_process_attr(self, stmt: Select, attr: List[str]):
+        """Iterates over attribute parts (e.g. table.attr.x.y.z) joining tables along the way.
+
+        :param stmt: select statement in construction
+        :type stmt: Select
+        :param attr: attribute name parts of the querystring
+        :type attr: List[str]
+        :raises ValueError: When name is incorrect.
+        :return: Resulting statement and handles to column object and its type
+        :rtype: Tuple[Select, Tuple[Column, type]]
+        """
+        table = self.table
+        for nested in attr[:-1]:
+            jtn = table.target_table(nested)
+            if jtn is None:
+                raise ValueError(f"Invalid nested entity name {nested}.")
+            jtable = jtn.decl_class
+            stmt = stmt.join(jtable)
+            table = jtable
+
+        return stmt, table.colinfo(attr[-1])
+
+    def _restrict_select_on_fields(
+        self, 
+        stmt: Select, 
+        fields: List[str], 
+        nested: List[str], 
+        serializer: Callable=None
+    ) -> Select:
+        """set load_only options of a select(table) statement given a list of fields.
+
+        :param stmt: _description_
+        :type stmt: Select
+        :param fields: _description_
+        :type fields: List[str]
+        :param nested: _description_
+        :type nested: List[str]
+        :param serializer: _description_, defaults to None
+        :type serializer: Callable, optional
+        :return: _description_
+        :rtype: Select
+        """
+        # Restrict serializer fields so that it doesn't trigger any lazy loading.
+        serializer = partial(serializer, only=fields + nested) if serializer else None
+        return (
+            stmt.options(
+                load_only(
+                    *[getattr(self.table, f) for f in fields]
+                ),
+                *[
+                    joinedload(getattr(self.table, n))
+                    for n in nested
+                ]   
+            ), 
+            serializer
+        )
+
+    async def filter(self, query_params: dict, serializer: Callable=None, **kwargs) -> List[Base]:
         """READ rows filted on query parameters."""
         # Get special parameters
         fields = query_params.pop('fields', None)
         offset = query_params.pop('start', None)
         limit = query_params.pop('end', None)
-        # reverse = query_params.pop('reverse')
-
-        # TODO: apply same as read
-        # if fields:
-        #     fields = fields.split(',') if fields else None
-        #     stmt = 
-
+        reverse = query_params.pop('reverse', None)
+        # TODO: apply limit to nested lists as well.
 
         stmt = select(self.table)
+        if fields:
+            fields = fields.split(",")
+            nested, fields = partition(fields, lambda x: x in self.table.relationships())
+            stmt, serializer = self._restrict_select_on_fields(
+                stmt, fields, nested, serializer
+            )
+
         for dskey, csval in query_params.items():
             attr, values = dskey.split("."), csval.split(",")
             # exclude = False
@@ -192,19 +231,7 @@ class UnaryEntityService(DatabaseService):
             operator = None if csval else self._parse_int_operators(attr.pop())
             # elif any(op in dskey for op in SUPPORTED_INT_OPERATORS):
             #     raise ValueError("'field.op()=value' type of query is not yet supported.")
-
-            # For every nested entity of the attribute, join table.
-            table = self.table
-            for nested in attr[:-1]:
-                jtn = table.target_table(nested)
-                if jtn is None:
-                    raise ValueError(f"Invalid nested entity name {nested}.")
-                jtable = jtn.decl_class
-                stmt = stmt.join(jtable)
-                table = jtable
-
-            # Get field info from last joined table.
-            col, ctype = table.colinfo(attr[-1])
+            stmt, (col, ctype) = self._filter_process_attr(stmt, attr)
 
             # Numerical operators.
             if operator:
@@ -241,7 +268,7 @@ class UnaryEntityService(DatabaseService):
             # if exclude:
             #     stmt = select(self.table.not_in(stmt))
         stmt = stmt.offset(offset).limit(limit)
-        return await self._select_many(stmt, **kwargs)
+        return await self._select_many(stmt, serializer=serializer, **kwargs)
 
     async def read(self,
                    pk_val: List[Any],
@@ -258,24 +285,12 @@ class UnaryEntityService(DatabaseService):
         :return: SQLAlchemy result item.
         :rtype: Base
         """
-        fields = fields or []
-        rels = self.table.relationships()
-        nested, fields = partition(fields, lambda x: x in rels)
-
+        nested, fields = partition(fields or [], lambda x: x in self.table.relationships())
         stmt = select(self.table)
         if fields or nested:
-            # Restrict fields and joined tables.
-            stmt = stmt.options(
-                load_only(
-                    *[getattr(self.table, f) for f in fields]
-                ),
-                *[
-                    joinedload(getattr(self.table, n))
-                    for n in nested
-                ]   
+            stmt, serializer = self._restrict_select_on_fields(
+                stmt, fields, nested, serializer
             )
-            # Restrict serializer fields so that it doesn't trigger any lazy loading.
-            serializer = partial(serializer, only=fields + nested) if serializer else None
         stmt = stmt.where(self.gen_cond(pk_val))
         return await self._select(stmt, serializer=serializer, **kwargs)
 
@@ -289,10 +304,12 @@ class UnaryEntityService(DatabaseService):
         :return: _description_
         :rtype: Base
         """
-        stmt = update(self.table)\
-              .where(self.gen_cond(pk_val))\
-              .values(**data)\
-              .returning(self.table)
+        stmt = (
+            update(self.table)
+            .where(self.gen_cond(pk_val))
+            .values(**data)
+            .returning(self.table)
+        )
         return await self._update(stmt, **kwargs)
 
     async def delete(self, pk_val, **kwargs) -> Any:
