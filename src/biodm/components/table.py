@@ -70,7 +70,7 @@ class S3File:
     @declared_attr
     @classmethod
     def user(cls) -> Mapped["User"]:
-        return relationship(foreign_keys=[cls.id_user_uploader], lazy="immediate")
+        return relationship(foreign_keys=[cls.id_user_uploader], lazy="select")
 
     emited_at = Column(TIMESTAMP(timezone=True),
                        server_default=text('now()'), 
@@ -99,7 +99,7 @@ class Permission:
     @declared_attr
     @classmethod
     def ls_download(cls) -> Mapped["ListGroup"]:
-        return relationship("ListGroup", foreign_keys=[cls.id_ls_download], lazy="joined")
+        return relationship("ListGroup", foreign_keys=[cls.id_ls_download], lazy="select")
 
     @declared_attr
     def id_ls_create(_):
@@ -108,7 +108,7 @@ class Permission:
     @declared_attr
     @classmethod
     def ls_create(cls) -> Mapped["ListGroup"]:
-        return relationship("ListGroup", foreign_keys=[cls.id_ls_create], lazy="joined")
+        return relationship("ListGroup", foreign_keys=[cls.id_ls_create], lazy="select")
 
     @declared_attr
     def id_ls_read(_):
@@ -117,7 +117,7 @@ class Permission:
     @declared_attr
     @classmethod
     def ls_read(cls) -> Mapped["ListGroup"]:
-        return relationship("ListGroup", foreign_keys=[cls.id_ls_read], lazy="joined")
+        return relationship("ListGroup", foreign_keys=[cls.id_ls_read], lazy="select")
 
     @declared_attr
     def id_ls_update(_):
@@ -126,7 +126,7 @@ class Permission:
     @declared_attr
     @classmethod
     def ls_update(cls) -> Mapped["ListGroup"]:
-        return relationship("ListGroup", foreign_keys=[cls.id_ls_update], lazy="joined")
+        return relationship("ListGroup", foreign_keys=[cls.id_ls_update], lazy="select")
 
     @declared_attr
     def name_owner_group(_):
@@ -135,4 +135,4 @@ class Permission:
     @declared_attr
     @classmethod
     def owner_group(cls) -> Mapped["Group"]:
-        return relationship(foreign_keys=[cls.name_owner_group], lazy="joined")
+        return relationship(foreign_keys=[cls.name_owner_group], lazy="select")

@@ -1,9 +1,10 @@
-from typing import List, Any, Tuple, Dict
+from functools import partial
+from typing import List, Any, Tuple, Dict, Callable
 
 from sqlalchemy import select, update, delete
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Bundle
+from sqlalchemy.orm import Bundle, Load, load_only, joinedload
 from sqlalchemy.sql import Insert, Update, Delete, Select
 
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it, DictBundle, it_to, partition
@@ -242,7 +243,12 @@ class UnaryEntityService(DatabaseService):
         stmt = stmt.offset(offset).limit(limit)
         return await self._select_many(stmt, **kwargs)
 
-    async def read(self, pk_val: List[Any], fields:List[str]=None, **kwargs) -> Base:
+    async def read(self,
+                   pk_val: List[Any],
+                   fields:List[str]=None,
+                   serializer: Callable=None,
+                   **kwargs
+    ) -> Base:
         """READ one item from the value of it's primary key (components)
 
         :param pk_val: entity primary key values in order
@@ -252,17 +258,26 @@ class UnaryEntityService(DatabaseService):
         :return: SQLAlchemy result item.
         :rtype: Base
         """
-        if fields:
-            stmt = select(
-                Bundle(
-                    self.table.__name__,  
+        fields = fields or []
+        rels = self.table.relationships()
+        nested, fields = partition(fields, lambda x: x in rels)
+
+        stmt = select(self.table)
+        if fields or nested:
+            # Restrict fields and joined tables.
+            stmt = stmt.options(
+                load_only(
                     *[getattr(self.table, f) for f in fields]
-                )
+                ),
+                *[
+                    joinedload(getattr(self.table, n))
+                    for n in nested
+                ]   
             )
-        else:
-            stmt = select(self.table)
+            # Restrict serializer fields so that it doesn't trigger any lazy loading.
+            serializer = partial(serializer, only=fields + nested) if serializer else None
         stmt = stmt.where(self.gen_cond(pk_val))
-        return await self._select(stmt, **kwargs)
+        return await self._select(stmt, serializer=serializer, **kwargs)
 
     async def update(self, pk_val, data: dict, **kwargs) -> Base:
         """UPDATE one row.
@@ -434,51 +449,8 @@ class CompositeEntityService(UnaryEntityService):
         f = self._create_many if isinstance(data, list) else self._create_one
         return await f(data, stmt_only, **kwargs)
 
-    async def read(self, pk_val, fields=None, **kwargs) -> Base:
-        fields = fields or []
-        rels = self.table.relationships()
-        nested, fields = partition(fields, lambda x: x in rels)
-
-        # If no complicated selection is happening, 1D case works.
-        if not fields or not nested:
-            return await super().read(pk_val, fields, **kwargs)
-
-        ## Build partial statement.
-        stmt = select(
-            DictBundle(
-                self.table.__name__,  
-                *[getattr(self.table, f) for f in fields],
-                *[
-                    DictBundle(
-                        nes,
-                        *[
-                            getattr(rels[nes].target.decl_class, f) 
-                            for f in [
-                                x.name for x in rels[nes].target.columns
-                            ]
-                        ]
-                    )
-                    for nes in nested
-                ],
-            )
-        )
-        # joins = []
-        # Join tables.
-        for rel, nes in zip(rels, nested):
-            # Handle x-to-many (nested lists) relationships
-            if rel.secondary is not None:
-                # !TODO!: yields errors
-                stmt = stmt.join_from(self.table, rel.secondary)
-                stmt = stmt.join_from(rel.secondary, rel.target)
-                # joins.append(rel.secondary.selectable)
-            else:
-                stmt = stmt.join_from(self.table, rel.target)
-            # joins.append(rel.target.decl_class)
-        stmt = stmt.where(self.gen_cond(pk_val))
-
-        # _query below tries to build a stmt from the where cond and the join conds and runs synchronously 
-        # return await self._query(stmt, filter=self.gen_cond(pk_val), joins=joins, **kwargs)
-        return await self._select(stmt, **kwargs)
+    # async def read
+    # -> UnaryEntityService already supports Composite case.
 
     # async def update(self, pk_val, data: dict) -> Base:
     #     # TODO

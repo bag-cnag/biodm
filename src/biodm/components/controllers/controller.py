@@ -3,7 +3,7 @@ import io
 import json
 from abc import abstractmethod
 from enum import Enum
-from typing import Any, List, TYPE_CHECKING
+from typing import Any, List, TYPE_CHECKING, Optional
 
 from marshmallow.schema import Schema, EXCLUDE, INCLUDE
 from marshmallow.exceptions import ValidationError
@@ -94,7 +94,7 @@ class EntityController(Controller, CRUDApiComponent):
             raise e
 
     @classmethod
-    def serialize(cls, data: dict | Base | List[Base], many: bool) -> str:
+    def serialize(cls, data: dict | Base | List[Base], many: bool, only: Optional[List[str]]=None) -> str:
         """Serialize SQLAlchemy statement execution result to json.
 
         :param data: some request body
@@ -103,8 +103,18 @@ class EntityController(Controller, CRUDApiComponent):
         :type data: bool
         """
         try:
+            # cls.schema.only = only
+            # cls.schema.partial = True
             cls.schema.unknown = INCLUDE
+            dump_fields = cls.schema.dump_fields
+            if only:
+                cls.schema.dump_fields = {
+                    k:v for k, v in dump_fields.items() if k in only 
+                }
             serialized = cls.schema.dump(data, many=many)
+            #  cls.schema.only = None
+            # cls.schema.partial = None
+            cls.schema.dump_fields = dump_fields
             return json.dumps(serialized, indent=cls.app.config.INDENT)
         except MissingGreenlet as e:
             raise AsyncDBError(e) from e

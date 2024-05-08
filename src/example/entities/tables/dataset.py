@@ -47,11 +47,11 @@ class Dataset(Permission, Base):
 
     # # relationships
     # # TODO: figure out policy - cascade="save-update, merge"
-    contact: Mapped["User"]      = relationship(foreign_keys=[username_user_contact], lazy="joined")
-    tags:    Mapped[Set["Tag"]]  = relationship(secondary=asso_dataset_tag, uselist=True, lazy="joined")
+    contact: Mapped["User"]      = relationship(foreign_keys=[username_user_contact], lazy="select")
+    tags:    Mapped[Set["Tag"]]  = relationship(secondary=asso_dataset_tag, uselist=True, lazy="select")
 
     # # project: Mapped[Project]       = relationship(back_populates="datasets")
-    files: Mapped[List["File"]] = relationship(back_populates="dataset", lazy="joined")
+    files: Mapped[List["File"]] = relationship(back_populates="dataset", lazy="select")
     # # primaryjoin="and_(Dataset.id == File.id_dataset, Dataset.version == File.version_dataset)", 
 
     # # permission_lv2: Mapped["Permission_lv2"] = relationship()
