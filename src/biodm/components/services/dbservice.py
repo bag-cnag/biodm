@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only, joinedload
 from sqlalchemy.sql import Insert, Update, Delete, Select
 
-from biodm.utils.utils import unevalled_all, unevalled_or, to_it, it_to, partition
+from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 from biodm.component import CRUDApiComponent
 from biodm.components import Base
 from biodm.managers import DatabaseManager
@@ -19,7 +19,9 @@ SUPPORTED_INT_OPERATORS = ("gt", "ge", "lt", "le")
 
 
 class DatabaseService(CRUDApiComponent):
-    """Root Service class: manages database transactions for entities."""
+    """Root Service class: manages database transactions for entities.
+    Holds atomic database statement execution functions.
+    """
     @DatabaseManager.in_session
     async def _insert(self, stmt: Insert, session: AsyncSession) -> (Any | None):
         """INSERT one into database."""
@@ -112,11 +114,22 @@ class UnaryEntityService(DatabaseService):
         stmt = stmt.returning(self.table)
         return stmt if stmt_only else await f_ins(stmt, **kwargs)
 
-    def gen_cond(self, pk_val):
-        """Generates WHERE condition from pk definition and values."""
-        return unevalled_all([pk == pk.type.python_type(val) for pk, val in zip(self.pk, pk_val)])
+    def gen_cond(self, pk_val: List[Any]) -> Any:
+        """_summary_
 
-    async def create_update(self, pk_val, data: dict) -> Base:
+        :param pk_val: _description_
+        :type pk_val: _type_
+        :return: _description_
+        :rtype: _type_
+        """
+        return unevalled_all(
+            [
+                pk == pk.type.python_type(val) 
+                for pk, val in zip(self.pk, pk_val)
+            ]
+        )
+
+    async def create_update(self, pk_val: List[Any], data: dict) -> Base:
         """CREATE or UPDATE one row."""
         kw = {
             pk.name: pk.type.python_type(val)
@@ -150,7 +163,7 @@ class UnaryEntityService(DatabaseService):
     def _filter_process_attr(self, stmt: Select, attr: List[str]):
         """Iterates over attribute parts (e.g. table.attr.x.y.z) joining tables along the way.
 
-        :param stmt: select statement in construction
+        :param stmt: select statement under construction
         :type stmt: Select
         :param attr: attribute name parts of the querystring
         :type attr: List[str]
@@ -170,17 +183,16 @@ class UnaryEntityService(DatabaseService):
         return stmt, table.colinfo(attr[-1])
 
     def _restrict_select_on_fields(
-        self, 
-        stmt: Select, 
-        fields: List[str], 
-        nested: List[str], 
+        self,
+        stmt: Select,
+        fields: List[str],
         serializer: Callable=None
     ) -> Select:
         """set load_only options of a select(table) statement given a list of fields.
 
-        :param stmt: _description_
+        :param stmt: select statement under construction
         :type stmt: Select
-        :param fields: _description_
+        :param fields: attribute fields
         :type fields: List[str]
         :param nested: _description_
         :type nested: List[str]
@@ -190,19 +202,18 @@ class UnaryEntityService(DatabaseService):
         :rtype: Select
         """
         # Restrict serializer fields so that it doesn't trigger any lazy loading.
+        nested, fields = partition(fields, lambda x: x in self.table.relationships())
         serializer = partial(serializer, only=fields + nested) if serializer else None
-        return (
-            stmt.options(
-                load_only(
-                    *[getattr(self.table, f) for f in fields]
-                ),
-                *[
-                    joinedload(getattr(self.table, n))
-                    for n in nested
-                ]   
-            ), 
-            serializer
-        )
+        stmt = stmt.options(
+            load_only(
+                *[getattr(self.table, f) for f in fields]
+            ),
+            *[
+                joinedload(getattr(self.table, n))
+                for n in nested
+            ]
+        ) if nested or fields else stmt
+        return stmt, serializer
 
     async def filter(self, query_params: dict, serializer: Callable=None, **kwargs) -> List[Base]:
         """READ rows filted on query parameters."""
@@ -215,11 +226,7 @@ class UnaryEntityService(DatabaseService):
 
         stmt = select(self.table)
         if fields:
-            fields = fields.split(",")
-            nested, fields = partition(fields, lambda x: x in self.table.relationships())
-            stmt, serializer = self._restrict_select_on_fields(
-                stmt, fields, nested, serializer
-            )
+            stmt, serializer = self._restrict_select_on_fields(stmt, fields.split(","), serializer)
 
         for dskey, csval in query_params.items():
             attr, values = dskey.split("."), csval.split(",")
@@ -285,12 +292,8 @@ class UnaryEntityService(DatabaseService):
         :return: SQLAlchemy result item.
         :rtype: Base
         """
-        nested, fields = partition(fields or [], lambda x: x in self.table.relationships())
         stmt = select(self.table)
-        if fields or nested:
-            stmt, serializer = self._restrict_select_on_fields(
-                stmt, fields, nested, serializer
-            )
+        stmt, serializer = self._restrict_select_on_fields(stmt, fields, serializer)
         stmt = stmt.where(self.gen_cond(pk_val))
         return await self._select(stmt, serializer=serializer, **kwargs)
 
