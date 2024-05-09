@@ -202,7 +202,7 @@ class UnaryEntityService(DatabaseService):
         :rtype: Select
         """
         # Restrict serializer fields so that it doesn't trigger any lazy loading.
-        nested, fields = partition(fields, lambda x: x in self.table.relationships())
+        nested, fields = partition(fields or [], lambda x: x in self.table.relationships())
         serializer = partial(serializer, only=fields + nested) if serializer else None
         stmt = stmt.options(
             load_only(

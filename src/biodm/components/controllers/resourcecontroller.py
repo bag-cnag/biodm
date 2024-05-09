@@ -104,7 +104,6 @@ class ResourceController(EntityController):
             case _:
                 return CompositeEntityService if self.table.relationships() else UnaryEntityService
 
-
     def _infer_table(self) -> Base:
         """Tries to import from instance module reference."""
         try:
@@ -134,15 +133,15 @@ class ResourceController(EntityController):
         relevant doc: https://restfulapi.net/http-methods/"""
         child_routes = child_routes or []
         return Mount(self.prefix, routes=[
-            Route( '/',             self.create,              methods=[HttpMethod.POST.value]),
-            Route( '/',             self.filter,              methods=[HttpMethod.GET.value]),
-            Route( '/search',       self.filter,              methods=[HttpMethod.GET.value]),
-            Route( '/schema',       self.openapi_schema,      methods=[HttpMethod.GET.value]),
-            Route(f'/{self.qp_id}', self.read,                methods=[HttpMethod.GET.value]),
-            Route(f'/{self.qp_id}/{{attribute}}', self.read,  methods=[HttpMethod.GET.value]),
-            Route(f'/{self.qp_id}', self.delete,              methods=[HttpMethod.DELETE.value]),
-            Route(f'/{self.qp_id}', self.create_update,       methods=[HttpMethod.PUT.value]),
-            Route(f'/{self.qp_id}', self.update,              methods=[HttpMethod.PATCH.value]),
+            Route( '/',              self.create,               methods=[HttpMethod.POST.value]),
+            Route( '/',              self.filter,               methods=[HttpMethod.GET.value]),
+            Route( '/search/',       self.filter,               methods=[HttpMethod.GET.value]),
+            Route( '/schema/',       self.openapi_schema,       methods=[HttpMethod.GET.value]),
+            Route(f'/{self.qp_id}/', self.read,                 methods=[HttpMethod.GET.value]),
+            Route(f'/{self.qp_id}/{{attribute}}/',  self.read,  methods=[HttpMethod.GET.value]),
+            Route(f'/{self.qp_id}/', self.delete,               methods=[HttpMethod.DELETE.value]),
+            Route(f'/{self.qp_id}/', self.create_update,        methods=[HttpMethod.PUT.value]),
+            Route(f'/{self.qp_id}/', self.update,               methods=[HttpMethod.PATCH.value]),
         ] + child_routes)
 
     def _extract_pk_val(self, request: Request) -> List[Any]:

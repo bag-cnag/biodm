@@ -1,3 +1,4 @@
+from os import name
 import time
 from typing import Tuple, List, Any
 
@@ -25,20 +26,20 @@ class K8sManager(ApiComponent):
     _CustomObjectsApi: client.CustomObjectsApi
 
 
-    def __init__(self, app, manifests=None):
+    def __init__(self, app, host, cert, token, namespace, manifests=None):
         super().__init__(app=app)
         self._config = client.Configuration()
         self._client = client.ApiClient(self._config)
-        self.namespace = self.app.config.K8_NAMESPACE
-        self.authenticate()
+        self.namespace = namespace
+        self.authenticate(token, host, cert)
         self.manifests = manifests
 
-    def authenticate(self):
+    def authenticate(self, token, host, cert):
         """Set configuration with the credentials and certificate"""
-        self._config.api_key["authorization"] = self.app.config.K8_TOKEN
+        self._config.api_key["authorization"] = token
         self._config.api_key_prefix['authorization'] = 'Bearer'
-        self._config.host = self.app.config.K8_HOST
-        self._config.ssl_ca_cert = self.app.config.K8_CERT
+        self._config.host = host
+        self._config.ssl_ca_cert = cert
 
     def log(self, *args):
         """Conditional print"""

@@ -55,6 +55,18 @@ sphinx-apidoc --implicit-namespaces -fo docs/biodm/ src/biodm -H "API Reference"
 python3 -m sphinx -b html docs/ docs/build/html
 ```
 
+### Run tests
+
+Tests:
+```bash
+pytest src/biodm/tests/
+```
+
+Codecov:
+```bash
+pytest --cov-report term --cov=src/biodm src/biodm/tests/
+```
+
 ### Setup development environment
 
 #### Install in editable mode

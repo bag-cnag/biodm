@@ -13,8 +13,8 @@ PROXY_BUFFER_SIZE = '64k'
 HOST_NAME = config.K8_HOST
 
 # Or have another serviceaccount for this
-OAUTH2_CLIENT_ID = config.CLIENT_ID
-OAUTH2_CLIENT_SECRET = config.CLIENT_SECRET
+OAUTH2_CLIENT_ID = config.KC_CLIENT_ID
+OAUTH2_CLIENT_SECRET = config.KC_CLIENT_SECRET
 OAUTH2_NAMESPACE = 'ingress-nginx'
 OAUTH2_APP_NAME = 'oauth2-proxy'
 OAUTH2_PORT = 8091

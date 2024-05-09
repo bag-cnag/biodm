@@ -15,6 +15,7 @@ from starlette.types import ASGIApp
 from starlette.config import Config
 
 from biodm.basics import CORE_CONTROLLERS, K8sController
+from biodm.component import ApiComponent
 from biodm.managers import DatabaseManager, KeycloakManager, S3Manager, K8sManager
 from biodm.components.controllers import Controller
 from biodm.components.services import UnaryEntityService, CompositeEntityService
@@ -24,11 +25,7 @@ from biodm.utils.utils import to_it
 from biodm.utils.security import extract_and_decode_token, auth_header
 from biodm.tables import History, ListGroup
 from biodm import __version__ as CORE_VERSION
-try:
-    import kubernetes
-    HAS_K8s = True
-except:
-    HAS_K8s = False
+from example import config
 
 
 class TimeoutMiddleware(BaseHTTPMiddleware):
@@ -75,6 +72,12 @@ class Api(Starlette):
     - listens on events
     """
     logger = logging.getLogger(__name__)
+    # Managers
+    db: ApiComponent = None
+    s3: ApiComponent = None
+    kc: ApiComponent = None
+    k8: ApiComponent = None
+
 
     def __init__(self,
                  controllers: Optional[List[Controller]],
@@ -82,23 +85,27 @@ class Api(Starlette):
                  *args,
                  **kwargs
     ):
+        logging.basicConfig(
+            level=logging.DEBUG if config.DEBUG else logging.INFO,
+            format="%(asctime)s | %(levelname)-8s | %(module)s:%(funcName)s:%(lineno)d - %(message)s"
+        )
+        logging.info("Intializing server.")
+      
         ## Instance Info.
         self.tables: ModuleType = instance.get('tables')
         self.schemas: ModuleType = instance.get('schemas')
         self.config: Config = instance.get('config')
+        m = instance.get('manifests')
+        if m: # So that it is passed as a parameter for k8 manager.
+            self.config.K8_MANIFESTS = m
 
-        ## Managers.
-        self.db = DatabaseManager(app=self)
-        self.kc = KeycloakManager(app=self)
-        self.s3 = S3Manager(app=self)
-        if HAS_K8s:
-            self.k8s = K8sManager(app=self, manifests=instance.get('manifests'))
+        ## Managers
+        self.deploy_managers()
 
         ## Controllers.
         self.controllers = []
         classes = CORE_CONTROLLERS + controllers or []
-        if HAS_K8s:
-            classes.append(K8sController)
+        classes.append(K8sController)
         routes = []
         routes.extend(
             self.adopt_controllers(
@@ -133,7 +140,10 @@ class Api(Starlette):
         self.add_middleware(HistoryMiddleware, server_host=self.config.SERVER_HOST)
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
-            allow_origins=[self.config.SERVER_HOST, self.config.KC_HOST, "*"], 
+            allow_origins=(
+                [self.config.SERVER_HOST, "*"] + 
+                [self.config.KC_HOST] if hasattr(self.config, "KC_HOST") else []
+            ), 
             allow_methods=["*"], allow_headers=["*"]
         )
         if not self.config.DEV:
@@ -147,6 +157,33 @@ class Api(Starlette):
         self.add_exception_handler(RequestError, onerror)
         # self.add_exception_handler(DatabaseError, on_error)
         # self.add_exception_handler(Exception, on_error)
+
+    def _parse_config(self, prefix: str) -> Dict[str, Any]:
+        """Returns config elements starting by prefix.
+        :param prefix: prefix
+        :type prefix: str
+        :return: config subset as a dict
+        :rtype: Dict[str, Any]
+        """
+        return {
+            k.lower().split(f"{prefix}_")[-1]: v
+            for k, v in self.config.__dict__.items()
+            if k.lower().startswith(f"{prefix}_")
+        }
+
+    def deploy_managers(self):
+        """Conditionally deploy managers. Each manager connects to an external service.
+        Appart from the DB, managers are optional, with respect to config population.
+        """
+        # Always deploy DB.
+        self.db = DatabaseManager(app=self)
+        for name, mngr in zip(("kc", "s3", "k8"), 
+                             (KeycloakManager, S3Manager, K8sManager)):
+            # Get config entries for that manager.
+            c = self._parse_config(name)
+            if c:
+                self.__dict__[name] = mngr(app=self, **c)
+                self.logger.info(f"{name.upper()} manager UP.")
 
     def adopt_controllers(self, controllers: List[Controller]) -> List:
         """Adopts controllers, and their associated routes."""

@@ -44,9 +44,9 @@ KC_REALM           = config("KC_REALM",           cast=str,   default="3TR")
 KC_PUBLIC_KEY      = config("KC_PUBLIC_KEY",      cast=str,   default="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtiWvIw3L02fmyj78fPRUU0dN+5zu+rB942pIfO6cexy05+SvnBA4uroHc1F424ZJWngRhfgX+wjL06a1T6sd4c9sfZl2gsP1gsweiajNuf9BCWi542yi3addiuQmbfn6tfmmR/Tr+p+TCrirQiZOp/fEAkGOX/m6y8/t7KMkZewc9rMlCyErld8CPnKMn3Gz8CIHUdcKA6Ena1HPvq/z3rWpBoGI7gycJSEIyxYR+wIXYuQ1EcXhJ6XTv2It0XNbU9VCL16b3vO1nY86bj2HrUfEiKvJLXp1uSzmw3XgF1LqO7z+NAtGUmZIZxpRA4nrrZd22IpSDz50g41qdOBh2wIDAQAB")
 KC_ADMIN           = config("KC_ADMIN",           cast=str,   default="admin")
 KC_ADMIN_PASSWORD  = config("KC_ADMIN_PASSWORD",  cast=str,   default="1234")
-CLIENT_ID          = config("CLIENT_ID",          cast=str,   default="submission_client")
-CLIENT_SECRET      = config("CLIENT_SECRET",      cast=str,   default="Yu6lFwNnewcgVCenn5CArGBX0Cq1Fdor")
-JWT_OPTIONS        = config("JWT_OPTIONS",        cast=dict,  default={'verify_exp': False, 'verify_aud':False})
+KC_CLIENT_ID       = config("KC_CLIENT_ID",       cast=str,   default="submission_client")
+KC_CLIENT_SECRET   = config("KC_CLIENT_SECRET",   cast=str,   default="Yu6lFwNnewcgVCenn5CArGBX0Cq1Fdor")
+KC_JWT_OPTIONS     = config("KC_JWT_OPTIONS",     cast=dict,  default={'verify_exp': False, 'verify_aud':False})
 
 ## Kubernetes.
 K8_HOST       = config("K8_HOST",       cast=str,  default="https://minikube.local:8443")

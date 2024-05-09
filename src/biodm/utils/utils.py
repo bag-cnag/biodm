@@ -1,11 +1,9 @@
 from functools import reduce
 import operator
 from os import path, utime
-from typing import Any, List, Callable, Optional
+from typing import Any, List, Callable, Tuple
 
 from starlette.responses import Response
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Bundle
 
 
 def json_response(data: str, status_code: int) -> Response:
@@ -35,7 +33,8 @@ def it_to(x: tuple | list) -> (Any | tuple | list):
     return x[0] if hasattr(x, '__len__') and len(x) == 1 else x
 
 
-def partition(ls: List[Any], cond: Callable[[Any], bool], excl_na: bool=True) -> List[Any]:
+def partition(ls: List[Any], cond: Callable[[Any], bool], excl_na: bool=True
+) -> Tuple[List[Any], List[Any]]:
     """Partition a list into two based on condition.
     Return list of values checking condition.
     If `excl_na`, values whose truth value is `False` will be evicted from both lists.

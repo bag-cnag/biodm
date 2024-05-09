@@ -5,7 +5,7 @@ from biodm.api import Api
 
 from example.entities.controllers import CONTROLLERS
 from example.entities import tables, schemas
-from example import manifests
+# from example import manifests
 from example import config
 
 
@@ -17,7 +17,7 @@ def main():
             'config': config,
             'tables': tables,
             'schemas': schemas,
-            'manifests': manifests
+            # 'manifests': manifests
         }
     )
     return app
@@ -30,5 +30,7 @@ if __name__ == "__main__":
         host=config.SERVER_HOST,
         port=config.SERVER_PORT,
         loop="uvloop",
-        log_level="debug" if config.DEBUG else "info"
+        reload=config.DEV,
+        log_level="debug" if config.DEBUG else "info",
+        access_log=False
     )

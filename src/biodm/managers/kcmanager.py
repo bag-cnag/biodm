@@ -17,22 +17,35 @@ class KeycloakManager(ApiComponent):
     """Manages a service account connection and an admin connection.
     Use the first to authenticate tokens and the second to manage the realm.
     """
-    def __init__(self, app: Api):
+    def __init__(
+        self, 
+        app: Api,
+        host: str,
+        realm: str,
+        public_key: str,
+        admin: str,
+        admin_password: str,
+        client_id: str,
+        client_secret: str,
+        jwt_options: dict
+    ):
         super().__init__(app=app)
+        self.jwt_options = jwt_options
+        self.public_key = public_key
         try:
             self._connexion = KeycloakOpenIDConnection(
-                server_url=self.app.config.KC_HOST,
-                username=self.app.config.KC_ADMIN,
-                password=self.app.config.KC_ADMIN_PASSWORD,
+                server_url=host,
                 user_realm_name="master",
-                realm_name=self.app.config.KC_REALM,
+                realm_name=realm,
+                username=admin,
+                password=admin_password,
                 verify=(not self.app.config.DEV),
             )
             self._openid = KeycloakOpenID(
-                server_url=self.app.config.KC_HOST,
-                client_id=self.app.config.CLIENT_ID,
-                realm_name=self.app.config.KC_REALM,
-                client_secret_key=self.app.config.CLIENT_SECRET,
+                server_url=host,
+                realm_name=realm,
+                client_id=client_id,
+                client_secret_key=client_secret,
             )
         except KeycloakError as e:
             raise KeycloakUnavailableError(
@@ -65,8 +78,8 @@ class KeycloakManager(ApiComponent):
             return f"-----BEGIN PUBLIC KEY-----\n {idrsa} \n-----END PUBLIC KEY-----"
 
         return self.openid.decode_token(token, 
-			key=enclose_idrsa(self.app.config.KC_PUBLIC_KEY), 
-            options=self.app.config.JWT_OPTIONS
+			key=enclose_idrsa(self.public_key), 
+            options=self.jwt_options
         )
 
     def _user_data_to_payload(self, data: dict):

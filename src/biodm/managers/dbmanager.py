@@ -23,6 +23,7 @@ class DatabaseManager(ApiComponent):
         try:
             self.engine = create_async_engine(
                 self.database_url,
+                # echo=False,
                 echo=app.config.DEBUG,
             )
             self.async_session = async_sessionmaker(

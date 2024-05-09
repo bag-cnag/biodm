@@ -1,5 +1,7 @@
 *bak
 .vscode/
+*.log
+.coverage
 
 # Envs
 .env
