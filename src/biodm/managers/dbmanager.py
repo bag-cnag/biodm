@@ -5,7 +5,6 @@ from typing import AsyncGenerator, TYPE_CHECKING, Callable
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.pool import NullPool, AsyncAdaptedQueuePool
 
 from biodm.component import ApiComponent
 from biodm.components import Base
@@ -24,9 +23,7 @@ class DatabaseManager(ApiComponent):
         try:
             self.engine = create_async_engine(
                 self.database_url,
-                # echo=False,
                 echo=app.config.DEBUG,
-                # poolclass=NullPool if app.config.TEST else AsyncAdaptedQueuePool
             )
             self.async_session = async_sessionmaker(
                 self.engine,
@@ -56,9 +53,9 @@ class DatabaseManager(ApiComponent):
             async with self.async_session() as session:
                 yield session
                 await session.commit()
-        except:
+        except Exception as e:
             await session.rollback()
-            raise
+            raise e
         finally:
             await session.close()
 
@@ -72,17 +69,17 @@ class DatabaseManager(ApiComponent):
     def in_session(db_exec: Callable):
         """Decorator that ensures db_exec receives a session.
 
-        session object is either passed as an argument (from nested obj creation) or a new 
+        session object is either passed as an argument (from nested obj creation) or a new
         context manager is opened. This decorator guarantees exactly 1 session per request.
-          > contextlib.AsyncExitStack() 
+          > contextlib.AsyncExitStack()
         below allows for conditional context management.
 
-        Also performs serialization **within a sync session**: 
+        Also performs serialization **within a sync session**:
         - important for lazy nested attributes) when passed a serializer.
 
-        It is doing so by extracting 'serializer' argument sometimes explicitely, 
-        sometimes implicitely passed around using kwargs dict) !! Thus all 'not final' functions 
-        i.e. defined outside of this class, onto which this decorator is applied should 
+        It is doing so by extracting 'serializer' argument sometimes explicitely,
+        sometimes implicitely passed around using kwargs dict) !! Thus all 'not final' functions
+        i.e. defined outside of this class, onto which this decorator is applied should
         pass down **kwargs dictionary.
         """
         # Weak protection: restrict decorator on functions that looks like this.
@@ -99,13 +96,13 @@ class DatabaseManager(ApiComponent):
         # Callable.
         async def wrapper(*args, **kwargs):
             """ Applies a bit of arguments manipulation whose goal is to maximize
-                convenience of use of the decorator by allowing explicing or implicit 
+                convenience of use of the decorator by allowing explicing or implicit
                 argument calling.
                 Relevant doc: https://docs.python.org/3/library/inspect.html#inspect.Signature.bind
 
                 Then produces and passes down a session if needed.
                 Finally after the function returns, serialization is applied if needed.
-            """ 
+            """
             serializer = kwargs.pop('serializer', None)
             bound_args = signature(db_exec).bind_partial(*args, **kwargs)
             bound_args.apply_defaults()
@@ -119,15 +116,13 @@ class DatabaseManager(ApiComponent):
                     session if session
                     else await stack.enter_async_context(svc.app.db.session())
                 )
-                # Execute DB Query
-                res = await db_exec(**bound_args)
-                # Serialize in a sync session.
-                def serialize(_, res):
-                    """recieves an unused session argument from run_sync."""
-                    return serializer(res)
-                ser_res = await bound_args['session'].run_sync(serialize, res) if serializer else None
-                return await bound_args['session'].run_sync(serialize, res) if serializer else res
 
+                db_res = await db_exec(**bound_args)
+                return await bound_args['session'].run_sync(
+                    lambda _, data: serializer(data), db_res
+                ) if serializer else db_res
+
+        wrapper.__annotations__ = db_exec.__annotations__
         wrapper.__name__ = db_exec.__name__
         wrapper.__doc__ = db_exec.__doc__
         return wrapper

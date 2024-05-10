@@ -5,11 +5,9 @@ from typing import List, Optional, Dict, Any
 from types import ModuleType
 
 from starlette.applications import Starlette
-from starlette.middleware.base import BaseHTTPMiddleware, DispatchFunction, RequestResponseEndpoint
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
-from starlette.requests import Request
-from starlette.responses import HTMLResponse, Response
-from starlette.routing import Route
+from starlette.responses import HTMLResponse
 from starlette.schemas import SchemaGenerator
 from starlette.types import ASGIApp
 from starlette.config import Config
@@ -25,12 +23,11 @@ from biodm.utils.utils import to_it
 from biodm.utils.security import extract_and_decode_token, auth_header
 from biodm.tables import History, ListGroup
 from biodm import __version__ as CORE_VERSION
-from example import config
 
 
 class TimeoutMiddleware(BaseHTTPMiddleware):
     """Emit timeout signals."""
-    def __init__(self, app: ASGIApp, timeout: int=30) -> None:
+    def __init__(self, app: ASGIApp, timeout: int = 30) -> None:
         self.timeout = timeout
         super().__init__(app, self.dispatch)
 
@@ -78,26 +75,30 @@ class Api(Starlette):
     kc: ApiComponent = None
     k8: K8sManager = None
 
-
-    def __init__(self,
-                 controllers: Optional[List[Controller]],
-                 instance: Optional[Dict[str, Config | ModuleType]],
-                 *args,
-                 **kwargs
+    def __init__(
+        self,
+        controllers: Optional[List[Controller]],
+        instance: Optional[Dict[str, Config | ModuleType]],
+        *args,
+        **kwargs
     ):
-        logging.basicConfig(
-            level=logging.DEBUG if config.DEBUG else logging.INFO,
-            format="%(asctime)s | %(levelname)-8s | %(module)s:%(funcName)s:%(lineno)d - %(message)s"
-        )
-        logging.info("Intializing server.")
-      
         ## Instance Info.
         self.tables: ModuleType = instance.get('tables')
         self.schemas: ModuleType = instance.get('schemas')
         self.config: Config = instance.get('config')
         m = instance.get('manifests')
-        if m: # So that it is passed as a parameter for k8 manager.
+        if m:
+            # So that it is passed as a parameter for k8 manager.
             self.config.K8_MANIFESTS = m
+
+        ## Logger.
+        logging.basicConfig(
+            level=logging.DEBUG if self.config.DEBUG else logging.INFO,
+            format=(
+                "%(asctime)s | %(levelname)-8s | %(module)s:%(funcName)s:%(lineno)d - %(message)s"
+            )
+        )
+        logging.info("Intializing server.")
 
         ## Managers
         self.deploy_managers()
@@ -114,17 +115,20 @@ class Api(Starlette):
         )
 
         ## Schema Generator.
-        self.schema_generator = SchemaGenerator({
-            "openapi": "3.0.0", "info": {
-                "name": self.config.API_NAME, 
-                "version": self.config.API_VERSION, 
-                "backend": "biodm", 
-                "backend_version": CORE_VERSION
-        }})
+        self.schema_generator = SchemaGenerator(
+            {
+                "openapi": "3.0.0", "info": {
+                    "name": self.config.API_NAME,
+                    "version": self.config.API_VERSION,
+                    "backend": "biodm",
+                    "backend_version": CORE_VERSION
+                }
+            }
+        )
 
         """Headless Services
 
-            For entities that are managed internally: not exposing routes 
+            For entities that are managed internally: not exposing routes.
             i.e. only ListGroups and History atm
 
             Since the controller normally instanciates the service, and it does so
@@ -141,10 +145,14 @@ class Api(Starlette):
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
             allow_origins=(
-                [self.config.SERVER_HOST, "*"] + 
-                [self.config.KC_HOST] if hasattr(self.config, "KC_HOST") else []
-            ), 
-            allow_methods=["*"], allow_headers=["*"]
+                [self.config.SERVER_HOST, "*"] + (
+                    [self.config.KC_HOST]
+                    if hasattr(self.config, "KC_HOST")
+                    else []
+                )
+            ),
+            allow_methods=["*"],
+            allow_headers=["*"]
         )
         if not self.config.DEV:
             self.add_middleware(TimeoutMiddleware, timeout=self.config.SERVER_TIMEOUT)
@@ -177,8 +185,9 @@ class Api(Starlette):
         """
         # Always deploy DB.
         self.db = DatabaseManager(app=self)
-        for name, mngr in zip(("kc", "s3", "k8"), 
-                             (KeycloakManager, S3Manager, K8sManager)):
+        for name, mngr in zip(
+            ("kc", "s3", "k8"), (KeycloakManager, S3Manager, K8sManager)
+        ):
             # Get config entries for that manager.
             c = self._parse_config(name)
             if c:

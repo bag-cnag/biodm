@@ -26,8 +26,7 @@ class S3Controller(ResourceController):
 
     # TODO: Decorate with permissions.
     async def download(self, request: Request):
-        """Returns aws s3 direct download URL with a redirect header.  
-        """
+        """Returns aws s3 direct download URL with a redirect header."""
         # TODO: Implement
         pass
 
@@ -41,8 +40,8 @@ class S3Controller(ResourceController):
             Uppon receival, update entity status in the DB."""
 
         # 1. read request
-            # -> get id
-            # -> get path ? 
-        # 2. self.svc.file_ready() -> set ready state (and update path ?  
+        #   -> get id
+        #   -> get path ?
+        # 2. self.svc.file_ready() -> set ready state (and update path ?
         # TODO: Implement
         pass

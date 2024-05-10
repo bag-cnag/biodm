@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, String, ForeignKey, TIMESTAMP, text, UUID
+from sqlalchemy import Column, String, ForeignKey, TIMESTAMP, UUID
 from biodm.components import Base
 
 
@@ -10,8 +10,7 @@ class K8sInstance(Base):
     namespace = Column(String(50))
     manifest = Column(String(50))
 
-
-    emited_at = Column(TIMESTAMP(timezone=True), 
-                       default=datetime.datetime.utcnow, 
+    emited_at = Column(TIMESTAMP(timezone=True),
+                       default=datetime.datetime.utcnow,
                        nullable=False)
     expiring_at = Column(TIMESTAMP(timezone=True))

@@ -18,7 +18,7 @@ class KeycloakManager(ApiComponent):
     Use the first to authenticate tokens and the second to manage the realm.
     """
     def __init__(
-        self, 
+        self,
         app: Api,
         host: str,
         realm: str,
@@ -50,7 +50,7 @@ class KeycloakManager(ApiComponent):
         except KeycloakError as e:
             raise KeycloakUnavailableError(
                 f"Failed to initialize connection to Keycloak: {e.error_message}"
-            )  from e
+            ) from e
 
     @property
     def admin(self):
@@ -77,9 +77,8 @@ class KeycloakManager(ApiComponent):
         def enclose_idrsa(idrsa) -> str:
             return f"-----BEGIN PUBLIC KEY-----\n {idrsa} \n-----END PUBLIC KEY-----"
 
-        return self.openid.decode_token(token, 
-			key=enclose_idrsa(self.public_key), 
-            options=self.jwt_options
+        return self.openid.decode_token(
+            token, key=enclose_idrsa(self.public_key), options=self.jwt_options
         )
 
     def _user_data_to_payload(self, data: dict):
@@ -94,7 +93,7 @@ class KeycloakManager(ApiComponent):
             for field in ("name", "name_parent")
         }
 
-    async def create_user(self, data: dict, groups: List[str]=None) -> str:
+    async def create_user(self, data: dict, groups: List[str] = None) -> str:
         groups = groups or []
         payload = self._user_data_to_payload(data)
         payload.update({

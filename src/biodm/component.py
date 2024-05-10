@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     import logging
     from biodm.api import Api
 
+
 class ApiComponent(ABC):
     """Abstract API component, refrencing main server class and its loggger.
 
@@ -37,11 +38,11 @@ class CRUDApiComponent(ApiComponent, ABC):
     @abstractmethod
     async def delete(self, *args, **kwargs) -> Any:
         raise NotImplementedError
-    
+
     @abstractmethod
     async def create_update(self, *args, **kwargs) -> Any:
         raise NotImplementedError
-    
+
     @abstractmethod
     async def filter(self, *args, **kwargs) -> Any:
         raise NotImplementedError

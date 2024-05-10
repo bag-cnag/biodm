@@ -26,8 +26,7 @@ PG_USER  = config("PG_USER",  cast=str,  default="postgres")
 PG_PASS  = config("PG_PASS",  cast=str,  default="pass")
 PG_HOST  = config("PG_HOST",  cast=str,  default="postgres.local:5432")
 PG_DB    = config("PG_DB",    cast=str,  default="biodm")
-# DATABASE_URL = f"postgresql://{PG_USER}:{PG_PASS}@{PG_HOST}/{PG_DB}"
-DATABASE_URL = "sqlite:///:memory:"
+DATABASE_URL = f"postgresql://{PG_USER}:{PG_PASS}@{PG_HOST}/{PG_DB}"
 
 
 ## S3 Bucket.

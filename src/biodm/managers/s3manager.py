@@ -41,7 +41,7 @@ class S3Manager(ApiComponent):
     def create_presigned_post(self,
                               object_name,
                               fields=None,
-                              condition=None,
+                              conditions=None,
                               expiration=None):
         """
         From boto3 official doc:
@@ -50,8 +50,13 @@ class S3Manager(ApiComponent):
         fields = fields or []
         conditions = conditions or []
         expiration = expiration if expiration else self.url_expiration
-        conditions.append({"success_action_redirect": 
-                           Path(self.app.config.SERVER_HOST, "success_file_upload")})
+        conditions.append(
+            {
+                "success_action_redirect": Path(
+                    self.app.config.SERVER_HOST, "success_file_upload"
+                )
+            }
+        )
         try:
             return self.s3_client.generate_presigned_post(
                 self.bucket_name,
@@ -63,7 +68,7 @@ class S3Manager(ApiComponent):
         except ClientError as e:
             self.app.logger.error(e)
             return None
-    
+
     def create_presigned_download_url(self, object_name, expiration=None):
         """Generate a presigned URL to share an S3 object
 
@@ -82,4 +87,3 @@ class S3Manager(ApiComponent):
         except ClientError as e:
             self.app.logger.error(e)
             return None
-

@@ -1,5 +1,5 @@
 from starlette.testclient import TestClient
-from .app import client_args#, json_bytes
+
 
 def test_live_endpoint(client_args):
     """"""
@@ -7,6 +7,7 @@ def test_live_endpoint(client_args):
         response = client.get('/live')
         assert response.status_code == 200
         assert response.text == 'live\n'
+
 
 def test_api_schema(client_args):
     """"""
@@ -16,7 +17,7 @@ def test_api_schema(client_args):
         assert "biodm_test" in response.text
         assert "0.1.0"      in response.text
 
-# TODO:
+# TODO:
 # def test_login_endpoint():
 # def test_users
 # def test_groups

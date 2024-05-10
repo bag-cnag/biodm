@@ -2,7 +2,8 @@ import json
 
 from starlette.testclient import TestClient
 
-from .app import client_args, json_bytes
+from .conftest import json_bytes
+
 
 def test_resource_schema(client_args):
     """"""
@@ -12,6 +13,7 @@ def test_resource_schema(client_args):
         json_response = json.loads(response.text)
         assert "/" in json_response['paths']
         assert "/search/" in json_response['paths']
+
 
 def test_create_unary_resource(client_args):
     """"""

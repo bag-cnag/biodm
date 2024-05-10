@@ -1,4 +1,3 @@
-from os import name
 import time
 from typing import Tuple, List, Any
 
@@ -24,7 +23,6 @@ class K8sManager(ApiComponent):
     _CoreV1Api: client.CoreV1Api
     _NetworkingV1Api: client.NetworkingApi
     _CustomObjectsApi: client.CustomObjectsApi
-
 
     def __init__(self, app, host, cert, token, namespace, manifests=None):
         super().__init__(app=app)
@@ -123,14 +121,14 @@ class K8sManager(ApiComponent):
         nreplicas = specs.get("replicas", 1)
 
         resp = self.AppsV1Api.create_namespaced_deployment(
-            body=manifest, 
+            body=manifest,
             namespace=self.namespace
         )
 
         # Waiting for the instance to be up
         while True:
             resp = self.AppsV1Api.read_namespaced_deployment(
-                name=name, 
+                name=name,
                 namespace=self.namespace
             )
             if resp.status.available_replicas != nreplicas:
@@ -157,7 +155,7 @@ class K8sManager(ApiComponent):
             plural=plural,
             namespace=self.namespace
         )
-        self.log(f"Response: ", resp)
+        self.log(f"Response: {resp}")
         self.log(f"Custom object {manifest['kind']} with name: {name} up.")
 
     def read_ingress(self, name) -> None:
@@ -177,7 +175,7 @@ class K8sManager(ApiComponent):
         )
 
     def delete_custom_object(self, name: str,
-                             manifest: dict=None,
+                             manifest: dict = None,
                              group='cnag.eu',
                              version='v1',
                              plural='suis'):
@@ -198,7 +196,7 @@ class K8sManager(ApiComponent):
             namespace=self.namespace
         )
         time.sleep(1)
-        self.log(f"Service {name} up.")
+        self.log(f"Service {name} up - msg: {resp}.")
 
     def read_service_status(self, name):
         resp = self.CoreV1Api.read_namespaced_service_status(
@@ -211,18 +209,8 @@ class K8sManager(ApiComponent):
         """Create an ingress"""
         name = self.get_name_in_manifest(manifest)
         resp = self.NetworkingV1Api.create_namespaced_ingress(
-            body=manifest, 
+            body=manifest,
             namespace=self.namespace
         )
         time.sleep(1)
         self.log(f"Ingress {name} setup.")
-
-    def list_custom_object(self, manifest: dict, label_selector) -> List[Any]:
-        group, version, plural = self.get_custom_resource_params(manifest)
-        return self.CustomObjectsApi.list_namespaced_custom_object(
-            group=group,
-            version=version,
-            plural=plural,
-            namespace=self.namespace,
-            label_selector=label_selector
-        )

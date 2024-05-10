@@ -23,13 +23,16 @@ class KCService(CompositeEntityService):
 
 
 class KCGroupService(KCService):
-    async def read_or_create(self, data: dict) -> str:
+    async def read_or_create(
+        self,
+        data: dict
+    ) -> str:
         try:
             return (await self.read(data["name"])).id
         except FailedRead:
             return await self.kc.create_group(data)
 
-    async def create(self, data, stmt_only: bool=False, **kwargs) -> Base | List[Base]:
+    async def create(self, data, stmt_only: bool = False, **kwargs) -> Base | List[Base]:
         """Create entities on Keycloak Side before passing to parent class for DB."""
         # KC
         if not stmt_only:
@@ -57,7 +60,7 @@ class KCGroupService(KCService):
 
 
 class KCUserService(KCService):
-    async def read_or_create(self, data, groups: List[str]=None, group_ids=None) -> str:
+    async def read_or_create(self, data, groups: List[str] = None, group_ids=None) -> str:
         try:
             user = await self.read(data["username"])
             group_ids = group_ids or []
@@ -67,7 +70,7 @@ class KCUserService(KCService):
         except FailedRead:
             return await self.kc.create_user(data, groups)
 
-    async def create(self, data, stmt_only: bool=False, **kwargs) -> Base | List[Base]:
+    async def create(self, data, stmt_only: bool = False, **kwargs) -> Base | List[Base]:
         """Create entities on Keycloak Side before passing to parent class for DB."""
         # KC
         if not stmt_only:

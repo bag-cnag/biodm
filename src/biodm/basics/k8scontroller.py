@@ -26,10 +26,10 @@ class K8sController(Controller):
         :rtype: starlette.routing.Mount
         """
         m = Mount(self.prefix, routes=[
-            Route( "/{manifest}",     self.create,         methods=[HttpMethod.POST.value]),
-            Route( "/",               self.list_instances, methods=[HttpMethod.GET.value]),
-            Route( "/instance/{id}",  self.instance_info,  methods=[HttpMethod.GET.value]),
-            Route( "/schema",         self.openapi_schema),
+            Route("/{manifest}",     self.create,         methods=[HttpMethod.POST.value]),
+            Route("/",               self.list_instances, methods=[HttpMethod.GET.value]),
+            Route("/instance/{id}",  self.instance_info,  methods=[HttpMethod.GET.value]),
+            Route("/schema",         self.openapi_schema),
         ])
         if schema:
             # Mock up an individual route for each available manifest, copying it's doc.
@@ -40,6 +40,7 @@ class K8sController(Controller):
             for key in keys:
                 r_view = deepcopy(r_create)
                 r_view.path = f"/{key}"
+
                 def dummy():
                     """"""
                 dummy.__doc__ = mans.__dict__[key].__doc__

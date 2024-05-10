@@ -18,7 +18,7 @@ class RootController(Controller):
             Route("/live", endpoint=self.live),
             Route("/login", endpoint=self.login),
             Route("/syn_ack", endpoint=self.syn_ack),
-            Route("/authenticated", endpoint=self.authenticated), # methods=[]
+            Route("/authenticated", endpoint=self.authenticated),
             Route("/schema", endpoint=self.openapi_schema),
         ]
 
@@ -41,8 +41,10 @@ class RootController(Controller):
         ), status_code=200)
 
     def handshake(self):
-        return (f"{self.app.config.SERVER_SCHEME}{self.app.config.SERVER_HOST}:"
-                    f"{self.app.config.SERVER_PORT}/syn_ack")
+        return (
+            f"{self.app.config.SERVER_SCHEME}{self.app.config.SERVER_HOST}:"
+            f"{self.app.config.SERVER_PORT}/syn_ack"
+        )
 
     async def login(self, _):
         """
@@ -56,7 +58,6 @@ class RootController(Controller):
         """
         auth_url = await self.app.kc.auth_url(redirect_uri=self.handshake())
         return PlainTextResponse(auth_url + "\n")
-
 
     async def syn_ack(self, request):
         """Login callback function when the user logs in through the browser.
@@ -76,7 +77,6 @@ class RootController(Controller):
         token = await self.app.kc.redeem_code_for_token(code, redirect_uri=self.handshake())
         return PlainTextResponse(token['access_token'] + '\n')
 
-
     @login_required
     async def authenticated(self, request, userid, groups, projects):
         """
@@ -86,6 +86,6 @@ class RootController(Controller):
           200:
             description: Userinfo - (user_id, groups, projects).
           403:
-            description: Unauthorized.        
+            description: Unauthorized.
         """
         return PlainTextResponse(f"{userid}, {groups}, {projects}\n")

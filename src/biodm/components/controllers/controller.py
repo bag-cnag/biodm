@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from biodm.component import Base
 
 
-
 class HttpMethod(Enum):
     """HTTP Methods."""
     GET = "GET"
@@ -28,7 +27,7 @@ class HttpMethod(Enum):
 
 
 class Controller(ApiComponent):
-    """Controller - An APP Component exposing a set of routes mapped to method endpoints and an 
+    """Controller - An APP Component exposing a set of routes mapped to method endpoints and
     openapi schema generation for that given set.
     """
     @abstractmethod
@@ -67,7 +66,7 @@ class Controller(ApiComponent):
 
 class EntityController(Controller, CRUDApiComponent):
     """EntityController - A controller performing validation and serialization given a schema.
-       Also requires CRUD methods implementation for that entity. 
+       Also requires CRUD methods implementation for that entity.
 
     :param schema: Entity schema class
     :type schema: class:`marshmallow.schema.Schema`
@@ -92,7 +91,12 @@ class EntityController(Controller, CRUDApiComponent):
             raise PayloadJSONDecodingError(e) from e
 
     @classmethod
-    def serialize(cls, data: dict | Base | List[Base], many: bool, only: Optional[List[str]]=None) -> str:
+    def serialize(
+        cls,
+        data: dict | Base | List[Base],
+        many: bool,
+        only: Optional[List[str]] = None
+    ) -> str:
         """Serialize SQLAlchemy statement execution result to json.
 
         :param data: some request body
@@ -105,12 +109,13 @@ class EntityController(Controller, CRUDApiComponent):
         try:
             # Save and plug in restristed fields.
             dump_fields = cls.schema.dump_fields
-            if only:
-                cls.schema.dump_fields = {
-                    k:v for k, v in dump_fields.items() if k in only 
-                }
+            cls.schema.dump_fields = {
+                key: val for key, val in dump_fields.items() if key in only
+            } if only else cls.schema.dump_fields
+
             serialized = cls.schema.dump(data, many=many)
-            # Restore to full afterwards.
+
+            # Restore to normal afterwards.
             cls.schema.dump_fields = dump_fields
             return json.dumps(serialized, indent=cls.app.config.INDENT)
 

@@ -1,9 +1,8 @@
 from sqlalchemy import Column, Table, ForeignKey, Integer
 
 from biodm.components.table import Base
+"""Associative tables for join operations."""
 
-
-## Associative tables for join operations
 asso_user_group = Table(
     "ASSO_USER_GROUP",
     Base.metadata,

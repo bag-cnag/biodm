@@ -3,7 +3,7 @@ from marshmallow.fields import String, List, Nested
 
 
 class UserSchema(Schema):
-    """Schema for Keycloak Users. 
+    """Schema for Keycloak Users.
        id field is purposefully left out as it is managed internally."""
     username = String(required=True)
     password = String()

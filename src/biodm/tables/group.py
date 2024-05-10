@@ -20,7 +20,7 @@ class Group(Base):
 
     # relationships
     users: Mapped[List["User"]] = relationship(
-        secondary=asso_user_group, 
+        secondary=asso_user_group,
         back_populates="groups",
         # init=False,
     )
@@ -32,8 +32,7 @@ class Group(Base):
         # repr=False,
     )
     parent: Mapped[Optional["Group"]] = relationship(
-        back_populates="children", remote_side=name, #, default=None
-        # init=False,
+        back_populates="children", remote_side=name,
     )
     # projects: Mapped[List["Project"]] = relationship(
     #     secondary=asso_project_group, back_populates="groups"
@@ -42,5 +41,3 @@ class Group(Base):
 
     def __repr__(self):
         return f"<Group(name={self.name}, parent={str(self.parent)})>"
-
-

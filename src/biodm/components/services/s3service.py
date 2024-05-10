@@ -1,19 +1,18 @@
 from pathlib import Path
 
-from boto3 import client 
+from boto3 import client
 from botocore.exceptions import ClientError
 
 from .dbservice import UnaryEntityService
 
 
-
 class S3Service(UnaryEntityService):
-    """Class that manages AWS S3 bucket transactions. 
-    Automatically associated with files entities which in principle should be unary (i.e. no nested fields)."""
+    """Class that manages AWS S3 bucket transactions.
+    Automatically associated with files entities which in principle should be unary."""
     @property
     def s3(self):
         return self.app.s3
-    
+
     async def create(self, data, **kwargs):
         """CREATE accounting for generation of presigned url for 2step file upload."""
         name = data.get("name")

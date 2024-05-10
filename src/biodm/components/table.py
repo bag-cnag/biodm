@@ -56,7 +56,6 @@ class Base(DeclarativeBase, AsyncAttrs):
 
 class S3File:
     """Class to use in order to have a file managed on S3 bucket associated to this table
-        
         Defaults internal fields that are expected by S3Service."""
     id = Column(Integer, nullable=False, primary_key=True)
     filename = Column(String(100), nullable=False)
@@ -72,9 +71,9 @@ class S3File:
     def user(cls) -> Mapped["User"]:
         return relationship(foreign_keys=[cls.id_user_uploader], lazy="select")
 
-    emited_at = Column(TIMESTAMP(timezone=True),
-                       default=datetime.datetime.utcnow, 
-                       nullable=False)
+    emited_at = Column(
+        TIMESTAMP(timezone=True), default=datetime.datetime.utcnow, nullable=False
+    )
     validated_at = Column(TIMESTAMP(timezone=True))
 
 
@@ -82,10 +81,7 @@ class S3File:
 
 class Permission:
     """Class that produces necessary fields to declare ressource permissions for an entity.
-    
-        for each action in [CREATE, READ, UPDATE, DELETE, DOWNLOAD]:
-            
-
+        for each action in [CREATE, READ, UPDATE, DELETE, DOWNLOAD].
     """
     # def __init_subclass__(cls, **kwargs) -> None:
     #     """To restrict on some tables."""

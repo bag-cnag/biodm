@@ -69,7 +69,8 @@ def login_required(f):
             f'{timestamp}\t{userid}\t{",".join(groups)}\t'
             f"{str(request.url)}-{request.method}"
         )
-        return await f(controller,
+        return await f(
+            controller,
             request,
             userid=userid,
             groups=groups,

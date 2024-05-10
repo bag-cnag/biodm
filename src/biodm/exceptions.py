@@ -16,7 +16,7 @@ class ImplementionErrror(RuntimeError):
     """Raised when a wrong use of components is detected."""
 
 
-##Services
+## Services
 class MissingService(RuntimeError):
     """Raised when a controller expects a service that is not present."""
 
@@ -29,7 +29,7 @@ class KeycloakUnavailableError(RuntimeError):
     """Raised when Keycloak failed to initialize."""
 
 
-## Payload
+## Payload
 class PayloadEmptyError(RuntimeError):
     """Raised when a route expecting a payload, is reached without one."""
 
@@ -39,10 +39,10 @@ class PayloadJSONDecodingError(RuntimeError):
 
 
 class PayloadValidationError(RuntimeError):
-    """Raised when input data could not be coerced into an entity.""" 
+    """Raised when input data could not be coerced into an entity."""
 
 
-## Routing
+## Routing
 class InvalidCollectionMethod(RequestError):
     """Raised when a unit method is accesed as a collection."""
     def __init__(self, *_):
@@ -80,4 +80,3 @@ class AsyncDBError(DBError):
 
 class MissingDB(RequestError):
     """DB access attempted with no manager attached to the service."""
- 

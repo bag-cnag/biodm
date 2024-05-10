@@ -7,10 +7,10 @@ from .resourcecontroller import ResourceController
 
 class AdminController(ResourceController):
     """Class for admin managed entities, i.e. KC User/Groups/Projects.
-    
+
     CRUD Behaviour:
-        - READ require an admin token based on read_public flag 
-        - CREATE/UPDATE/DELETE require an admin token 
+        - READ require an admin token based on read_public flag
+        - CREATE/UPDATE/DELETE require an admin token
     """
     def __init__(
         self,
@@ -27,6 +27,5 @@ class AdminController(ResourceController):
         if not read_public:
             self.read = admin_required(self.create)
             self.filter = admin_required(self.filter)
-
 
         super().__init__(entity, table, schema)

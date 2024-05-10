@@ -38,7 +38,7 @@ def overload_docstring(f):
     - https://stackoverflow.com/questions/38125271/extending-or-overwriting-a-docstring-when-composing-classes
     - https://stackoverflow.com/questions/1782843/python-decorator-handling-docstrings
 
-    :param f: The method we overload the docstrings of.  
+    :param f: The method we overload the docstrings of
     :type f: Callable
     """
     async def wrapper(self, *args, **kwargs):
@@ -55,7 +55,7 @@ class ResourceController(EntityController):
 
     Implements and exposes routes under a prefix named as the resource pluralized
     that act as a standard REST-to-CRUD interface.
-    
+
     :param app: running server
     :type app: Api
     :param entity: entity name, defaults to None, inferred if None
@@ -65,7 +65,13 @@ class ResourceController(EntityController):
     :param schema: entity schema, defaults to None, inferred if None
     :type schema: Schema, optional
     """
-    def __init__(self, app: Api, entity: str=None, table: Base=None, schema: Schema=None):
+    def __init__(
+        self,
+        app: Api,
+        entity: str = None,
+        table: Base = None,
+        schema: Schema = None
+    ):
         """Constructor."""
         super().__init__(app=app)
         self.resource = entity if entity else self._infer_entity_name()
@@ -128,15 +134,15 @@ class ResourceController(EntityController):
             ) from e
 
     def routes(self, child_routes=None, **_) -> Mount:
-        """Sets up standard RESTful endpoints. 
+        """Sets up standard RESTful endpoints.
 
         relevant doc: https://restfulapi.net/http-methods/"""
         child_routes = child_routes or []
         return Mount(self.prefix, routes=[
-            Route( '/',              self.create,               methods=[HttpMethod.POST.value]),
-            Route( '/',              self.filter,               methods=[HttpMethod.GET.value]),
-            Route( '/search/',       self.filter,               methods=[HttpMethod.GET.value]),
-            Route( '/schema/',       self.openapi_schema,       methods=[HttpMethod.GET.value]),
+            Route('/',               self.create,               methods=[HttpMethod.POST.value]),
+            Route('/',               self.filter,               methods=[HttpMethod.GET.value]),
+            Route('/search/',        self.filter,               methods=[HttpMethod.GET.value]),
+            Route('/schema/',        self.openapi_schema,       methods=[HttpMethod.GET.value]),
             Route(f'/{self.qp_id}/', self.read,                 methods=[HttpMethod.GET.value]),
             Route(f'/{self.qp_id}/{{attribute}}/',  self.read,  methods=[HttpMethod.GET.value]),
             Route(f'/{self.qp_id}/', self.delete,               methods=[HttpMethod.DELETE.value]),
@@ -207,7 +213,7 @@ class ResourceController(EntityController):
             id: entity primary key elements separated by '_'
                 e.g. /datasets/1_1 returns dataset with id=1 and version=1
           - in: query
-            fields: a comma separated list of fields to query only a subset of the resource 
+            fields: a comma separated list of fields to query only a subset of the resource
                     e.g. /datasets/1_1?name,description,contact,files
         responses:
           200:
@@ -265,10 +271,10 @@ class ResourceController(EntityController):
             prop2=valx,valy: query for entries where prop2 = valx or arg2 = valy
             prop3.propx=vala: query for entries where nested entity prop3 has property propx = vala
             prop4.[lt|gt|le|ge](valu): query for numerical comparison operators
-            prop5=foo*: wildcard symbol '*' for string search 
+            prop5=foo*: wildcard symbol '*' for string search
 
             all at once - separate using '&':
-                ?prop1=val1&prop2=valx,valy&prop3.propx=vala 
+                ?prop1=val1&prop2=valx,valy&prop3.propx=vala
         if querystring is empty -> return all
         -> /ressource/search <==> /ressource/
         ---
