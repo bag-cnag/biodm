@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, List, Set # Optional, 
 
-from sqlalchemy import Column, Integer, SmallInteger, ForeignKey, String, PrimaryKeyConstraint, UniqueConstraint
+from sqlalchemy import Column, Identity, Integer, SmallInteger, ForeignKey, String, PrimaryKeyConstraint, UniqueConstraint
 from sqlalchemy.orm import Mapped, relationship
 
 from biodm.components.table import Base, Permission
@@ -13,13 +13,22 @@ if TYPE_CHECKING:
 
 class Dataset(Permission, Base):
     # pk
-    id:          Mapped[int] = Column(Integer,      primary_key=True, autoincrement=True)
-    version:     Mapped[int] = Column(SmallInteger, primary_key=True, server_default='1')
+    ## For PostgresSQL
+    # id:          Mapped[int] = Column(Integer, autoincrement=True)
+    # version:     Mapped[int] = Column(SmallInteger, server_default='1')
+
+    ## For sqlite
+    # TODO: test, document that composite pk are not well supported for sqlite.
+    id = Column(Integer, server_default='1')
+    version:     Mapped[int] = Column(SmallInteger, server_default='1')
+    __table_args__ = (
+        PrimaryKeyConstraint(id, version),
+    )
 
     # data fields
     name:        Mapped[str] = Column(String(50), nullable=False)
     # # description: Mapped[str] = Column(TEXT,       nullable=True)
-    # # created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
+    # # created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))datetime.datetime.utcnow
     # # updated_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
     # # permission_level = Column(CHAR(1),            nullable=False, server_default='3')
     # # licence_s3_path = Column(String(100),         nullable=True)

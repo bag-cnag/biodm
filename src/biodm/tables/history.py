@@ -1,3 +1,5 @@
+import datetime
+
 from sqlalchemy import Column, String, ForeignKey, TIMESTAMP, text
 
 from biodm.components import Base
@@ -5,7 +7,7 @@ from biodm.components import Base
 
 class History(Base):
     """History table."""
-    timestamp = Column(TIMESTAMP(timezone=True), server_default=text('now()'), 
+    timestamp = Column(TIMESTAMP(timezone=True), default=datetime.datetime.utcnow, 
                        nullable=False, primary_key=True)
     username_user = Column(ForeignKey('USER.username'), primary_key=True)
 

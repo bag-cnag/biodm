@@ -5,10 +5,11 @@ from typing import AsyncGenerator, TYPE_CHECKING, Callable
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.pool import NullPool, AsyncAdaptedQueuePool
 
 from biodm.component import ApiComponent
 from biodm.components import Base
-from biodm.exceptions import PostgresUnavailableError
+from biodm.exceptions import PostgresUnavailableError, DBError
 
 if TYPE_CHECKING:
     from biodm.api import Api
@@ -25,6 +26,7 @@ class DatabaseManager(ApiComponent):
                 self.database_url,
                 # echo=False,
                 echo=app.config.DEBUG,
+                # poolclass=NullPool if app.config.TEST else AsyncAdaptedQueuePool
             )
             self.async_session = async_sessionmaker(
                 self.engine,
@@ -37,7 +39,15 @@ class DatabaseManager(ApiComponent):
     @staticmethod
     def async_database_url(url) -> str:
         """Add 'asyncpg' driver to a postgresql database url."""
-        return url.replace("postgresql://", "postgresql+asyncpg://")
+        match url.split("://"):
+            case ["postgresql", _]:
+                return url.replace("postgresql://", "postgresql+asyncpg://")
+            case ["sqlite", _]:
+                return url.replace("sqlite://", "sqlite+aiosqlite://")
+            case _:
+                raise DBError(
+                    "Only ['postgresql', 'sqlite'] backends are supported at the moment."
+                )
 
     @asynccontextmanager
     async def session(self) -> AsyncGenerator[AsyncSession, None]:

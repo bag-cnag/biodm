@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
-from httpx import AsyncClient, ASGITransport
+from httpx import AsyncClient, ASGITransport, Client
 import json
+import pytest
 
 from typing import List
 import marshmallow as ma
@@ -14,33 +15,28 @@ from biodm.components import Base
 from biodm.components.controllers import ResourceController
 
 ## SQLAlchemy
-asso = sa.Table(
-    "asso",
+asso_a_b = sa.Table(
+    "ASSO_A_B",
     Base.metadata,
-    sa.Column("id_a",            sa.ForeignKey("a.id"),        primary_key=True),
-    sa.Column("id_b",            sa.ForeignKey("b.id"),        primary_key=True),
+    sa.Column("id_a",            sa.ForeignKey("A.id"),        primary_key=True),
+    sa.Column("id_b",            sa.ForeignKey("B.id"),        primary_key=True),
 )
 
 
 class A(Base):
-    __tablename__ = 'a'
-
     id = sa.Column(sa.Integer, primary_key=True)
     x = sa.Column(sa.Integer, nullable=True)
     y = sa.Column(sa.Integer, nullable=True)
-    id_c:    Mapped[List["B"]]  = sa.Column(sa.ForeignKey("c.id"))
+    id_c = sa.Column(sa.ForeignKey("C.id"))
 
-    bs:    Mapped[List["B"]]  = relationship(secondary=asso, uselist=True, lazy="select")
-    C:     Mapped["C"] = relationship(foreign_keys=[id_c], backref="A", lazy="select")
+    bs:    Mapped[List["B"]]  = relationship(secondary=asso_a_b, uselist=True, lazy="select")
+    ac:     Mapped["C"] = relationship(foreign_keys=[id_c], backref="ca", lazy="select")
 
 class B(Base):
-    __tablename__ = 'b'
-
     id = sa.Column(sa.Integer, primary_key=True)
     name = sa.Column(sa.String, nullable=False)
 
 class C(Base):
-    __tablename__ = 'c'
     id = sa.Column(sa.Integer, primary_key=True)
     data = sa.Column(sa.String, nullable=False)
 
@@ -92,13 +88,10 @@ config.INDENT          = 2
 ## Runtime Flags.
 config.DEBUG  = True
 config.DEV    = True
+config.TEST   = True
 
 ## DB.
-PG_USER  = "postgres"
-PG_PASS  = "pass"
-PG_HOST  = "postgres.local:5432"
-PG_DB    = "biodm"
-config.DATABASE_URL = f"postgresql://{PG_USER}:{PG_PASS}@{PG_HOST}/{PG_DB}"
+config.DATABASE_URL = "sqlite:///:memory:"
 # ## S3 Bucket.
 # S3_ENDPOINT_URL        = config('S3_ENDPOINT_URL',        cast=str,  default="http://s3.local/")
 # S3_BUCKET_NAME         = config('S3_BUCKET_NAME',         cast=str,  default="3trdevopal")
@@ -137,11 +130,9 @@ app = Api(
     }
 )
 
-@asynccontextmanager
-async def app_test_client():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
-        yield client
-        await client.aclose()
+@pytest.fixture()
+def client_args() -> dict:
+    return {"app": app, 'backend_options': {"use_uvloop": True}}
 
 def json_bytes(d):
     return json.dumps(d).encode('utf-8')

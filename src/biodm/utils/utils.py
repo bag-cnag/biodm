@@ -14,7 +14,6 @@ def json_response(data: str, status_code: int) -> Response:
         media_type="application/json"
     )
 
-
 def touch(fname):
     """Python version of the unix shell touch function."""
     if path.exists(fname):

@@ -2,7 +2,10 @@ from functools import partial
 from typing import List, Any, Tuple, Dict, Callable
 
 from sqlalchemy import select, update, delete
-from sqlalchemy.dialects.postgresql import insert
+
+from sqlalchemy.dialects import postgresql # import insert
+from sqlalchemy.dialects import sqlite # import insert
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only, joinedload
 from sqlalchemy.sql import Insert, Update, Delete, Select
@@ -92,7 +95,13 @@ class UnaryEntityService(DatabaseService):
         self, data, stmt_only: bool = False, **kwargs
     ) -> Insert | Base | List[Base]:
         """CREATE one or many rows. data: schema validation result."""
-        stmt = insert(self.table)
+        match self.app.db.engine.dialect:
+            case postgresql.asyncpg.dialect():
+                stmt = postgresql.insert(self.table)
+            case sqlite.dialect():
+                stmt = sqlite.insert(self.table)
+            case _:
+                raise Exception("Only Postgres and SQLite are currently (and most likely every will be) supported.")
 
         if isinstance(data, list):
             stmt = stmt.values(data)

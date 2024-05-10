@@ -73,10 +73,10 @@ class Api(Starlette):
     """
     logger = logging.getLogger(__name__)
     # Managers
-    db: ApiComponent = None
-    s3: ApiComponent = None
+    db: DatabaseManager = None
+    s3: S3Manager = None
     kc: ApiComponent = None
-    k8: ApiComponent = None
+    k8: K8sManager = None
 
 
     def __init__(self,
@@ -198,6 +198,6 @@ class Api(Starlette):
         return routes
 
     async def onstart(self) -> None:
-        if self.config.DEV:
+        if self.config.DEV or self.config.TEST:
             """Dev mode: drop all and create tables."""
             await self.db.init_db()

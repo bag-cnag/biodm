@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-
+import datetime
 
 from sqlalchemy import (
     inspect, Column, Integer, text, String, TIMESTAMP, ForeignKey, UUID
@@ -73,10 +73,12 @@ class S3File:
         return relationship(foreign_keys=[cls.id_user_uploader], lazy="select")
 
     emited_at = Column(TIMESTAMP(timezone=True),
-                       server_default=text('now()'), 
+                       default=datetime.datetime.utcnow, 
                        nullable=False)
     validated_at = Column(TIMESTAMP(timezone=True))
 
+
+# TODO: VERSIONNED, does the auto increment, and sets adjacency list. Use on dataset instead.
 
 class Permission:
     """Class that produces necessary fields to declare ressource permissions for an entity.
