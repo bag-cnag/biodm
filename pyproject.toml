@@ -39,3 +39,8 @@ namespaces = false # to disable scanning PEP 420 namespaces (true by default)
 
 [tool.mypy]
 exclude = ["bak"]
+
+[tool.flake8]
+max-line-length = 99
+per-file-ignores="src/*__init__.py:F401"
+ignore = "E221,E241,E265,E266,E272"
