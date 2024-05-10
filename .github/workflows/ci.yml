@@ -16,18 +16,14 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-    - name: Install Dependencies
+    - name: Setup dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install pylint
         pip install -r src/requirements/dev.txt
-    - name: Install Package
-      run: |
         pip install .
         pip install -r src/requirements/prod.txt
-    - name: Run tests ${{ matrix.python-version }}
-      run: |
-        pytest src/biodm/tests/
+    - name: Run tests
+      run: pytest src/biodm/tests/
     - name: Analysing the code with pylint
-      run: |
-        pylint -d W0221 $(git ls-files 'src/biodm/*.py') --exit-zero
+      run: pylint -d W0221 $(git ls-files 'src/biodm/*.py') --exit-zero
