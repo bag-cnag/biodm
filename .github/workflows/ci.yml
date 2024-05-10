@@ -11,23 +11,34 @@ jobs:
     steps:
     - uses: actions/checkout@v3
       with:
+        node-version: '20'
         fetch-depth: 0
-        node-version: 20
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v3
       with:
+        node-version: '20'
         python-version: ${{ matrix.python-version }}
-        node-version: 20
-    - name: Install dependencies
+    - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pylint
         pip install -r src/requirements/dev.txt
+    - name: Install Package
+      run: |
         pip install .
         pip install -r src/requirements/prod.txt
+
+  tests:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
     - name: Run tests
       run: |
         pytest src/biodm/tests/
+
+  lint:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
     - name: Analysing the code with pylint
       run: |
         pylint -d W0221 $(git ls-files 'src/biodm/*.py') --exit-zero
