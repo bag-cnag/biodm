@@ -10,6 +10,8 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v3
       with:
@@ -22,3 +24,7 @@ jobs:
     - name: Analysing the code with pylint
       run: |
         pylint -d W0221 $(git ls-files 'src/biodm/*.py')
+    - name: Run tests
+      run: |
+        pytest src/biodm/tests/
+
