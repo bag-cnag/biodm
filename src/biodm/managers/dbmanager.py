@@ -31,7 +31,7 @@ class DatabaseManager(ApiComponent):
                 expire_on_commit=False,
             )
         except SQLAlchemyError as e:
-            raise PostgresUnavailableError(f"Failed to connect to Postgres: {e}") from e
+            raise PostgresUnavailableError(f"Failed to connect to DB") from e
 
     @staticmethod
     def async_database_url(url) -> str:
@@ -98,25 +98,31 @@ class DatabaseManager(ApiComponent):
             """ Applies a bit of arguments manipulation whose goal is to maximize
                 convenience of use of the decorator by allowing explicing or implicit
                 argument calling.
-                Relevant doc: https://docs.python.org/3/library/inspect.html#inspect.Signature.bind
-
                 Then produces and passes down a session if needed.
                 Finally after the function returns, serialization is applied if needed.
+
+                Doc:
+                - https://docs.python.org/3/library/inspect.html#inspect.Signature.bind
             """
             serializer = kwargs.pop('serializer', None)
+
             bound_args = signature(db_exec).bind_partial(*args, **kwargs)
             bound_args.apply_defaults()
             bound_args = bound_args.arguments
+            if bound_args.get('kwargs') == {}:
+                # Else it will get passed around.
+                bound_args.pop('kwargs')
+
             svc: DatabaseService = bound_args['self']
             session = bound_args.get('session', None)
 
             async with AsyncExitStack() as stack:
-                # Produce session
+                # Ensure session.
                 bound_args['session'] = (
                     session if session
                     else await stack.enter_async_context(svc.app.db.session())
                 )
-
+                # Call and serialize result if requested.
                 db_res = await db_exec(**bound_args)
                 return await bound_args['session'].run_sync(
                     lambda _, data: serializer(data), db_res

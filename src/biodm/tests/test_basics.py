@@ -1,23 +1,21 @@
-from starlette.testclient import TestClient
+from biodm.components.controllers import overload_docstring
 
-
-def test_live_endpoint(client_args):
+def test_live_endpoint(client):
     """"""
-    with TestClient(**client_args) as client:
-        response = client.get('/live')
-        assert response.status_code == 200
-        assert response.text == 'live\n'
+    response = client.get('/live')
+    assert response.status_code == 200
+    assert response.text == 'live\n'
 
 
-def test_api_schema(client_args):
+def test_api_schema(client):
     """"""
-    with TestClient(**client_args) as client:
-        response = client.get('/schema')
-        assert response.status_code == 200
-        assert "biodm_test" in response.text
-        assert "0.1.0"      in response.text
+    response = client.get('/schema')
+    assert response.status_code == 200
+    assert "biodm_test" in response.text
+    assert "0.1.0"      in response.text
 
-# TODO:
-# def test_login_endpoint():
-# def test_users
-# def test_groups
+
+# def test_login_endpoint(client_args):
+#     with TestClient(**client_args) as client:
+#         response = client.get('/login')
+#         assert response.status_code == 200

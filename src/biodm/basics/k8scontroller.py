@@ -32,7 +32,7 @@ class K8sController(Controller):
             Route("/schema",         self.openapi_schema),
         ])
         if schema:
-            # Mock up an individual route for each available manifest, copying it's doc.
+            # Mock up an individual route for each available manifest, copying doc.
             r_create = m.routes[0]
             mans = self.k8s.manifests
             keys = [k for k in mans.__dict__.keys() if not k.startswith('__')]

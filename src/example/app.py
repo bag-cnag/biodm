@@ -3,10 +3,10 @@ import uvicorn
 
 from biodm.api import Api
 
-from example.entities.controllers import CONTROLLERS
-from example.entities import tables, schemas
+from entities.controllers import CONTROLLERS
+from entities import tables, schemas
 # from example import manifests
-from example import config
+import config
 
 
 def main():

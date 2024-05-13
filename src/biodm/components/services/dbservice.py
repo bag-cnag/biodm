@@ -241,7 +241,7 @@ class UnaryEntityService(DatabaseService):
             #     exclude = True
 
             # In case no value is associated we should be in the case of a numerical operator.
-            operator = None if csval else self._parse_int_operators(attr.pop())
+            operator = None if csval else self._parse_int_operators(attr)
             # elif any(op in dskey for op in SUPPORTED_INT_OPERATORS):
             #     raise ValueError("'field.op()=value' type of query is not yet supported.")
             stmt, (col, ctype) = self._filter_process_attr(stmt, attr)
@@ -256,6 +256,7 @@ class UnaryEntityService(DatabaseService):
                 op, val = operator
                 op = getattr(col, f"__{op}__")
                 stmt = stmt.where(op(ctype(val)))
+                continue
 
             ## Filters
             # Wildcards.
@@ -378,6 +379,7 @@ class CompositeEntityService(UnaryEntityService):
 
         # Populate main object with nested object id if matching field is found.
         # TODO: hypehen the importance of that convention in the documentation.
+        # TODO: Find way to not have it depend on the name.
         for key, sub in composite.nested.items():
             attr = f"id_{key}"
             if hasattr(item, attr):

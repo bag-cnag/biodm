@@ -78,7 +78,7 @@ class RootController(Controller):
         return PlainTextResponse(token['access_token'] + '\n')
 
     @login_required
-    async def authenticated(self, request, userid, groups, projects):
+    async def authenticated(self, _, userid, groups, projects):
         """
         ---
         description: Route to check token validity.

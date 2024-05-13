@@ -3,7 +3,7 @@ from marshmallow.fields import String, Date, List, Nested, Integer, UUID
 
 from biodm.tables import User, Group, ListGroup
 from biodm.schemas import UserSchema, GroupSchema, ListGroupSchema
-from example.entities.tables import Dataset
+from entities.tables import Dataset
 # from controllers import schemas
 # from .group import GroupSchema
 # from .user import UserSchema

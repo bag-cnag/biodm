@@ -7,6 +7,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import relationship
 from starlette.config import Config
+from starlette.testclient import TestClient
 
 from biodm.api import Api
 from biodm.components import Base
@@ -28,7 +29,7 @@ class A(Base):
     id_c = sa.Column(sa.ForeignKey("C.id"))
 
     bs:    Mapped[List["B"]]  = relationship(secondary=asso_a_b, uselist=True, lazy="select")
-    ac:     Mapped["C"] = relationship(foreign_keys=[id_c], backref="ca", lazy="select")
+    c:     Mapped["C"] = relationship(foreign_keys=[id_c], backref="ca", lazy="select")
 
 
 class B(Base):
@@ -48,7 +49,8 @@ class ASchema(ma.Schema):
     y = ma.fields.Integer()
     id_c = ma.fields.Integer()
 
-    bs = ma.fields.List(ma.fields.Nested("B"))
+    bs = ma.fields.List(ma.fields.Nested("BSchema"))
+    c = ma.fields.Nested("CSchema")
 
 
 class BSchema(ma.Schema):
@@ -59,6 +61,8 @@ class BSchema(ma.Schema):
 class CSchema(ma.Schema):
     id = ma.fields.Integer()
     data = ma.fields.String(required=True)
+
+    ca = ma.fields.Nested("ASchema")
 
 
 ## Api componenents.
@@ -132,8 +136,16 @@ app = Api(
 
 
 @pytest.fixture()
-def client_args() -> dict:
-    return {"app": app, 'backend_options': {"use_uvloop": True}}
+def client():
+    with TestClient(**
+        {
+            "app": app, 
+            'backend_options': {
+                "use_uvloop": True
+            }
+        }
+    ) as c:
+        yield c
 
 
 def json_bytes(d):

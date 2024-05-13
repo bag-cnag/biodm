@@ -86,9 +86,10 @@ class EntityController(Controller, CRUDApiComponent):
             return cls.schema.loads(json_data=data)
 
         except ValidationError as e:
-            raise PayloadValidationError(e) from e
+            raise PayloadValidationError() from e
         except json.JSONDecodeError as e:
-            raise PayloadJSONDecodingError(e) from e
+            raise PayloadJSONDecodingError() from e
+
 
     @classmethod
     def serialize(
@@ -102,7 +103,7 @@ class EntityController(Controller, CRUDApiComponent):
         :param data: some request body
         :type data: dict, class:`biodm.components.Base`, List[class:`biodm.components.Base`]
         :param many: plurality flag, essential to marshmallow
-        :type data: bool
+        :type many: bool
         :param only: List of fields to restrict serialization on, optional, defaults to None
         :type only: List[str]
         """

@@ -88,7 +88,6 @@ class Api(Starlette):
         self.config: Config = instance.get('config')
         m = instance.get('manifests')
         if m:
-            # So that it is passed as a parameter for k8 manager.
             self.config.K8_MANIFESTS = m
 
         ## Logger.

@@ -1,7 +1,7 @@
 from marshmallow import Schema, validate
 from marshmallow.fields import String, List, Nested, Integer, Bool
 
-from example.entities.tables import File
+from entities.tables import File
 from .dataset import DatasetSchema
 
 

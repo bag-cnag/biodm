@@ -9,7 +9,7 @@ venv*/
 
 # Caches
 __pycache__/
-.pytest_cache/
+.*_cache/
 
 # Build artifacts
 build/

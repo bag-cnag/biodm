@@ -2,7 +2,7 @@ from __future__ import annotations
 from functools import partial
 from typing import TYPE_CHECKING, List, Any
 
-from marshmallow.schema import EXCLUDE
+from marshmallow.schema import RAISE #EXCLUDE
 from starlette.routing import Mount, Route
 from starlette.requests import Request
 from starlette.responses import Response
@@ -55,7 +55,6 @@ class ResourceController(EntityController):
 
     Implements and exposes routes under a prefix named as the resource pluralized
     that act as a standard REST-to-CRUD interface.
-
     :param app: running server
     :type app: Api
     :param entity: entity name, defaults to None, inferred if None
@@ -79,8 +78,7 @@ class ResourceController(EntityController):
 
         self.pk = tuple(self.table.pk())
         self.svc = self._infer_svc()(app=self.app, table=self.table)
-        # schema = schema if schema else self._infer_schema()
-        self.__class__.schema = (schema if schema else self._infer_schema())(unknown=EXCLUDE)
+        self.__class__.schema = (schema if schema else self._infer_schema())(unknown=RAISE)
 
     def _infer_entity_name(self) -> str:
         """Infer entity name from controller name."""
@@ -167,7 +165,7 @@ class ResourceController(EntityController):
         :rtype: bytes
         """
         body = await request.body()
-        if not body:
+        if body == b'{}':
             raise PayloadEmptyError
         return body
 
