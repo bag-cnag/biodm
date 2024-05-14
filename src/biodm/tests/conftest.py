@@ -137,14 +137,9 @@ app = Api(
 
 @pytest.fixture()
 def client():
-    with TestClient(**
-        {
-            "app": app, 
-            'backend_options': {
-                "use_uvloop": True
-            }
-        }
-    ) as c:
+    with TestClient(app=app, backend_options={
+        "use_uvloop": True
+    }) as c:
         yield c
 
 

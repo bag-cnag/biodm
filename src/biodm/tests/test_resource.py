@@ -19,7 +19,8 @@ def test_resource_schema(client):
 
 def test_create_unary_resource(client):
     """"""
-    response = client.post('/bs/', content=json_bytes({'name': 'test'}))
+    item = {'name': 'test'}
+    response = client.post('/bs/', content=json_bytes(item))
 
     assert response.status_code == 201
     assert "id" in response.text
@@ -59,11 +60,7 @@ def test_create_wrong_data(client):
 
 
 def test_read_resource(client):
-    item = {
-        'x': 1,
-        'y': 2,
-        'c': {'data': '1234'},
-    }
+    item = {'x': 1, 'y': 2, 'c': {'data': '1234'},}
 
     _ = client.post('/as/', content=json_bytes(item))
     response = client.get('/cs/1')
@@ -84,16 +81,8 @@ def test_missing_resource(client):
 
 
 def test_readall_resource(client):
-    item1 = {
-        'x': 1,
-        'y': 2,
-        'bs': [{'name': 'bip'},{'name': 'bap'},]
-    }
-    item2 = {
-        'x': 3,
-        'y': 4,
-        'bs': [{'name': 'tit'},{'name': 'tat'},]
-    }
+    item1 = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'},{'name': 'bap'},]}
+    item2 = {'x': 3, 'y': 4, 'bs': [{'name': 'tit'},{'name': 'tat'},]}
 
     _ = client.post('/as/', content=json_bytes([item1, item2]))
     response = client.get('/bs/')
@@ -106,16 +95,8 @@ def test_readall_resource(client):
 
 
 def test_filter_resource_wildcard(client):
-    item1 = {
-        'x': 1,
-        'y': 2,
-        'bs': [{'name': 'bip'},{'name': 'bap'},]
-    }
-    item2 = {
-        'x': 3,
-        'y': 4,
-        'bs': [{'name': 'tit'},{'name': 'tat'},]
-    }
+    item1 = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'},{'name': 'bap'},]}
+    item2 = {'x': 3, 'y': 4, 'bs': [{'name': 'tit'},{'name': 'tat'},]}
 
     _ = client.post('/as/', content=json_bytes([item1, item2]))
     response = client.get('/bs?name=b*')
@@ -130,16 +111,8 @@ def test_filter_resource_wildcard(client):
 
 
 def test_filter_resource_values(client):
-    item1 = {
-        'x': 1,
-        'y': 2,
-        'bs': [{'name': 'bip'},{'name': 'bap'},]
-    }
-    item2 = {
-        'x': 3,
-        'y': 4,
-        'bs': [{'name': 'tit'},{'name': 'tat'},]
-    }
+    item1 = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'},{'name': 'bap'},]}
+    item2 = {'x': 3, 'y': 4, 'bs': [{'name': 'tit'},{'name': 'tat'},]}
 
     _ = client.post('/as/', content=json_bytes([item1, item2]))
     response = client.get('/bs?name=bip,tat')
@@ -152,16 +125,8 @@ def test_filter_resource_values(client):
 
 
 def test_filter_resource_op(client):
-    item1 = {
-        'x': 1,
-        'y': 2,
-        'bs': [{'name': 'bip'},{'name': 'bap'},]
-    }
-    item2 = {
-        'x': 3,
-        'y': 4,
-        'bs': [{'name': 'tit'},{'name': 'tat'},]
-    }
+    item1 = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'},{'name': 'bap'},]}
+    item2 = {'x': 3, 'y': 4, 'bs': [{'name': 'tit'},{'name': 'tat'},]}
 
     _ = client.post('/as/', content=json_bytes([item1, item2]))
     response = client.get('/as?x.lt(2)')
@@ -201,42 +166,30 @@ def test_filter_resource_with_fields(client):
 
 @pytest.mark.xfail(raises=ValueError)
 def test_filter_wrong_op(client):
-    item1 = {
-        'x': 1,
-        'y': 2,
-        'bs': [{'name': 'bip'},{'name': 'bap'},]
-    }
-    client.post('/as/', content=json_bytes(item1))
+    item = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'}, {'name': 'bap'},]}
+
+    client.post('/as/', content=json_bytes(item))
     client.get('/as?x.lt=2')
 
 
 @pytest.mark.xfail(raises=ValueError)
 def test_filter_wrong_wildcard(client):
-    item1 = {
-        'x': 1,
-        'y': 2,
-        'bs': [{'name': 'bip'},{'name': 'bap'},]
-    }
-    client.post('/as/', content=json_bytes(item1))
+    item = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'}, {'name': 'bap'},]}
+
+    client.post('/as/', content=json_bytes(item))
     client.get('/as?y=2*')
 
 
 @pytest.mark.xfail(raises=ValueError)
 def test_filter_op_on_string(client):
-    item1 = {
-        'x': 1,
-        'y': 2,
-        'bs': [{'name': 'bip'},{'name': 'bap'},]
-    }
-    client.post('/as/', content=json_bytes(item1))
+    item = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'}, {'name': 'bap'},]}
+
+    client.post('/as/', content=json_bytes(item))
     client.get('/bs?name.gt(2)')
 
 
 def test_delete_resource(client):
-    item = {
-        'x': 1,
-        'y': 2,
-    }
+    item = {'x': 1, 'y': 2,}
 
     _ = client.post('/as/', content=json_bytes(item))
     response = client.delete('/as/1')

@@ -1,13 +1,16 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, List
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, List, Dict
 import datetime
 
 from sqlalchemy import (
     inspect, Column, Integer, text, String, TIMESTAMP, ForeignKey, UUID
 )
+import sqlalchemy
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped
+import sqlalchemy.orm
 from sqlalchemy.orm.relationships import Relationship
 
 if TYPE_CHECKING:
@@ -16,10 +19,34 @@ if TYPE_CHECKING:
 
 
 class Base(DeclarativeBase, AsyncAttrs):
-    """Base class for ORM declarative Tables."""
-    # Enable entity - service linkage.
+    """Base class for ORM declarative Tables.
+ 
+    :param svc: Enable entity - service linkage
+    :type svc: DatabaseService
+    :param __permissions: Stores rules for user defined permissions on hierarchical entities
+    :type __permissions: Dict
+    """
     svc: DatabaseService
-    # perm: Permission
+    __permissions: Dict = {}
+
+    def __init_subclass__(cls, **kw: Any) -> None:
+        """Sets up the rules according to permissions objects set on tables."""
+        if hasattr(cls, "permissions"):
+            Base.__permissions[cls.__name__] = Base.__permissions.get(cls.__name__, (cls, []))
+            Base.__permissions[cls.__name__][1].append(cls.permissions)
+
+            for table in cls.permissions.propagates_to or []:
+                Base.__permissions[table.__name__][1].append(cls.permissions)
+        return super().__init_subclass__(**kw)
+
+    @classmethod
+    def setup_permissions(cls):
+        """After tables have been added to Base, you may call this method to factor in changes. 
+        -- Temporary for dev mode --."""
+        d = {}
+        for name, (table, permission) in Base.__permissions.items():
+            print(name, table, permission)
+        Base.__permissions = d
 
     @declared_attr
     def __tablename__(cls) -> str:
@@ -79,10 +106,26 @@ class S3File:
     )
     validated_at = Column(TIMESTAMP(timezone=True))
 
-
+@dataclass
 class Permission:
-    def __init__(self, propagates_to: List[Base]) -> None:
-        pass
+    """Holds permissions for a given entity's attributes."""
+    field: Column
+    # Verbs.
+    create: bool=False
+    read: bool=False
+    update: bool=False
+    download: bool=False
+    visualize: bool=False
+    # Flags.
+    # propagates: bool=True # ? 
+    use_same: bool=True
+
+    # TODO: check inputs
+    # def __init__(
+    #     self,
+
+    # ) -> None:
+    #     pass
 
 """"""
 """Class that produces necessary fields to declare ressource permissions for an entity.

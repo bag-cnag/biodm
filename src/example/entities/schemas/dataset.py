@@ -1,19 +1,8 @@
 from marshmallow import Schema, validate, pre_load, ValidationError
 from marshmallow.fields import String, Date, List, Nested, Integer, UUID
 
-from biodm.tables import User, Group, ListGroup
-from biodm.schemas import UserSchema, GroupSchema, ListGroupSchema
-from entities.tables import Dataset
-# from controllers import schemas
-# from .group import GroupSchema
-# from .user import UserSchema
-# from .tag import TagSchema
-
 
 class DatasetSchema(Schema):
-    class Meta:
-        model = Dataset
-
     id = Integer()
     version = Integer()
     name = String(required=True)
@@ -30,9 +19,11 @@ class DatasetSchema(Schema):
         #     [u.id for u in User]
         # )
     )
+    id_project = Integer()
 
-    owner_group = Nested('GroupSchema') # , only=('name', 'n_members',)
-    contact = Nested('UserSchema', only=('username', ))
+    # owner_group = Nested('GroupSchema')
+    contact = Nested('UserSchema')
+    project = Nested('ProjectSchema')
     tags = List(Nested('TagSchema'))
 
     id_ls_download = Integer()
@@ -52,13 +43,13 @@ class DatasetSchema(Schema):
         elif not id_uc:
             raise ValidationError("Need one of username_user_contact or contact fields.")
 
-        name_group = data.get('name_owner_group')
-        group_name = data.get('owner_group', {}).get('name')
-        if name_group and group_name:
-            assert(name_group == group_name)
-        elif group_name and not name_group:
-            ret["name_owner_group"] = group_name
-        elif not name_group:
-            raise ValidationError("Need one of name_owner_group or group fields.")
+        # name_group = data.get('name_owner_group')
+        # group_name = data.get('owner_group', {}).get('name')
+        # if name_group and group_name:
+        #     assert(name_group == group_name)
+        # elif group_name and not name_group:
+        #     ret["name_owner_group"] = group_name
+        # elif not name_group:
+        #     raise ValidationError("Need one of name_owner_group or group fields.")
 
-        return ret
+        # return ret

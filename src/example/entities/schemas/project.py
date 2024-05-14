@@ -1,12 +1,10 @@
 from marshmallow import Schema
 from marshmallow.fields import String, List, Nested, Integer
 
-# from controllers import schemas
-from .dataset import DatasetSchema
 
-
-class TagSchema(Schema):
+class ProjectSchema(Schema):
     id = Integer()
     name = String(required=True)
+    description = String(required=False)
 
-    # datasets = List(Nested(DatasetSchema))
+    datasets = List(Nested('DatasetSchema'))

@@ -80,10 +80,9 @@ class EntityController(Controller, CRUDApiComponent):
         :param data: some request body
         :type data: bytes
         """
-        try:
+        try: 
             json_data = json.load(io.BytesIO(data))
-            cls.schema.many = isinstance(json_data, list)
-            return cls.schema.loads(json_data=data)
+            return cls.schema.loads(json_data=json_data, many=isinstance(json_data, list))
 
         except ValidationError as e:
             raise PayloadValidationError() from e
