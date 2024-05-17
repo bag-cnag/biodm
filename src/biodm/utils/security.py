@@ -2,7 +2,12 @@ from datetime import datetime
 from functools import wraps, lru_cache
 from typing import List
 
+from starlette.requests import Request
+from tomlkit import key
+
 from biodm.exceptions import UnauthorizedError
+from biodm.managers.kcmanager import KeycloakManager
+from biodm.tables import User
 
 
 def auth_header(request) -> str | None:
@@ -14,7 +19,7 @@ def auth_header(request) -> str | None:
 
 
 @lru_cache(128)
-async def extract_and_decode_token(kc, request) -> tuple[str, List, List]:
+async def extract_and_decode_token(kc: KeycloakManager, request: Request) -> tuple[str, List, List]:
     """Cached because it may be called twice per request:
       1. history middleware
       2. protected function decorator.
@@ -36,7 +41,11 @@ async def extract_and_decode_token(kc, request) -> tuple[str, List, List]:
 
     # Parse.
     userid = decoded.get("preferred_username")
-    groups = extract_items(decoded, "group", "no_groups")
+    keycloak_id = (await User.svc.read(pk_val=[userid])).id
+    groups = [
+        group['name'] 
+        for group in await kc.get_user_groups(keycloak_id)
+    ] or ['no_groups']
     projects = extract_items(decoded, "group_projects", "no_projects")
     return userid, groups, projects
 

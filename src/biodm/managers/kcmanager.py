@@ -171,3 +171,6 @@ class KeycloakManager(ApiComponent):
                 "Keycloak failed adding "
                 f"User(id={user_id}) to Group(id={group_id}): {e.error_message}"
             ) from e
+
+    async def get_user_groups(self, user_id: str):
+        return self.admin.get_user_groups(user_id)

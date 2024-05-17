@@ -39,7 +39,11 @@ class PayloadJSONDecodingError(RuntimeError):
 
 
 class PayloadValidationError(RuntimeError):
-    """Raised when input data could not be coerced into an entity."""
+    """Raised when input data can not be coerced into an entity."""
+
+
+class SchemaError(RuntimeError):
+    """Raised when faulty schema pattern is detected."""
 
 
 ## Routing

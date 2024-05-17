@@ -10,11 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only, joinedload
 from sqlalchemy.sql import Insert, Update, Delete, Select
 
-from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 from biodm.component import CRUDApiComponent
 from biodm.components import Base
-from biodm.managers import DatabaseManager
 from biodm.exceptions import FailedRead, FailedDelete, FailedUpdate
+from biodm.managers import DatabaseManager
+from biodm.tables import ListGroup
+from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
 
 SUPPORTED_INT_OPERATORS = ("gt", "ge", "lt", "le")
@@ -89,6 +90,18 @@ class UnaryEntityService(DatabaseService):
     def __repr__(self) -> str:
         """"""
         return f"{self.__class__.__name__}({self.table.__name__})"
+
+    @DatabaseManager.in_session
+    async def check_permissions(self, verb, groups, asso, join, session: AsyncSession) -> bool:
+        stmt = (
+            select(ListGroup)
+            .join(asso, onclause=asso.c[verb] == ListGroup.id)
+            .join(join)
+        )
+        allowed = await session.scalar(stmt)
+        # TODO: replace by joineload in stmt ?
+        await session.refresh(allowed, ("groups",))
+        return bool(set(groups) & set(g.name for g in allowed.groups))
 
     async def create(
         self, data, stmt_only: bool = False, **kwargs
@@ -368,33 +381,72 @@ class CompositeEntityService(UnaryEntityService):
         :return: Inserted item
         :rtype: Base
         """
+        rels = self.table.relationships()
 
         # Insert all nested objects, and keep track.
         for key, sub in composite.nested.items():
-            composite.nested[key] = await self._insert(sub, session)
+            svc = rels[key].target.decl_class.svc
+            composite.nested[key] = await svc._insert(sub, session)
             await session.commit()
+            # Populate local_columns if any.
+            if hasattr(rels[key], 'local_columns'):
+                mapping = {
+                    c.name: getattr(
+                        composite.nested[key],
+                        # By definition there should be exactly one foreign key per local column
+                        # of a relationship. However, c.foreign_keys is a set.
+                        next(
+                            iter(
+                                c.foreign_keys
+                            )
+                        ).target_fullname.rsplit('.', maxsplit=1)[-1]
+                    )
+                    for c in rels[key].local_columns
+                }
+                composite.item = composite.item.values(**mapping)
 
         # Insert main object.
         item = await self._insert(composite.item, session)
 
-        # Populate main object with nested object id if matching field is found.
-        # TODO: hypehen the importance of that convention in the documentation.
-        # TODO: Find way to not have it depend on the name.
-        for key, sub in composite.nested.items():
-            attr = f"id_{key}"
-            if hasattr(item, attr):
-                setattr(item, attr, sub.id)
-        await session.commit()
-
         # Populate many-to-item fields with delayed lists.
         for key in composite.delayed.keys():
-            items = await self._insert_many(composite.delayed[key], session)
+            svc = rels[key].target.decl_class.svc
+            # Populate remote_side if any.
+            if (rels[key].secondary is None) and hasattr(rels[key], 'remote_side'):
+                mapping = {
+                    c.name: getattr(
+                        item,
+                        next(
+                            iter(
+                                c.foreign_keys
+                            )
+                        ).target_fullname.rsplit('.', maxsplit=1)[-1]
+                    )
+                    for c in rels[key].remote_side
+                }
+                if isinstance(composite.delayed[key], list):
+                    # Composite.
+                    for delay in composite.delayed[key]:
+                        assert isinstance(delay, self.CompositeInsert)
+                        delay.item = delay.item.values(**mapping)
+                else:
+                    # Multiple inserts, this branch should not be visited as a nested list of 
+                    # entities needing back_population of item id, should be flagged as a 
+                    # composite entity. This check is here in case it happens nonetheless. 
+                    raise NotImplementedError("BUG: back population of parent entity primary keys"
+                                              " on unary entity detected.")
+                    # Insert. -> doesn't work.
+                    # composite.delayed[key] = composite.delayed[key].values(**mapping)
+
+            # Then insert and populate item.
+            items = await svc._insert_many(composite.delayed[key], session)
             mto = await getattr(item.awaitable_attrs, key)
+            items = [elem for elem in list(items) if elem not in mto]
+
             if isinstance(mto, list):
                 mto.extend(items)
-            else:
-                for e in list(items):
-                    mto.add(e)
+            else: # set.
+                mto.update(items)
             await session.commit()
         return item
 

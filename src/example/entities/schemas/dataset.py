@@ -7,12 +7,12 @@ class DatasetSchema(Schema):
     version = Integer()
     name = String(required=True)
 
-    name_owner_group = String(
-        required=True, 
-        # validate=validate.OneOf(
-        #     [g.name for g in Group]
-        # )
-    )
+    # name_owner_group = String(
+    #     required=True, 
+    #     # validate=validate.OneOf(
+    #     #     [g.name for g in Group]
+    #     # )
+    # )
     username_user_contact = String(
         required=True,
         # validate=validate.OneOf(
@@ -21,13 +21,13 @@ class DatasetSchema(Schema):
     )
     id_project = Integer()
 
-    # owner_group = Nested('GroupSchema')
-    contact = Nested('UserSchema')
-    project = Nested('ProjectSchema')
+    # owner_group = Nested('GroupSchema') # , only=('name', 'n_members',)
+    contact = Nested('UserSchema') # , only=('username', )
+    project = Nested('ProjectSchema', exclude=('datasets', ))
     tags = List(Nested('TagSchema'))
 
-    id_ls_download = Integer()
-    ls_download = Nested('ListGroupSchema')
+    # id_ls_download = Integer()
+    # ls_download = Nested('ListGroupSchema')
 
     @pre_load
     def pre_load_process(self, data, many, **kwargs):
@@ -52,4 +52,4 @@ class DatasetSchema(Schema):
         # elif not name_group:
         #     raise ValidationError("Need one of name_owner_group or group fields.")
 
-        # return ret
+        return ret

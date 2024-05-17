@@ -11,6 +11,6 @@ class History(Base):
                        nullable=False, primary_key=True)
     username_user = Column(ForeignKey('USER.username'), primary_key=True)
 
-    content = Column(String(100), nullable=False)
+    content = Column(String(2000), nullable=False)
     endpoint = Column(String(20), nullable=False)
     method = Column(String(20), nullable=False)

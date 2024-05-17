@@ -83,17 +83,6 @@ class DatabaseManager(ApiComponent):
         i.e. defined outside of this class, onto which this decorator is applied should
         pass down **kwargs dictionary.
         """
-        # Weak protection: restrict decorator on functions that looks like this.
-        argspec = getfullargspec(db_exec)
-        assert 'self' in argspec.args
-        assert any((
-            'data'      in argspec.args,
-            'stmt'      in argspec.args,
-            'item'      in argspec.args,
-            'composite' in argspec.args
-        ))
-        assert 'session' in argspec.args
-
         # Callable.
         async def wrapper(*args, **kwargs):
             """ Applies a bit of arguments manipulation whose goal is to maximize

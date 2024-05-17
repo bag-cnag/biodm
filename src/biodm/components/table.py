@@ -1,21 +1,23 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from re import T
+from tkinter import N
 from typing import TYPE_CHECKING, Any, List, Dict
 import datetime
 
 from sqlalchemy import (
-    inspect, Column, Integer, text, String, TIMESTAMP, ForeignKey, UUID
+    ForeignKeyConstraint, inspect, Column, Integer, text, String, TIMESTAMP, ForeignKey, UUID
 )
-import sqlalchemy
+from sqlalchemy import Table
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import DeclarativeBase, relationship, Mapped
-import sqlalchemy.orm
-from sqlalchemy.orm.relationships import Relationship
+from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, registry, Relationship
 
 if TYPE_CHECKING:
     from biodm.tables import User, Group, ListGroup
     from biodm.components.services import DatabaseService
+
+mapper_registry = registry()
 
 
 class Base(DeclarativeBase, AsyncAttrs):
@@ -31,22 +33,68 @@ class Base(DeclarativeBase, AsyncAttrs):
 
     def __init_subclass__(cls, **kw: Any) -> None:
         """Sets up the rules according to permissions objects set on tables."""
-        if hasattr(cls, "permissions"):
-            Base.__permissions[cls.__name__] = Base.__permissions.get(cls.__name__, (cls, []))
-            Base.__permissions[cls.__name__][1].append(cls.permissions)
-
-            for table in cls.permissions.propagates_to or []:
-                Base.__permissions[table.__name__][1].append(cls.permissions)
+        if hasattr(cls, "__permissions__"):
+            # TODO: check that the relationship is many-to-one.
+            bp = cls._Base__permissions
+            bp[cls.__name__] = bp.get(cls.__name__, (cls, []))
+            bp[cls.__name__][1].append(cls.__permissions__)
+            cls._Base__permissions = bp
         return super().__init_subclass__(**kw)
 
     @classmethod
     def setup_permissions(cls):
-        """After tables have been added to Base, you may call this method to factor in changes. 
-        -- Temporary for dev mode --."""
+        """After tables have been added to Base, you may call this method to factor in changes.
+        - Creates an associative table
+            - indexed by Parent table pk
+                - children hold parent id
+            - holds listgroup objects mapped to enabled verbs
+        - Set ref for Children controller
+
+        -- Temporary for dev mode ?--.
+        1. start by assuming straight composition
+        2. extend to general case ?"""
         d = {}
-        for name, (table, permission) in Base.__permissions.items():
-            print(name, table, permission)
-        Base.__permissions = d
+        for tname, (table, permissions) in cls._Base__permissions.items():
+            for perm in permissions:
+                for fname, pdef in perm.items():
+                    enabled_verbs = [
+                        verb
+                        for verb, enabled in pdef.__dict__.items()
+                        if enabled and verb != 'field'
+                    ]
+                    columns = {
+                        f"{pk}_{tname.lower()}": Column(primary_key=True)
+                        for pk in table.pk()
+                    }
+                    columns['__table_args__'] = (
+                        ForeignKeyConstraint(
+                            [
+                                f"{pk}_{tname.lower()}"
+                                for pk in table.pk()
+                            ],
+                            [
+                                f"{table.__tablename__}.{pk}"
+                                for pk in table.pk()
+                            ]
+                        ),
+                    )
+                    columns.update({
+                        verb: Column(ForeignKey("LISTGROUP.id"))
+                        for verb in enabled_verbs
+                    })
+                    columns['entity'] = relationship(
+                        table,
+                        lazy="select",
+                        backref=f"perm_{fname.lower()}"
+                    )
+                    NewAsso = type(
+                        f"ASSO_PERM_{tname.upper()}_{fname.upper()}",
+                        (Base,), columns
+                    )
+                    target = pdef.field.target.decl_class
+                    d[target] = d[target] if target in d.keys() else []
+                    d[target].append({'table': NewAsso, 'from': table, 'verbs': enabled_verbs})
+        cls._Base__permissions = d
 
     @declared_attr
     def __tablename__(cls) -> str:
@@ -116,10 +164,10 @@ class Permission:
     update: bool=False
     download: bool=False
     visualize: bool=False
+    # verbs = [create, read, update, download, visualize]
     # Flags.
     # propagates: bool=True # ? 
-    use_same: bool=True
-
+    # use_same: bool=True
     # TODO: check inputs
     # def __init__(
     #     self,

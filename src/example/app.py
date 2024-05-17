@@ -30,7 +30,7 @@ if __name__ == "__main__":
         host=config.SERVER_HOST,
         port=config.SERVER_PORT,
         loop="uvloop",
-        reload=config.DEV,
+        # reload=config.DEV,
         log_level="debug" if config.DEBUG else "info",
         access_log=False
     )

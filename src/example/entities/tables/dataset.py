@@ -49,7 +49,7 @@ class Dataset(Base):
 
     # # Foreign keys
     username_user_contact: Mapped[int] = Column(ForeignKey("USER.username"),    nullable=False)
-    id_project:      Mapped[int] = Column(ForeignKey("PROJECT.id"), nullable=False)
+    id_project:      Mapped[int] = Column(ForeignKey("PROJECT.id"))
 
     # # relationships
     # policy - cascade="save-update, merge" ?

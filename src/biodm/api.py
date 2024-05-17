@@ -53,7 +53,7 @@ class HistoryMiddleware(BaseHTTPMiddleware):
                 'username_user': username,
                 'endpoint': str(request.url).rsplit(self.server_host, maxsplit=1)[-1],
                 'method': request.method,
-                'content': body if body else ""
+                'content': str(body) if body else ""
             }
             await History.svc.create(entry, stmt_only=False)
         return await call_next(request)

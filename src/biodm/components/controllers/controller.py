@@ -10,7 +10,9 @@ from marshmallow.exceptions import ValidationError
 from sqlalchemy.exc import MissingGreenlet
 
 from biodm.component import ApiComponent, CRUDApiComponent
-from biodm.exceptions import PayloadJSONDecodingError, PayloadValidationError, AsyncDBError
+from biodm.exceptions import (
+    PayloadJSONDecodingError, PayloadValidationError, AsyncDBError, SchemaError
+)
 from biodm.utils.utils import json_response
 
 if TYPE_CHECKING:
@@ -75,14 +77,21 @@ class EntityController(Controller, CRUDApiComponent):
 
     @classmethod
     def validate(cls, data: bytes) -> (Any | list | dict | None):
-        """Checks incoming data against class schema and marshall to python dict.
+        """Check incoming data against class schema and marshall to python dict.
 
         :param data: some request body
         :type data: bytes
         """
-        try: 
-            json_data = json.load(io.BytesIO(data))
-            return cls.schema.loads(json_data=json_data, many=isinstance(json_data, list))
+        try:
+            match io.BytesIO(data).read(1):
+                # Check first byte to know if we're parsing a list or a dict.
+                case b'{':
+                    many = False
+                case b'[':
+                    many = True
+                case _:
+                    raise PayloadValidationError("Wrong input JSON.")
+            return cls.schema.loads(json_data=data, many=many)
 
         except ValidationError as e:
             raise PayloadValidationError() from e
@@ -107,11 +116,14 @@ class EntityController(Controller, CRUDApiComponent):
         :type only: List[str]
         """
         try:
-            # Save and plug in restristed fields.
             dump_fields = cls.schema.dump_fields
-            cls.schema.dump_fields = {
-                key: val for key, val in dump_fields.items() if key in only
-            } if only else cls.schema.dump_fields
+            if only:
+                # Plug in restristed fields.
+                cls.schema.dump_fields = {
+                    key: val
+                    for key, val in dump_fields.items() 
+                    if key in only
+                }
 
             serialized = cls.schema.dump(data, many=many)
 
@@ -120,4 +132,13 @@ class EntityController(Controller, CRUDApiComponent):
             return json.dumps(serialized, indent=cls.app.config.INDENT)
 
         except MissingGreenlet as e:
-            raise AsyncDBError(e) from e
+            raise AsyncDBError(
+                "Result is serialized outside its session."
+            ) from e
+        except RecursionError as e:
+            raise SchemaError(
+                "Could not serialize result."
+                f"This error is most likely due to Marshmallow Schema: {cls.schema.__name__}"
+                " not restricting fields on nested attributes. Please populate 'Nested' statements"
+                " with appropriate ('only'|'exclude'|'load_only'|'dump_only') policies." 
+            ) from e
