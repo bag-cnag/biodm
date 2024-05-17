@@ -1,7 +1,8 @@
+from dataclasses import dataclass
 from functools import partial
 from typing import List, Any, Tuple, Dict, Callable
 
-from sqlalchemy import select, update, delete
+from sqlalchemy import insert, select, update, delete
 
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects import sqlite
@@ -11,10 +12,10 @@ from sqlalchemy.orm import load_only, joinedload
 from sqlalchemy.sql import Insert, Update, Delete, Select
 
 from biodm.component import CRUDApiComponent
-from biodm.components import Base
+from biodm.components import Base, Permission
 from biodm.exceptions import FailedRead, FailedDelete, FailedUpdate
 from biodm.managers import DatabaseManager
-from biodm.tables import ListGroup
+from biodm.tables import Group, ListGroup
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
 
@@ -80,6 +81,8 @@ class UnaryEntityService(DatabaseService):
         # Entity info.
         self.table = table
         self.pk = tuple(table.col(name) for name in table.pk())
+        # Frequently accessed: also takes a snapshot at declaration time
+        #   which is super convenient to distinguish permissions relationships delcared at runtime.
         self.relationships = table.relationships()
         # Enable entity - service - table linkage so everything is conveniently available.
         table.svc = self
@@ -96,22 +99,31 @@ class UnaryEntityService(DatabaseService):
         stmt = (
             select(ListGroup)
             .join(asso, onclause=asso.c[verb] == ListGroup.id)
-            .join(join)
         )
+        for jtable in join:
+            stmt = stmt.join(jtable)
+        stmt = stmt.options(joinedload(asso.c[verb].groups))
         allowed = await session.scalar(stmt)
-        # TODO: replace by joineload in stmt ?
-        await session.refresh(allowed, ("groups",))
+        # # TODO: replace by joineload in stmt ?
+        # await session.refresh(allowed, ("groups",))
         return bool(set(groups) & set(g.name for g in allowed.groups))
+
+    @property
+    def _backend_specific_insert(self):
+        """Returns an insert statement builder according to DB backend."""
+        match self.app.db.engine.dialect:
+            case postgresql.asyncpg.dialect():
+                return postgresql.insert # (self.table)
+            case sqlite.dialect():
+                return sqlite.insert # (self.table)
+            case _:
+                return insert # (self.table)
 
     async def create(
         self, data, stmt_only: bool = False, **kwargs
     ) -> Insert | Base | List[Base]:
         """CREATE one or many rows. data: schema validation result."""
-        match self.app.db.engine.dialect:
-            case postgresql.asyncpg.dialect():
-                stmt = postgresql.insert(self.table)
-            case sqlite.dialect():
-                stmt = sqlite.insert(self.table)
+        stmt = self._backend_specific_insert(self.table)
 
         if isinstance(data, list):
             stmt = stmt.values(data)
@@ -346,6 +358,7 @@ class UnaryEntityService(DatabaseService):
 
 class CompositeEntityService(UnaryEntityService):
     """Special case for Composite Entities (i.e. containing nested entities attributes)."""
+    @dataclass
     class CompositeInsert:
         """Class to hold composite entities statements before insertion.
 
@@ -358,12 +371,22 @@ class CompositeEntityService(UnaryEntityService):
         """
         def __init__(self,
                      item: Insert,
-                     nested: Dict[str, Insert],
-                     delayed: Dict[str, Insert]):
+                     nested: Dict[str, Insert]=None,
+                     delayed: Dict[str, Insert]=None,
+                     is_permission: bool=False):
             """Constructor."""
             self.item = item
             self.nested = nested or {}
             self.delayed = delayed or {}
+            self.is_permission = is_permission
+
+    @property
+    def runtime_relationships(self):
+        """Works because the property is fixed on first access."""
+        return (
+            set(self.table.relationships().keys()) - 
+            set(self.relationships.keys())
+        )
 
     @DatabaseManager.in_session
     async def _insert_composite(
@@ -383,10 +406,9 @@ class CompositeEntityService(UnaryEntityService):
         """
         rels = self.table.relationships()
 
-        # Insert all nested objects, and keep track.
+        # Insert all nested objects, populating back their ids into item statement if needed.
         for key, sub in composite.nested.items():
-            svc = rels[key].target.decl_class.svc
-            composite.nested[key] = await svc._insert(sub, session)
+            composite.nested[key] = await rels[key].target.decl_class.svc._insert(sub, session)
             await session.commit()
             # Populate local_columns if any.
             if hasattr(rels[key], 'local_columns'):
@@ -394,7 +416,7 @@ class CompositeEntityService(UnaryEntityService):
                     c.name: getattr(
                         composite.nested[key],
                         # By definition there should be exactly one foreign key per local column
-                        # of a relationship. However, c.foreign_keys is a set.
+                        # of a relationship. However, c.foreign_keys is a set of 1 element.
                         next(
                             iter(
                                 c.foreign_keys
@@ -408,9 +430,8 @@ class CompositeEntityService(UnaryEntityService):
         # Insert main object.
         item = await self._insert(composite.item, session)
 
-        # Populate many-to-item fields with delayed lists.
+        # Populate many-to-item fields with delayed objects (needing item id populated).
         for key in composite.delayed.keys():
-            svc = rels[key].target.decl_class.svc
             # Populate remote_side if any.
             if (rels[key].secondary is None) and hasattr(rels[key], 'remote_side'):
                 mapping = {
@@ -424,11 +445,37 @@ class CompositeEntityService(UnaryEntityService):
                     )
                     for c in rels[key].remote_side
                 }
+
+                # Populate item
+                item_attr = await getattr(item.awaitable_attrs, key)
+
                 if isinstance(composite.delayed[key], list):
-                    # Composite.
                     for delay in composite.delayed[key]:
+                        # DEV: investigate a bit to see if necessary.
                         assert isinstance(delay, self.CompositeInsert)
                         delay.item = delay.item.values(**mapping)
+
+                    # Insert.
+                    delayed = await rels[key].target.decl_class.svc._insert_many(
+                        composite.delayed[key], session
+                    )
+
+                    # Populate back into item.
+                    delayed = [elem for elem in list(delayed) if elem not in item_attr]
+                    if isinstance(item_attr, list):
+                        item_attr.extend(delayed)
+                    else:
+                        item_attr.update(delayed)
+
+                elif isinstance(composite.delayed[key], self.CompositeInsert):
+                    composite.delayed[key].item = composite.delayed[key].item.values(**mapping)
+                    item_attr = (
+                        getattr(self.table, key)
+                        .prop
+                        .target
+                        .decl_class
+                        .svc
+                    )._insert_composite(composite.delayed[key], session)
                 else:
                     # Multiple inserts, this branch should not be visited as a nested list of 
                     # entities needing back_population of item id, should be flagged as a 
@@ -437,22 +484,14 @@ class CompositeEntityService(UnaryEntityService):
                                               " on unary entity detected.")
                     # Insert. -> doesn't work.
                     # composite.delayed[key] = composite.delayed[key].values(**mapping)
-
-            # Then insert and populate item.
-            items = await svc._insert_many(composite.delayed[key], session)
-            mto = await getattr(item.awaitable_attrs, key)
-            items = [elem for elem in list(items) if elem not in mto]
-
-            if isinstance(mto, list):
-                mto.extend(items)
-            else: # set.
-                mto.update(items)
-            await session.commit()
+                await session.commit()
         return item
 
     async def _insert(self, stmt: Insert | CompositeInsert, session: AsyncSession) -> Base:
         """Redirect in case of composite insert. Mid-level: No need for in_session decorator."""
         if isinstance(stmt, self.CompositeInsert):
+            # if stmt.is_permission:
+            #     return await self._insert_permission(stmt, session)
             return await self._insert_composite(stmt, session)
         return await super()._insert(stmt, session)
 
@@ -472,15 +511,28 @@ class CompositeEntityService(UnaryEntityService):
         stmt_only: bool = False,
         **kwargs,
     ) -> Base | CompositeInsert:
-        """CREATE, accounting for nested entitites."""
+        """CREATE, accounting for nested entitites. Parses nested dictionaries in a
+        class based recursive tree building fashion.
+        Each service is responsible for building statements to insert in its associated table.
+        """
         nested = {}
         delayed = {}
+        perm_verbs = Permission.__dataclass_fields__.keys() - 'field'
 
-        # For all table relationships, check whether data contains that item.
-        for key, rel in self.relationships.items():
-            sub = data.get(key)
-            if not sub:
-                continue
+        # Relationships declared after initial instanciation are permissions.
+        for key in self.runtime_relationships & data.keys():
+            rel = self.table.relationships()[key]
+            sub = data.pop(key)
+            perm = self._backend_specific_insert(rel.target.decl_class)
+            perm_nested = {}
+            for verb in set(perm_verbs) & set(sub.keys()):
+                perm_nested[verb] = await ListGroup.svc.create(sub.get(verb), stmt_only=True)
+            delayed[key] = self.CompositeInsert(item=perm, delayed=perm_nested, is_permission=True)
+    
+        # Remaining table relationships.
+        for key in self.relationships.keys() & data.keys():
+            rel = self.relationships[key]
+            sub = data.pop(key)
 
             # Retrieve associated service.
             svc = rel.target.decl_class.svc
@@ -494,8 +546,6 @@ class CompositeEntityService(UnaryEntityService):
             # List of entities: one - to - many relationship.
             elif isinstance(sub, list):
                 delayed[key] = nested_stmt
-            # Remove from data dict to avoid errors on building item statement.
-            del data[key]
 
         # Statement for original item.
         stmt = await super(CompositeEntityService, self).create(data, stmt_only=True)

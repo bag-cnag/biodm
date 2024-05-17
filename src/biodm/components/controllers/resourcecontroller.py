@@ -2,7 +2,8 @@ from __future__ import annotations
 from functools import partial
 from typing import TYPE_CHECKING, List, Any, Dict
 
-from marshmallow.schema import RAISE #EXCLUDE
+from marshmallow import INCLUDE
+from marshmallow.schema import RAISE, INCLUDE
 from starlette.routing import Mount, Route
 from starlette.requests import Request
 from starlette.responses import Response
@@ -15,7 +16,7 @@ from biodm.components.services import (
     KCUserService
 )
 from biodm.exceptions import InvalidCollectionMethod, PayloadEmptyError, UnauthorizedError
-from biodm.utils.utils import json_response
+from biodm.utils.utils import json_response, coalesce_dicts
 from biodm.utils.security import extract_and_decode_token
 from biodm.components import Base
 from .controller import HttpMethod, EntityController
@@ -79,7 +80,7 @@ class ResourceController(EntityController):
 
         self.pk = tuple(self.table.pk())
         self.svc = self._infer_svc()(app=self.app, table=self.table)
-        self.__class__.schema = (schema if schema else self._infer_schema())(unknown=RAISE)
+        self.__class__.schema = (schema if schema else self._infer_schema())(unknown=INCLUDE)
 
     def _infer_entity_name(self) -> str:
         """Infer entity name from controller name."""
@@ -170,16 +171,11 @@ class ResourceController(EntityController):
             raise PayloadEmptyError
         return body
 
-    # @property
-    # def _has_permissions(self):
-    #     """Check if permissions are declared for this table."""
-    #     return 
-
     def get_permissions(self, verb: str) -> List[Dict] | None:
         if self.table in Base._Base__permissions.keys():
             return [
                 perm
-                for perm in Base._Base__permissions[self.table]
+                for perm in Base._Base__permissions[self.table]['entries']
                 if verb in perm['verbs']
             ]
         return None
@@ -217,10 +213,13 @@ class ResourceController(EntityController):
           204:
               description: Empty Payload
         """
-        # if not await self.check_permissions("create", request):
+        verb = "create"
+        # if not await self.check_permissions(verb, request):
         #     raise UnauthorizedError("Insufficient permissions for this operation.")
-
-        validated_data = self.validate(await self._extract_body(request))
+        extra_fields = [] 
+        if self.table in Base._Base__permissions.keys():
+            extra_fields = coalesce_dicts(Base._Base__permissions[self.table]['extra'])
+        validated_data = self.validate(await self._extract_body(request), extra=extra_fields)
         return json_response(
             data=await self.svc.create(
                 data=validated_data,

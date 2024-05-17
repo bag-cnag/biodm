@@ -55,7 +55,7 @@ class Dataset(Base):
     # policy - cascade="save-update, merge" ?
     contact: Mapped["User"]       = relationship(foreign_keys=[username_user_contact], lazy="select")
     tags:    Mapped[Set["Tag"]]   = relationship(secondary=asso_dataset_tag, uselist=True, lazy="select")
-    project: Mapped["Project"]    = relationship(back_populates="datasets")
+    project: Mapped["Project"]    = relationship(back_populates="datasets", lazy="select")
     files:   Mapped[List["File"]] = relationship(back_populates="dataset", lazy="select")
 
     # # permission_lv2: Mapped["Permission_lv2"] = relationship()
@@ -68,10 +68,10 @@ class Dataset(Base):
     #     PrimaryKeyConstraint('id', 'version', name='pk_dataset'),
     # )
 
-    __permissions__ = {
+    __permissions__ = (
         # Flag many-to-entity (composition pattern) with permissions. 
-        "files": Permission(files, create=True, visualize=True)
-    }
+        Permission(files, create=True, visualize=True),
+    )
 
     __table_args__ = (
         PrimaryKeyConstraint(id, version),

@@ -61,7 +61,7 @@ class DatabaseManager(ApiComponent):
 
     async def init_db(self) -> None:
         """Drop all tables and create them."""
-        Base.setup_permissions()
+        Base.setup_permissions(self.app)
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)

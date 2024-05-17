@@ -3,8 +3,9 @@ import io
 import json
 from abc import abstractmethod
 from enum import Enum
-from typing import Any, List, TYPE_CHECKING, Optional
+from typing import Any, List, TYPE_CHECKING, Optional, Dict
 
+from marshmallow.fields import Field
 from marshmallow.schema import Schema
 from marshmallow.exceptions import ValidationError
 from sqlalchemy.exc import MissingGreenlet
@@ -76,7 +77,7 @@ class EntityController(Controller, CRUDApiComponent):
     schema: Schema
 
     @classmethod
-    def validate(cls, data: bytes) -> (Any | list | dict | None):
+    def validate(cls, data: bytes, extra: Dict[str, Field]=None) -> (Any | list | dict | None):
         """Check incoming data against class schema and marshall to python dict.
 
         :param data: some request body
@@ -91,7 +92,16 @@ class EntityController(Controller, CRUDApiComponent):
                     many = True
                 case _:
                     raise PayloadValidationError("Wrong input JSON.")
-            return cls.schema.loads(json_data=data, many=many)
+
+            fields = cls.schema.fields
+            if extra:
+                # TODO: figure a way to do this only once.
+                cls.schema.fields.update(extra)
+
+            validated = cls.schema.loads(json_data=data, many=many)
+
+            cls.schema.fields = fields
+            return validated
 
         except ValidationError as e:
             raise PayloadValidationError() from e

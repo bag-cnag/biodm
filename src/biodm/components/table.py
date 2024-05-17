@@ -1,10 +1,13 @@
 from __future__ import annotations
+from copy import deepcopy
 from dataclasses import dataclass
 from re import T
 from tkinter import N
 from typing import TYPE_CHECKING, Any, List, Dict
 import datetime
 
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
+from marshmallow.fields import Nested
 from sqlalchemy import (
     ForeignKeyConstraint, inspect, Column, Integer, text, String, TIMESTAMP, ForeignKey, UUID
 )
@@ -12,6 +15,7 @@ from sqlalchemy import Table
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, registry, Relationship
+
 
 if TYPE_CHECKING:
     from biodm.tables import User, Group, ListGroup
@@ -35,14 +39,11 @@ class Base(DeclarativeBase, AsyncAttrs):
         """Sets up the rules according to permissions objects set on tables."""
         if hasattr(cls, "__permissions__"):
             # TODO: check that the relationship is many-to-one.
-            bp = cls._Base__permissions
-            bp[cls.__name__] = bp.get(cls.__name__, (cls, []))
-            bp[cls.__name__][1].append(cls.__permissions__)
-            cls._Base__permissions = bp
+            cls._Base__permissions[cls.__name__] = (cls, cls.__permissions__)
         return super().__init_subclass__(**kw)
 
     @classmethod
-    def setup_permissions(cls):
+    def setup_permissions(cls, app):
         """After tables have been added to Base, you may call this method to factor in changes.
         - Creates an associative table
             - indexed by Parent table pk
@@ -53,48 +54,79 @@ class Base(DeclarativeBase, AsyncAttrs):
         -- Temporary for dev mode ?--.
         1. start by assuming straight composition
         2. extend to general case ?"""
-        d = {}
+        from biodm.components.services import CompositeEntityService 
+        lut = {}
         for tname, (table, permissions) in cls._Base__permissions.items():
-            for perm in permissions:
-                for fname, pdef in perm.items():
-                    enabled_verbs = [
-                        verb
-                        for verb, enabled in pdef.__dict__.items()
-                        if enabled and verb != 'field'
-                    ]
-                    columns = {
-                        f"{pk}_{tname.lower()}": Column(primary_key=True)
-                        for pk in table.pk()
-                    }
-                    columns['__table_args__'] = (
-                        ForeignKeyConstraint(
-                            [
-                                f"{pk}_{tname.lower()}"
-                                for pk in table.pk()
-                            ],
-                            [
-                                f"{table.__tablename__}.{pk}"
-                                for pk in table.pk()
-                            ]
-                        ),
-                    )
-                    columns.update({
-                        verb: Column(ForeignKey("LISTGROUP.id"))
-                        for verb in enabled_verbs
-                    })
-                    columns['entity'] = relationship(
-                        table,
-                        lazy="select",
-                        backref=f"perm_{fname.lower()}"
-                    )
-                    NewAsso = type(
-                        f"ASSO_PERM_{tname.upper()}_{fname.upper()}",
-                        (Base,), columns
-                    )
-                    target = pdef.field.target.decl_class
-                    d[target] = d[target] if target in d.keys() else []
-                    d[target].append({'table': NewAsso, 'from': table, 'verbs': enabled_verbs})
-        cls._Base__permissions = d
+            lut[table] = {'entries': [], 'extra': []}
+            for pdef in permissions:
+                enabled_verbs = [
+                    verb
+                    for verb, enabled in pdef.__dict__.items()
+                    if enabled and verb != 'field'
+                ]
+                # TODO: handle no verbs case (simple propagation).
+
+                # Declare new associative table.
+                columns = {
+                    f"{pk}_{tname.lower()}": Column(primary_key=True)
+                    for pk in table.pk()
+                }
+                columns['__table_args__'] = (
+                    ForeignKeyConstraint(
+                        [
+                            f"{pk}_{tname.lower()}"
+                            for pk in table.pk()
+                        ],
+                        [
+                            f"{table.__tablename__}.{pk}"
+                            for pk in table.pk()
+                        ]
+                    ),
+                )
+                columns.update({
+                    verb: Column(ForeignKey("LISTGROUP.id"))
+                    for verb in enabled_verbs
+                })
+                rel_name = f"perm_{pdef.field.key.lower()}"
+                columns['entity'] = relationship(
+                    table,
+                    lazy="select",
+                    backref=rel_name
+                )
+                NewAsso = type(
+                    f"ASSO_PERM_{tname.upper()}_{pdef.field.key.upper()}",
+                    (Base,), columns
+                )
+
+                # Setup svc.
+                NewAsso.svc = CompositeEntityService(app=app, table=NewAsso)
+
+                # Declare associated Marshmallow Schema:
+                NewAssoSchema = type(
+                    f"AssoPerm{tname.capitalize()}_{pdef.field.key.capitalize()}",
+                    (SQLAlchemyAutoSchema,),
+                    {'Meta': type('Meta', (object,), {'model': NewAsso})}
+                )
+                schema_field = {rel_name: Nested(NewAssoSchema)}
+                lut[table]['extra'].append(schema_field)
+
+                # Set up look up table for incomming requests.
+                orig = table
+                target = pdef.field.target.decl_class
+                entry = {'table': NewAsso, 'from': [], 'verbs': enabled_verbs, 'schema_field': schema_field}
+
+                def propagate(origin, target, entry):
+                    """Propagates origin permissions on target permissions."""
+                    entry['from'].append(origin)
+                    lut[target] = lut.get(target, {'entries': [], 'extra': []})  
+                    lut[target]['entries'].append(entry)
+                    if target.__name__ in cls._Base__permissions:
+                        origin = target
+                        for target_pdef in cls._Base__permissions[target.__name__][1]:
+                            propagate(origin, target_pdef.field.target.decl_class, deepcopy(entry))
+
+                propagate(orig, target, entry)
+        cls._Base__permissions = lut
 
     @declared_attr
     def __tablename__(cls) -> str:
