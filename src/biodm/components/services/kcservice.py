@@ -44,6 +44,7 @@ class KCGroupService(KCService):
                     user['id'] = await User.svc.read_or_create(
                         user, [group["name"]], [group['id']]
                     )
+                    user.pop('password')
         # DB
         return await super().create(data, stmt_only=stmt_only, **kwargs)
 
@@ -83,6 +84,7 @@ class KCUserService(KCService):
                     group_ids.append(group['id'])
                 # Then User.
                 user['id'] = await self.read_or_create(user, group_names, group_ids)
+                user.pop('password')
         # DB
         return await super().create(data, stmt_only=stmt_only, **kwargs)
 

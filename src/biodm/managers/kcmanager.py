@@ -82,10 +82,19 @@ class KeycloakManager(ApiComponent):
         )
 
     def _user_data_to_payload(self, data: dict):
-        return {
+        payload = {
             field: data.get(field, "")
             for field in ("username", "email", "firstName", "lastName")
         }
+        if "password" in data.keys():
+            payload["credentials"] = [
+                {
+                    "type": "password",
+                    "value": data.get("password"),
+                    "temporary": False
+                }
+            ]
+        return payload
 
     def _group_data_to_payload(self, data: dict):
         return {

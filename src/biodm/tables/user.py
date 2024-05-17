@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class User(Base):
-    """User table."""
+    """User table -> Not locally storing passwords."""
     # KC ENDPOINT: /auth/admin/realms/{realm-name}/users/{id}
     id = Column(Uuid, unique=True)
     username = Column(String(50), nullable=False, primary_key=True)
