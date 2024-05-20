@@ -80,7 +80,7 @@ class ResourceController(EntityController):
 
         self.pk = tuple(self.table.pk())
         self.svc = self._infer_svc()(app=self.app, table=self.table)
-        self.__class__.schema = (schema if schema else self._infer_schema())(unknown=INCLUDE)
+        self.__class__.schema = (schema if schema else self._infer_schema())(unknown=RAISE)
 
     def _infer_entity_name(self) -> str:
         """Infer entity name from controller name."""
