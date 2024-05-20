@@ -8,12 +8,12 @@ import datetime
 
 import marshmallow as ma
 from sqlalchemy import (
-    ForeignKeyConstraint, UniqueConstraint,
-    inspect, Column, Integer, text, String, TIMESTAMP, ForeignKey, UUID
+    ForeignKeyConstraint, inspect, Column,
+    Integer, String, TIMESTAMP, ForeignKey,
 )
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, registry, Relationship, mapped_column, backref
+from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, registry, Relationship, backref
 
 
 if TYPE_CHECKING:
@@ -54,7 +54,7 @@ class Base(DeclarativeBase, AsyncAttrs):
             - holds listgroup objects mapped to enabled verbs
         - Set ref for Children controller
 
-        -- Temporary for dev mode ?--.
+        -- Has to be done after all tables have been declared. --
         1. start by assuming straight composition
         2. extend to general case ?"""
         from biodm.components.services import CompositeEntityService
@@ -62,7 +62,7 @@ class Base(DeclarativeBase, AsyncAttrs):
 
         lut = {}
         for tname, (table, permissions) in cls._Base__permissions.items():
-            lut[table] = {'entries': []}
+            lut[table] = []
             for pdef in permissions:
                 enabled_verbs = [
                     verb
@@ -157,8 +157,9 @@ class Base(DeclarativeBase, AsyncAttrs):
                 def propagate(origin, target, entry):
                     """Propagates origin permissions on target permissions."""
                     entry['from'].append(origin)
-                    lut[target] = lut.get(target, {'entries': []})  
-                    lut[target]['entries'].append(entry)
+                    lut[target] = lut.get(target, [])  
+                    lut[target].append(entry)
+
                     if target.__name__ in cls._Base__permissions:
                         origin = target
                         for target_pdef in cls._Base__permissions[target.__name__][1]:

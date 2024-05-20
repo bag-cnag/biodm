@@ -176,7 +176,7 @@ class ResourceController(EntityController):
         if self.table in Base._Base__permissions.keys():
             return [
                 perm
-                for perm in Base._Base__permissions[self.table]['entries']
+                for perm in Base._Base__permissions[self.table]
                 if verb in perm['verbs']
             ]
         return None
@@ -217,10 +217,7 @@ class ResourceController(EntityController):
         verb = "create"
         # if not await self.check_permissions(verb, request):
         #     raise UnauthorizedError("Insufficient permissions for this operation.")
-        extra_fields = [] 
-        if self.table in Base._Base__permissions.keys():
-            extra_fields = coalesce_dicts(Base._Base__permissions[self.table]['extra'])
-        validated_data = self.validate(await self._extract_body(request), extra=extra_fields)
+        validated_data = self.validate(await self._extract_body(request))
         return json_response(
             data=await self.svc.create(
                 data=validated_data,

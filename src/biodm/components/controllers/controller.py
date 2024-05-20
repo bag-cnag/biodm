@@ -77,7 +77,7 @@ class EntityController(Controller, CRUDApiComponent):
     schema: Schema
 
     @classmethod
-    def validate(cls, data: bytes, extra: Dict[str, Field]=None) -> (Any | list | dict | None):
+    def validate(cls, data: bytes) -> (Any | list | dict | None):
         """Check incoming data against class schema and marshall to python dict.
 
         :param data: some request body
@@ -93,13 +93,7 @@ class EntityController(Controller, CRUDApiComponent):
                 case _:
                     raise PayloadValidationError("Wrong input JSON.")
 
-            if extra:
-                # # TODO: figure a way to do this only once.
-                cls.schema.load_fields.update(extra)
-
-            validated = cls.schema.loads(json_data=data, many=many)
-
-            return validated
+            return cls.schema.loads(json_data=data, many=many)
 
         except ValidationError as e:
             raise PayloadValidationError() from e
