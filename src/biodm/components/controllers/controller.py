@@ -14,7 +14,7 @@ from biodm.component import ApiComponent, CRUDApiComponent
 from biodm.exceptions import (
     PayloadJSONDecodingError, PayloadValidationError, AsyncDBError, SchemaError
 )
-from biodm.utils.utils import json_response
+from biodm.utils.utils import json_response, coalesce_dicts
 
 if TYPE_CHECKING:
     from biodm.component import Base
@@ -93,14 +93,12 @@ class EntityController(Controller, CRUDApiComponent):
                 case _:
                     raise PayloadValidationError("Wrong input JSON.")
 
-            fields = cls.schema.fields
             if extra:
-                # TODO: figure a way to do this only once.
-                cls.schema.fields.update(extra)
+                # # TODO: figure a way to do this only once.
+                cls.schema.load_fields.update(extra)
 
             validated = cls.schema.loads(json_data=data, many=many)
 
-            cls.schema.fields = fields
             return validated
 
         except ValidationError as e:

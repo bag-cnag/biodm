@@ -77,6 +77,7 @@ class ResourceController(EntityController):
         super().__init__(app=app)
         self.resource = entity if entity else self._infer_entity_name()
         self.table = table if table else self._infer_table()
+        self.table.ctrl = self
 
         self.pk = tuple(self.table.pk())
         self.svc = self._infer_svc()(app=self.app, table=self.table)

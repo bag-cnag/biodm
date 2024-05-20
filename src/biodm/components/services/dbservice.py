@@ -432,18 +432,12 @@ class CompositeEntityService(UnaryEntityService):
 
             # Populate remote_side if any.
             if rels[key].secondary is None and hasattr(rels[key], 'remote_side'):
-                mapping = {
-                    c.name: getattr(
-                        item,
-                        # Column Foreign keys are held in sets of size 1. 
-                        next(
-                            iter(
-                                c.foreign_keys
-                            )
-                        ).target_fullname.rsplit('.', maxsplit=1)[-1]
-                    )
-                    for c in rels[key].remote_side
-                }
+                mapping = {}
+                for c in rels[key].remote_side:
+                    if c.foreign_keys:
+                        fk, = c.foreign_keys
+                        mapping[c.name] = getattr(item, fk.target_fullname.rsplit('.', maxsplit=1)[-1])
+
                 # Patch statements before inserting.
                 match delay:
                     case list():
@@ -468,7 +462,8 @@ class CompositeEntityService(UnaryEntityService):
                         getattr(item, key).update(delay)
 
                 case self.CompositeInsert():
-                    setattr(item, key, await target_svc._insert_composite(delay, session))
+                    sub = await target_svc._insert_composite(delay, session)
+                    setattr(item, key, sub)
 
             await session.commit()
         return item
@@ -507,11 +502,14 @@ class CompositeEntityService(UnaryEntityService):
         for key in self.runtime_relationships & data.keys():
             rel = self.table.relationships()[key]
             sub = data.pop(key)
-            perm = self._backend_specific_insert(rel.target.decl_class)
+            stmt_perm = self._backend_specific_insert(rel.target.decl_class)
+
             perm_nested = {}
             for verb in set(perm_verbs) & set(sub.keys()):
                 perm_nested[verb] = await ListGroup.svc.create(sub.get(verb), stmt_only=True)
-            delayed[key] = self.CompositeInsert(item=perm, delayed=perm_nested)
+
+            stmt_perm = stmt_perm.returning(rel.target.decl_class)
+            delayed[key] = self.CompositeInsert(item=stmt_perm, delayed=perm_nested)
     
         # Remaining table relationships.
         for key in self.relationships.keys() & data.keys():
