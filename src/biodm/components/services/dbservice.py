@@ -90,7 +90,7 @@ class UnaryEntityService(DatabaseService):
     def __init__(self, app, table: Base, *args, **kwargs):
         # Entity info.
         self.table = table
-        self.pk = tuple(table.col(name) for name in table.pk())
+        self.pk = set(table.col(name) for name in table.pk())
         # Frequently accessed: also takes a snapshot at declaration time
         #   which is super convenient to distinguish permissions relationships delcared at runtime.
         self.relationships = table.relationships()
@@ -126,19 +126,22 @@ class UnaryEntityService(DatabaseService):
             stmt = stmt.values(data)
             set_ = {
                 key: getattr(stmt.excluded, key)
-                for key in stmt.excluded.keys()
-                if key not in self.pk
+                for key in set(stmt.excluded.keys()) - self.pk
             }
             f_ins = self._insert_many
         else:
             stmt = stmt.values(**data)
-            set_ = {key: val for key, val in data.items() if key not in self.pk}
+            set_ = {
+                key: data[key]
+                for key in data.keys() - self.pk
+            }
             f_ins = self._insert
 
         # UPSERT.
         stmt = stmt.on_conflict_do_update(
             index_elements=[k.name for k in self.pk], set_=set_
         ) if set_ else stmt
+
         stmt = stmt.returning(self.table)
         return stmt if stmt_only else await f_ins(stmt, **kwargs)
 
@@ -157,26 +160,6 @@ class UnaryEntityService(DatabaseService):
                 for pk, val in zip(self.pk, pk_val)
             ]
         )
-
-    async def create_update(self, pk_val: List[Any], data: dict) -> Base:
-        """CREATE or UPDATE one row."""
-        kw = {
-            pk.name: pk.type.python_type(val)
-            for pk, val in zip(self.pk, to_it(pk_val))
-        }
-        # TODO: fix: this, doesn't work when trying to update the entire pk
-        # try:
-        #     item = await self.read(id)
-        #     for key, val in data.items():
-        #         item.__setattr__(key,  val)
-        # except FailedRead as e:
-        #     for field, val in zip(self.pk, id):
-        #         data[field] = val
-        #         item = self.table(**data)
-        # return await self._merge(item)
-        # Merge
-        item = self.table(**kw, **data)
-        return await self._merge(item)
 
     def _parse_int_operators(self, attr) -> Tuple[str, str]:
         """"""
@@ -257,6 +240,7 @@ class UnaryEntityService(DatabaseService):
         limit = query_params.pop('end', None)
         reverse = query_params.pop('reverse', None)
         # TODO: apply limit to nested lists as well.
+        # TODO: apply permissions.
 
         stmt = select(self.table)
         if fields:

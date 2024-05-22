@@ -25,8 +25,8 @@ class Dataset(Base):
     # data fields
     name:        Mapped[str] = Column(String(50), nullable=False)
     # # description: Mapped[str] = Column(TEXT,       nullable=True)
-    # # created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))datetime.datetime.utcnow
-    # # updated_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
+    # # created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=)datetime.datetime.utcnow
+    # # updated_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=)
     # # permission_level = Column(CHAR(1),            nullable=False, server_default='3')
     # # licence_s3_path = Column(String(100),         nullable=True)
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 from functools import partial
+import json
 from typing import TYPE_CHECKING, List, Any, Dict
 
 from marshmallow import INCLUDE
@@ -16,7 +17,7 @@ from biodm.components.services import (
     KCUserService
 )
 from biodm.exceptions import InvalidCollectionMethod, PayloadEmptyError, UnauthorizedError
-from biodm.utils.utils import json_response, coalesce_dicts
+from biodm.utils.utils import json_response, coalesce_dicts, to_it
 from biodm.utils.security import extract_and_decode_token
 from biodm.components import Base
 from .controller import HttpMethod, EntityController
@@ -147,8 +148,7 @@ class ResourceController(EntityController):
             Route(f'/{self.qp_id}/', self.read,                 methods=[HttpMethod.GET.value]),
             Route(f'/{self.qp_id}/{{attribute}}/',  self.read,  methods=[HttpMethod.GET.value]),
             Route(f'/{self.qp_id}/', self.delete,               methods=[HttpMethod.DELETE.value]),
-            Route(f'/{self.qp_id}/', self.create_update,        methods=[HttpMethod.PUT.value]),
-            Route(f'/{self.qp_id}/', self.update,               methods=[HttpMethod.PATCH.value]),
+            Route(f'/{self.qp_id}/', self.update,        methods=[HttpMethod.PUT.value]),
         ] + child_routes)
 
     def _extract_pk_val(self, request: Request) -> List[Any]:
@@ -210,6 +210,9 @@ class ResourceController(EntityController):
 
     async def create(self, request: Request) -> Response:
         """Creates associated entity.
+        Does "UPSERTS" behind the hood.
+        If you'd prefer to avoid the case of having an entity being created with parts of its
+        primary key you should flag said parts with dump_only=True in your marshmallow schemas.
 
         :param request: incomming request
         :type request: Request
@@ -275,8 +278,35 @@ class ResourceController(EntityController):
         )
 
     async def update(self, request: Request):
-        # TODO: Implement PATCH ?
-        raise NotImplementedError
+        """UPDATE.
+        Essentially calling create, as it is doing upserts.
+
+        :param request: incomming request
+        :type request: Request
+        :return: updated object in JSON form
+        :rtype: Response
+        ---
+        TODO: test and document.
+        """
+        pk_val = self._extract_pk_val(request)
+        validated_data = self.validate(await self._extract_body(request))
+
+        # Plug in pk into the dict(s). 
+        pk_val = dict(zip(self.pk, pk_val))
+        for data in to_it(validated_data):
+            data.update(pk_val)
+
+        return json_response(
+            data=await self.svc.create(
+                data=validated_data,
+                stmt_only=False,
+                serializer=partial(
+                    self.serialize, **{"many": isinstance(validated_data, list)}
+                ),
+            ),
+            status_code=201,
+        )
+
 
     async def delete(self, request: Request):
         """
@@ -293,16 +323,6 @@ class ResourceController(EntityController):
         """
         await self.svc.delete(pk_val=self._extract_pk_val(request))
         return json_response("Deleted.", status_code=200)
-
-    async def create_update(self, request: Request):
-        """"""
-        validated_data = self.validate(await self._extract_body(request))
-        return json_response(
-            data=await self.svc.create_update(
-                pk_val=self._extract_pk_val(request), data=validated_data
-            ),
-            status_code=200,
-        )
 
     async def filter(self, request: Request):
         """
