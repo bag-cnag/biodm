@@ -281,10 +281,12 @@ class ResourceController(EntityController):
         """UPDATE.
         Essentially calling create, as it is doing upserts.
 
-        :param request: _description_
+        :param request: incomming request
         :type request: Request
-        :return: _description_
-        :rtype: _type_
+        :return: updated object in JSON form
+        :rtype: Response
+        ---
+        TODO:
         """
         pk_val = self._extract_pk_val(request)
         validated_data = self.validate(await self._extract_body(request))
