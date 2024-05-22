@@ -286,7 +286,7 @@ class ResourceController(EntityController):
         :return: updated object in JSON form
         :rtype: Response
         ---
-        TODO:
+        TODO: test and document.
         """
         pk_val = self._extract_pk_val(request)
         validated_data = self.validate(await self._extract_body(request))
@@ -323,16 +323,6 @@ class ResourceController(EntityController):
         """
         await self.svc.delete(pk_val=self._extract_pk_val(request))
         return json_response("Deleted.", status_code=200)
-
-    async def create_update(self, request: Request):
-        """"""
-        validated_data = self.validate(await self._extract_body(request))
-        return json_response(
-            data=await self.svc.create_update(
-                pk_val=self._extract_pk_val(request), data=validated_data
-            ),
-            status_code=200,
-        )
 
     async def filter(self, request: Request):
         """

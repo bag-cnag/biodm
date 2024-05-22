@@ -40,9 +40,5 @@ class CRUDApiComponent(ApiComponent, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def create_update(self, *args, **kwargs) -> Any:
-        raise NotImplementedError
-
-    @abstractmethod
     async def filter(self, *args, **kwargs) -> Any:
         raise NotImplementedError
