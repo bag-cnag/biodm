@@ -1,14 +1,15 @@
+"""Controller class for Tables acting as a Resource."""
 from __future__ import annotations
 from functools import partial
-import json
+import asyncio
 from typing import TYPE_CHECKING, List, Any, Dict
 
-from marshmallow import INCLUDE
-from marshmallow.schema import RAISE, INCLUDE
+from marshmallow.schema import RAISE
 from starlette.routing import Mount, Route
 from starlette.requests import Request
 from starlette.responses import Response
 
+from biodm import Scope
 from biodm.components.services import (
     DatabaseService,
     UnaryEntityService,
@@ -16,9 +17,11 @@ from biodm.components.services import (
     KCGroupService,
     KCUserService
 )
-from biodm.exceptions import InvalidCollectionMethod, PayloadEmptyError, UnauthorizedError
-from biodm.utils.utils import json_response, coalesce_dicts, to_it
-from biodm.utils.security import extract_and_decode_token
+from biodm.exceptions import (
+    InvalidCollectionMethod, PayloadEmptyError, UnauthorizedError, PartialIndex
+)
+from biodm.utils.utils import json_response, to_it
+from biodm.utils.security import admin_required, extract_and_decode_token
 from biodm.components import Base
 from .controller import HttpMethod, EntityController
 
@@ -37,6 +40,7 @@ def overload_docstring(f):
     behind the hood in python and depending on the version the .__doc__ attribute of a
     member function is not editable - Not the case as of python 3.11.2.
 
+    # flake8: noqa: E501  pylint: disable=line-too-long
     Relevant SO posts:
     - https://stackoverflow.com/questions/38125271/extending-or-overwriting-a-docstring-when-composing-classes
     - https://stackoverflow.com/questions/1782843/python-decorator-handling-docstrings
@@ -45,9 +49,15 @@ def overload_docstring(f):
     :type f: Callable
     """
     async def wrapper(self, *args, **kwargs):
-        if self.app.config.DEV:
+        """callable."""
+        if Scope.DEBUG in self.app.scope:
             assert isinstance(self, ResourceController)
-        return await getattr(super(self.__class__, self), f.__name__)(*args, **kwargs)
+
+        async def inner(obj, *args, **kwargs):
+            """Is a proxy for actually calling Parent class."""
+            return await getattr(super(obj.__class__, obj), f.__name__)(*args, **kwargs)
+        return await inner(self, *args, **kwargs)
+
     wrapper.__name__ = f.__name__
     wrapper.__doc__ = f.__doc__
     return wrapper
@@ -80,9 +90,11 @@ class ResourceController(EntityController):
         self.table = table if table else self._infer_table()
         self.table.ctrl = self
 
-        self.pk = tuple(self.table.pk())
-        self.svc = self._infer_svc()(app=self.app, table=self.table)
+        self.pk = set(self.table.pk())
+        self.svc: DatabaseService = self._infer_svc()(app=self.app, table=self.table)
         self.__class__.schema = (schema if schema else self._infer_schema())(unknown=RAISE)
+
+        self._setup_permissions()
 
     def _infer_entity_name(self) -> str:
         """Infer entity name from controller name."""
@@ -135,21 +147,27 @@ class ResourceController(EntityController):
                 "you should provide it as 'schema' arg when creating a new controller"
             ) from e
 
-    def routes(self, child_routes=None, **_) -> Mount:
+    def routes(self, child_routes=None, **_) -> List[Mount | Route]:
         """Sets up standard RESTful endpoints.
+        child_routes: from children classes calling super().__init__().
 
-        relevant doc: https://restfulapi.net/http-methods/"""
+        Relevant doc:
+        - https://restfulapi.net/http-methods/
+        """
         child_routes = child_routes or []
-        return Mount(self.prefix, routes=[
-            Route('/',               self.create,               methods=[HttpMethod.POST.value]),
-            Route('/',               self.filter,               methods=[HttpMethod.GET.value]),
-            Route('/search/',        self.filter,               methods=[HttpMethod.GET.value]),
-            Route('/schema/',        self.openapi_schema,       methods=[HttpMethod.GET.value]),
-            Route(f'/{self.qp_id}/', self.read,                 methods=[HttpMethod.GET.value]),
-            Route(f'/{self.qp_id}/{{attribute}}/',  self.read,  methods=[HttpMethod.GET.value]),
-            Route(f'/{self.qp_id}/', self.delete,               methods=[HttpMethod.DELETE.value]),
-            Route(f'/{self.qp_id}/', self.update,        methods=[HttpMethod.PUT.value]),
-        ] + child_routes)
+        # flake8: noqa: E501  pylint: disable=line-too-long
+        return [
+            Route(f"{self.prefix}",                   self.create,         methods=[HttpMethod.POST.value]),
+            Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET.value]),
+            Mount(self.prefix, routes=[
+                Route('/search',                      self.filter,         methods=[HttpMethod.GET.value]),
+                Route('/schema',                      self.openapi_schema, methods=[HttpMethod.GET.value]),
+                Route(f'/{self.qp_id}',               self.read,           methods=[HttpMethod.GET.value]),
+                Route(f'/{self.qp_id}/{{attribute}}', self.read,           methods=[HttpMethod.GET.value]),
+                Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE.value]),
+                Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT.value]),
+            ] + child_routes)
+        ]
 
     def _extract_pk_val(self, request: Request) -> List[Any]:
         """Extracts id from request.
@@ -159,13 +177,16 @@ class ResourceController(EntityController):
         :raises InvalidCollectionMethod: if primary key values are not found in the path.
         :return: Primary key values
         :rtype: List[Any]
+        ---
         """
         pk_val = [request.path_params.get(k) for k in self.pk]
         if not pk_val:
-            raise InvalidCollectionMethod
+            raise InvalidCollectionMethod()
         if len(pk_val) != len(self.pk):
-            # TODO: define a more specific error here.
-            raise InvalidCollectionMethod
+            raise PartialIndex(
+                "Request is missing some resource index values in the path. "
+                "Index elements have to be provided in definition order, separated by '_'"
+            )
         return pk_val
 
     async def _extract_body(self, request: Request) -> bytes:
@@ -176,14 +197,58 @@ class ResourceController(EntityController):
         :raises PayloadEmptyError: in case payload is empty
         :return: request body
         :rtype: bytes
+        ---
         """
         body = await request.body()
         if body == b'{}':
             raise PayloadEmptyError
         return body
 
-    def get_permissions(self, verb: str) -> List[Dict] | None:
-        if self.table in Base._Base__permissions.keys():
+    def _setup_permissions(self):
+        """Decorates exposed methods with permission checks."""
+        routes = []
+        for r in self.routes():
+            if isinstance(r, Mount):
+                routes.extend(r.routes)
+            else:
+                routes.append(r)
+        exposed_methods = set(r.endpoint for r in routes)
+        for method in exposed_methods:
+            setattr(self, method.__name__, self.setup_permissions_check(method))
+
+    def setup_permissions_check(self, f):
+        """Set up permission check if server is not run in test mode."""
+        if Scope.TEST in self.app.scope:
+            return f
+
+        if f.__name__ == "delete":
+            return admin_required(f)
+
+        async def wrapper(request):
+            skip = False
+            match f.__name__:
+                case "create":
+                    verb = "create"
+                case "update":
+                    verb = "update"
+                case "read" | "filter":
+                    verb = "read"
+                case "download":
+                    verb = "download"
+                case _:
+                    # Others (/schema and co.) are public.
+                    skip = True
+            if not (skip or await self.check_permissions(verb, request)):
+                raise UnauthorizedError("Insufficient permissions for this operation.")
+            return await f(request)
+
+        wrapper.__name__ = f.__name__
+        wrapper.__doc__ = f.__doc__
+        return wrapper
+
+    def _get_permissions(self, verb: str) -> List[Dict] | None:
+        """Retrieve entries indexed with self.table containing given verb in permissions."""
+        if self.table in Base._Base__permissions:
             return [
                 perm
                 for perm in Base._Base__permissions[self.table]
@@ -192,21 +257,24 @@ class ResourceController(EntityController):
         return None
 
     async def check_permissions(self, verb: str, request: Request):
-        perms = self.get_permissions(verb)
+        """Verify that token bearer is part of allowed groups for that method."""
+        perms = self._get_permissions(verb)
         if not perms:
             return True
 
         _, groups, _ = await extract_and_decode_token(self.app.kc, request)
-        for p in perms:
-            if not await self.svc.check_permissions(
-                verb=verb,
-                groups=groups,
-                join=p['from'],
-                asso=p['table'],
-            ):
-                return False
-
-        return True
+        return all(
+            await asyncio.gather(
+                *[
+                    self.svc.check_permission(
+                        verb=verb,
+                        groups=groups,
+                        permission=perm
+                    )
+                    for perm in perms
+                ]
+            )
+        )
 
     async def create(self, request: Request) -> Response:
         """Creates associated entity.
@@ -227,9 +295,6 @@ class ResourceController(EntityController):
           204:
               description: Empty Payload
         """
-        verb = "create"
-        # if not await self.check_permissions(verb, request):
-        #     raise UnauthorizedError("Insufficient permissions for this operation.")
         validated_data = self.validate(await self._extract_body(request))
         return json_response(
             data=await self.svc.create(
@@ -266,7 +331,6 @@ class ResourceController(EntityController):
           404:
               description: Not Found
         """
-
         fields = request.query_params.get('fields')
         return json_response(
             data=await self.svc.read(
@@ -286,12 +350,11 @@ class ResourceController(EntityController):
         :return: updated object in JSON form
         :rtype: Response
         ---
-        TODO: test and document.
         """
         pk_val = self._extract_pk_val(request)
         validated_data = self.validate(await self._extract_body(request))
 
-        # Plug in pk into the dict(s). 
+        # Plug in pk into the dict(s).
         pk_val = dict(zip(self.pk, pk_val))
         for data in to_it(validated_data):
             data.update(pk_val)
@@ -306,7 +369,6 @@ class ResourceController(EntityController):
             ),
             status_code=201,
         )
-
 
     async def delete(self, request: Request):
         """
@@ -342,7 +404,7 @@ class ResourceController(EntityController):
         """
         return json_response(
             await self.svc.filter(
-                query_params=dict(request.query_params),
+                params=dict(request.query_params),
                 serializer=partial(self.serialize, many=True),
             ),
             status_code=200,

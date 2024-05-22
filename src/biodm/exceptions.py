@@ -46,11 +46,19 @@ class SchemaError(RuntimeError):
     """Raised when faulty schema pattern is detected."""
 
 
+class TokenDecodingError(RequestError):
+    """Raised when token decoding failed."""
+
+
 ## Routing
 class InvalidCollectionMethod(RequestError):
     """Raised when a unit method is accesed as a collection."""
     def __init__(self, *_):
         super().__init__(detail="Method not allowed on a collection.")
+
+
+class PartialIndex(RequestError):
+    """Raised when a method expecting entity primary key receives a partial index."""
 
 
 class UnauthorizedError(RequestError):

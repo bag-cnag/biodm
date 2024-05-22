@@ -21,8 +21,8 @@ class ApiComponent(ABC):
         self.__class__.logger = app.logger
 
 
-class CRUDApiComponent(ApiComponent, ABC):
-    """API CRUD component Interface. Enforces CRUD methods on children classes."""
+class ApiService(ApiComponent):
+    """Service base class."""
     @abstractmethod
     async def create(self, *args, **kwargs) -> Any:
         raise NotImplementedError
@@ -31,9 +31,9 @@ class CRUDApiComponent(ApiComponent, ABC):
     async def read(self, *args, **kwargs) -> Any:
         raise NotImplementedError
 
-    @abstractmethod
-    async def update(self, *args, **kwargs) -> Any:
-        raise NotImplementedError
+    # @abstractmethod
+    # async def update(self, *args, **kwargs) -> Any:
+    #     raise NotImplementedError
 
     @abstractmethod
     async def delete(self, *args, **kwargs) -> Any:

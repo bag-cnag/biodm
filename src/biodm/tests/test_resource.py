@@ -3,23 +3,25 @@ import pytest
 import json
 
 from biodm import exceptions as exc
+from biodm.utils.utils import json_response
 from .conftest import json_bytes
 
 
 def test_resource_schema(client):
     """"""
-    response = client.get('/as/schema/')
+    response = client.get('/as/schema')
     json_response = json.loads(response.text)
 
     assert response.status_code == 200
-    assert "/" in json_response['paths']
-    assert "/search/" in json_response['paths']
-
+    assert "/as" in json_response['paths']
+    assert "/as/search" in json_response['paths']
+    assert "/as/schema" in json_response['paths']
+    assert "/as/{id}" in json_response['paths']
 
 def test_create_unary_resource(client):
     """"""
     item = {'name': 'test'}
-    response = client.post('/bs/', content=json_bytes(item))
+    response = client.post('/bs', content=json_bytes(item))
 
     assert response.status_code == 201
     assert "id" in response.text
@@ -41,7 +43,7 @@ def test_create_composite_resource(client):
     for i, x in enumerate(oracle['bs']):
         x['id'] = i+1
 
-    response = client.post('/as/', content=json_bytes(item))
+    response = client.post('/as', content=json_bytes(item))
     json_response = json.loads(response.text)
 
     assert response.status_code == 201
@@ -50,18 +52,18 @@ def test_create_composite_resource(client):
 
 @pytest.mark.xfail(raises=exc.PayloadEmptyError)
 def test_create_empty_data(client):
-    client.post('/as/', content=json_bytes({}))
+    client.post('/as', content=json_bytes({}))
 
 
 @pytest.mark.xfail(raises=exc.PayloadValidationError)
 def test_create_wrong_data(client):
-    client.post('/as/', content=json_bytes({'wrong': False}))
+    client.post('/as', content=json_bytes({'wrong': False}))
 
 
 def test_read_resource(client):
     item = {'x': 1, 'y': 2, 'c': {'data': '1234'},}
 
-    _ = client.post('/as/', content=json_bytes(item))
+    _ = client.post('/as', content=json_bytes(item))
     response = client.get('/cs/1')
     json_response = json.loads(response.text)
 
@@ -83,8 +85,8 @@ def test_readall_resource(client):
     item1 = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'},{'name': 'bap'},]}
     item2 = {'x': 3, 'y': 4, 'bs': [{'name': 'tit'},{'name': 'tat'},]}
 
-    _ = client.post('/as/', content=json_bytes([item1, item2]))
-    response = client.get('/bs/')
+    _ = client.post('/as', content=json_bytes([item1, item2]))
+    response = client.get('/bs')
     json_response = json.loads(response.text)
 
     assert response.status_code == 200
@@ -97,7 +99,7 @@ def test_filter_resource_wildcard(client):
     item1 = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'},{'name': 'bap'},]}
     item2 = {'x': 3, 'y': 4, 'bs': [{'name': 'tit'},{'name': 'tat'},]}
 
-    _ = client.post('/as/', content=json_bytes([item1, item2]))
+    _ = client.post('/as', content=json_bytes([item1, item2]))
     response = client.get('/bs?name=b*')
     json_response = json.loads(response.text)
 
@@ -113,7 +115,7 @@ def test_filter_resource_values(client):
     item1 = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'},{'name': 'bap'},]}
     item2 = {'x': 3, 'y': 4, 'bs': [{'name': 'tit'},{'name': 'tat'},]}
 
-    _ = client.post('/as/', content=json_bytes([item1, item2]))
+    _ = client.post('/as', content=json_bytes([item1, item2]))
     response = client.get('/bs?name=bip,tat')
     json_response = json.loads(response.text)
 
@@ -127,7 +129,7 @@ def test_filter_resource_op(client):
     item1 = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'},{'name': 'bap'},]}
     item2 = {'x': 3, 'y': 4, 'bs': [{'name': 'tit'},{'name': 'tat'},]}
 
-    _ = client.post('/as/', content=json_bytes([item1, item2]))
+    _ = client.post('/as', content=json_bytes([item1, item2]))
     response = client.get('/as?x.lt(2)')
     json_response = next(iter(json.loads(response.text)))
 
@@ -140,7 +142,7 @@ def test_filter_resource_nested(client):
     item1 = {'x': 1, 'y': 2, 'c': {'data': '1234'},}
     item2 = {'x': 3, 'y': 4, 'c': {'data': '4321'},}
 
-    _ = client.post('/as/', content=json_bytes([item1, item2]))
+    _ = client.post('/as', content=json_bytes([item1, item2]))
     response = client.get('/as?c.data=4321')
     json_response = next(iter(json.loads(response.text)))
 
@@ -153,7 +155,7 @@ def test_filter_resource_with_fields(client):
     item1 = {'x': 1, 'y': 2, 'c': {'data': '1234'},}
     item2 = {'x': 3, 'y': 4, 'c': {'data': '4321'},}
 
-    _ = client.post('/as/', content=json_bytes([item1, item2]))
+    _ = client.post('/as', content=json_bytes([item1, item2]))
     response = client.get('/as?x=1&fields=x,c')
     json_response = next(iter(json.loads(response.text)))
 
@@ -167,7 +169,7 @@ def test_filter_resource_with_fields(client):
 def test_filter_wrong_op(client):
     item = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'}, {'name': 'bap'},]}
 
-    client.post('/as/', content=json_bytes(item))
+    client.post('/as', content=json_bytes(item))
     client.get('/as?x.lt=2')
 
 
@@ -175,7 +177,7 @@ def test_filter_wrong_op(client):
 def test_filter_wrong_wildcard(client):
     item = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'}, {'name': 'bap'},]}
 
-    client.post('/as/', content=json_bytes(item))
+    client.post('/as', content=json_bytes(item))
     client.get('/as?y=2*')
 
 
@@ -183,14 +185,49 @@ def test_filter_wrong_wildcard(client):
 def test_filter_op_on_string(client):
     item = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'}, {'name': 'bap'},]}
 
-    client.post('/as/', content=json_bytes(item))
+    client.post('/as', content=json_bytes(item))
     client.get('/bs?name.gt(2)')
+
+
+def test_update_unary_resource(client):
+    item = {'name': 'test'}
+    cr_response = client.post('/bs', content=json_bytes(item))
+    item_id = json.loads(cr_response.text)['id']
+
+    up_response = client.put(f'/bs/{item_id}', data=json_bytes({'name': 'modified'}))
+    json_response = json.loads(up_response.text)
+
+    assert up_response.status_code == 201
+    assert json_response['id'] == item_id
+    assert json_response['name'] == 'modified'   
+
+
+def test_update_composite_resource(client):
+    item = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'}, {'name': 'bap'},]}
+    cr_response = client.post('/as', content=json_bytes(item))
+    item_id = json.loads(cr_response.text)['id']
+
+    up_response = client.put(f'/as/{item_id}', data=json_bytes(
+        {
+            'x': 3,
+            'bs': [
+                {'id': 1, 'name': 'bop'}
+            ]
+        }
+    ))
+    bs_oracle = [{'id': 1, 'name': 'bop'}, {'id': 2, 'name': 'bap'}]
+    json_response = json.loads(up_response.text)
+
+    assert up_response.status_code == 201
+    assert json_response['id'] == item_id
+    assert json_response['x'] == 3
+    assert json_response['bs'] == bs_oracle
 
 
 def test_delete_resource(client):
     item = {'x': 1, 'y': 2,}
 
-    _ = client.post('/as/', content=json_bytes(item))
+    _ = client.post('/as', content=json_bytes(item))
     response = client.delete('/as/1')
 
     assert response.status_code == 200
