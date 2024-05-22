@@ -1,6 +1,5 @@
 from __future__ import annotations
 from copy import deepcopy
-from collections import OrderedDict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, List, Dict
 import datetime
@@ -203,10 +202,11 @@ class Base(DeclarativeBase, AsyncAttrs):
                     - children hold parent id
                 - holds listgroup objects mapped to enabled verbs
             - Set ref for Children controller
-
         -- Has to be done after all tables have been declared. --
-        1. start by assuming straight composition
-        2. extend to general case ?"""
+
+        Currently assumes straight composition.
+        i.e. You cannot flag an o2m with the same target in two different parent classes.
+        """
         lut = {}
         for table, permissions in cls._Base__permissions.values():
             for perm in permissions:

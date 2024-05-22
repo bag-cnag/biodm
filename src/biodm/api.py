@@ -1,4 +1,4 @@
-from asyncio import wait_for, TimeoutError
+from asyncio import wait_for
 import logging
 import logging.config
 from typing import List, Optional, Dict, Any
@@ -137,7 +137,7 @@ class Api(Starlette):
         History.svc = UnaryEntityService(app=self, table=History)
         ListGroup.svc = CompositeEntityService(app=self, table=ListGroup)
 
-        super(Api, self).__init__(routes=routes, *args, **kwargs)
+        super().__init__(routes=routes, *args, **kwargs)
 
         ## Middlewares
         self.add_middleware(HistoryMiddleware, server_host=self.config.SERVER_HOST)
@@ -151,7 +151,8 @@ class Api(Starlette):
                 )
             ),
             allow_methods=["*"],
-            allow_headers=["*"]
+            allow_headers=["*"],
+            # max_age=10 # TODO: max age cache in config.
         )
         if not self.config.DEV:
             self.add_middleware(TimeoutMiddleware, timeout=self.config.SERVER_TIMEOUT)

@@ -1,3 +1,4 @@
+from datetime import datetime, UTC
 from functools import reduce
 import operator
 from os import path, utime
@@ -5,8 +6,13 @@ from typing import Any, List, Callable, Tuple, TypeVar, Dict
 
 from starlette.responses import Response
 
+
 _T = TypeVar("_T")
 _U = TypeVar("_U")
+
+
+def utcnow() -> datetime:
+    return datetime.now(UTC)
 
 
 def json_response(data: str, status_code: int) -> Response:
@@ -72,6 +78,6 @@ def unevalled_or(ls: List[Any]):
     return reduce(operator.or_, ls)
 
 def coalesce_dicts(ls: List[Dict[_T, _U]]) -> Dict[_T, _U]:
-    """Assembles multiple dicts into one. 
-    - Overload values according to order in the list in case of overlapping keys."""
+    """Assembles multiple dicts into one.
+    - Overlapping keys: override value in order."""
     return reduce(operator.or_, ls, {})

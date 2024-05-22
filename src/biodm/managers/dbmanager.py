@@ -76,7 +76,7 @@ class DatabaseManager(ApiComponent):
         below allows for conditional context management.
 
         Also performs serialization **within a sync session**:
-        - important for lazy nested attributes) when passed a serializer.
+        - Avoids errors in case serializing acceses a lazy attribute.
 
         It is doing so by extracting 'serializer' argument sometimes explicitely,
         sometimes implicitely passed around using kwargs dict) !! Thus all 'not final' functions

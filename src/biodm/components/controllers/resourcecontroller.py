@@ -152,9 +152,19 @@ class ResourceController(EntityController):
         ] + child_routes)
 
     def _extract_pk_val(self, request: Request) -> List[Any]:
-        """Extracts id from request, raise exception if not found."""
+        """Extracts id from request.
+
+        :param request: incomming request
+        :type request: Request
+        :raises InvalidCollectionMethod: if primary key values are not found in the path.
+        :return: Primary key values
+        :rtype: List[Any]
+        """
         pk_val = [request.path_params.get(k) for k in self.pk]
         if not pk_val:
+            raise InvalidCollectionMethod
+        if len(pk_val) != len(self.pk):
+            # TODO: define a more specific error here.
             raise InvalidCollectionMethod
         return pk_val
 

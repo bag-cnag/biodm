@@ -1,6 +1,5 @@
-from dataclasses import dataclass
 from functools import partial
-from typing import List, Any, Tuple, Dict, Callable
+from typing import List, Any, Tuple, Dict, Callable, TypeVar
 
 from sqlalchemy import insert, select, update, delete
 
@@ -115,8 +114,6 @@ class UnaryEntityService(DatabaseService):
             stmt = stmt.join(jtable)
         stmt = stmt.options(joinedload(asso.c[verb].groups))
         allowed = await session.scalar(stmt)
-        # # TODO: replace by joineload in stmt ?
-        # await session.refresh(allowed, ("groups",))
         return bool(set(groups) & set(g.name for g in allowed.groups))
 
     async def create(
@@ -146,12 +143,13 @@ class UnaryEntityService(DatabaseService):
         return stmt if stmt_only else await f_ins(stmt, **kwargs)
 
     def gen_cond(self, pk_val: List[Any]) -> Any:
-        """_summary_
+        """Generates (pk_1 == pk_1.type.python_type(val_1)) & (pk_2 == ...) ...).
+        Without evaluating at runtime, so it can be plugged in a where condition.
 
-        :param pk_val: _description_
-        :type pk_val: _type_
-        :return: _description_
-        :rtype: _type_
+        :param pk_val: Primary key values
+        :type pk_val: List[Any]
+        :return: CNF Clause
+        :rtype: Any
         """
         return unevalled_all(
             [
@@ -219,7 +217,8 @@ class UnaryEntityService(DatabaseService):
         fields: List[str],
         serializer: Callable = None
     ) -> Select:
-        """set load_only options of a select(table) statement given a list of fields.
+        """set load_only options of a select(table) statement given a list of fields,
+        and restrict serializer fields so that it doesn't trigger any lazy loading.
 
         :param stmt: select statement under construction
         :type stmt: Select
@@ -232,7 +231,6 @@ class UnaryEntityService(DatabaseService):
         :return: _description_
         :rtype: Select
         """
-        # Restrict serializer fields so that it doesn't trigger any lazy loading.
         nested, fields = partition(fields or [], lambda x: x in self.table.relationships())
         serializer = partial(serializer, only=fields + nested) if serializer else None
         stmt = stmt.options(
@@ -323,7 +321,7 @@ class UnaryEntityService(DatabaseService):
         serializer: Callable = None,
         **kwargs
     ) -> Base:
-        """READ one item from the value of it's primary key (components)
+        """READ one item from values of its primary key.
 
         :param pk_val: entity primary key values in order
         :type pk_val: List[Any]
@@ -363,21 +361,27 @@ class UnaryEntityService(DatabaseService):
 
 class CompositeEntityService(UnaryEntityService):
     """Special case for Composite Entities (i.e. containing nested entities attributes)."""
-    @dataclass
     class CompositeInsert:
         """Class to hold composite entities statements before insertion.
 
         :param item: Parent item insert statement
         :type item: Insert
         :param nested: Nested items insert statement indexed by attribute name
-        :type nested: Dict[str, Insert]
+        :type nested: Dict[str, Insert | CompositeInsert | List[Insert] | List[CompositeInsert]]
         :param delayed: Nested list of items insert statements indexed by attribute name
-        :type delayed: Dict[str, Insert]
+        :type delayed: Dict[str, Insert | CompositeInsert | List[Insert] | List[CompositeInsert]]
         """
+        CompositeInsert = TypeVar('CompositeInsert')
         def __init__(self,
                      item: Insert,
-                     nested: Dict[str, Insert]=None,
-                     delayed: Dict[str, Insert]=None,
+                     nested: Dict[
+                         str,
+                         Insert | CompositeInsert | List[Insert] | List[CompositeInsert]
+                     ]=None,
+                     delayed: Dict[
+                         str,
+                         Insert | CompositeInsert | List[Insert] | List[CompositeInsert]
+                     ]=None,
         ):
             """Constructor."""
             self.item = item
@@ -386,7 +390,7 @@ class CompositeEntityService(UnaryEntityService):
 
     @property
     def runtime_relationships(self):
-        """Works because the property is fixed on first access."""
+        """Works because the property is fixed at instanciation time."""
         return (
             set(self.table.relationships().keys()) - 
             set(self.relationships.keys())
@@ -439,16 +443,12 @@ class CompositeEntityService(UnaryEntityService):
                         mapping[c.name] = getattr(item, fk.target_fullname.rsplit('.', maxsplit=1)[-1])
 
                 # Patch statements before inserting.
-                match delay:
-                    case list():
-                        for one in delay:
+                for one in to_it(delay):
+                    match one:
+                        case self.CompositeInsert():
                             one.item = one.item.values(**mapping)
-
-                    case self.CompositeInsert():
-                        delay.item = delay.item.values(**mapping)
-
-                    case Insert():
-                        delay = delay.values(**mapping)
+                        case Insert():
+                            one = one.values(**mapping)
 
             # Insert delayed and populate back into item.
             match delay:
@@ -460,7 +460,6 @@ class CompositeEntityService(UnaryEntityService):
                         getattr(item, key).extend(delay)
                     else:
                         getattr(item, key).update(delay)
-
                 case self.CompositeInsert():
                     sub = await target_svc._insert_composite(delay, session)
                     setattr(item, key, sub)
@@ -469,7 +468,8 @@ class CompositeEntityService(UnaryEntityService):
         return item
 
     async def _insert(self, stmt: Insert | CompositeInsert, session: AsyncSession) -> Base:
-        """Redirect in case of composite insert. Mid-level: No need for in_session decorator."""
+        """Redirect in case of composite insert.
+        Mid-level: No need for in_session decorator."""
         if isinstance(stmt, self.CompositeInsert):
             return await self._insert_composite(stmt, session)
         return await super()._insert(stmt, session)
@@ -480,9 +480,11 @@ class CompositeEntityService(UnaryEntityService):
         session: AsyncSession
     ) -> List[Base]:
         """Redirect in case of composite insert. Mid-level: No need for in_session decorator."""
-        if isinstance(stmt, Insert):
-            return await super()._insert_many(stmt, session)
-        return [await self._insert_composite(composite, session) for composite in stmt]
+        match stmt:
+            case Insert():
+                return await super()._insert_many(stmt, session)
+            case self.CompositeInsert:
+                return [await self._insert_composite(composite, session) for composite in stmt]
 
     async def _create_one(
         self,
