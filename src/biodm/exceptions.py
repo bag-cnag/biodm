@@ -12,7 +12,7 @@ class DBError(RuntimeError):
     sa_error = None
 
 
-class ImplementionErrror(RuntimeError):
+class ImplementionError(RuntimeError):
     """Raised when a wrong use of components is detected."""
 
 

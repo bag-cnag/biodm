@@ -30,7 +30,7 @@ DATABASE_URL = f"postgresql://{PG_USER}:{PG_PASS}@{PG_HOST}/{PG_DB}"
 
 
 ## S3 Bucket.
-S3_ENDPOINT_URL        = config('S3_ENDPOINT_URL',        cast=str,  default="http://s3.local/")
+S3_ENDPOINT_URL        = config('S3_ENDPOINT_URL',        cast=str,  default="https://3tr.gpapdev.cnag.eu/")
 S3_BUCKET_NAME         = config('S3_BUCKET_NAME',         cast=str,  default="3trdevopal")
 S3_URL_EXPIRATION      = config('S3_URL_EXPIRATION',      cast=int,  default=3600)
 S3_PENDING_EXPIRATION  = config('S3_PENDING_EXPIRATION',  cast=int,  default=3600 * 24)

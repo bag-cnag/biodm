@@ -1,7 +1,6 @@
+from copy import deepcopy
 import pytest
 import json
-from copy import deepcopy
-
 
 from biodm import exceptions as exc
 from .conftest import json_bytes
@@ -91,7 +90,7 @@ def test_readall_resource(client):
     assert response.status_code == 200
     assert len(json_response) == 4
     for b in item1['bs'] + item2['bs']:
-        assert any([b['name'] == jr['name'] for jr in json_response])
+        assert any(b['name'] == jr['name'] for jr in json_response)
 
 
 def test_filter_resource_wildcard(client):
@@ -105,9 +104,9 @@ def test_filter_resource_wildcard(client):
     assert response.status_code == 200
     assert len(json_response) == 2
     for b in item1['bs']:
-        assert any([b['name'] == jr['name'] for jr in json_response])
+        assert any(b['name'] == jr['name'] for jr in json_response)
     for b in item2['bs']:
-        assert not any([b['name'] == jr['name'] for jr in json_response])
+        assert not any(b['name'] == jr['name'] for jr in json_response)
 
 
 def test_filter_resource_values(client):
