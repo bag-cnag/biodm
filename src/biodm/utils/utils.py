@@ -1,4 +1,5 @@
-from datetime import datetime, UTC
+import sys
+from datetime import datetime 
 from functools import reduce
 import operator
 from os import path, utime
@@ -12,7 +13,9 @@ _U = TypeVar("_U")
 
 
 def utcnow() -> datetime:
-    return datetime.now(UTC)
+    if sys.version_info >= (2, 11):
+        from datetime import UTC
+        return datetime.now(UTC)
 
 
 def json_response(data: str, status_code: int) -> Response:
