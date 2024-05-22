@@ -22,12 +22,12 @@ jobs:
       - name: Sphinx build
         run: |
           sphinx-apidoc --implicit-namespaces -fo docs/biodm/ src/biodm -H "API Reference"
-          python3 -m sphinx -b html docs/ docs/_build/
+          python3 -m sphinx -b html docs/ _docs_build/
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         with:
           publish_branch: gh-pages
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: docs/_build/
+          publish_dir: _docs_build/
           force_orphan: true
