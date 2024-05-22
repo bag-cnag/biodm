@@ -1,7 +1,7 @@
 from functools import partial
-from typing import List, Any, Tuple, Dict, Callable
+from typing import List, Any, Tuple, Dict, Callable, TypeVar
 
-from sqlalchemy import select, update, delete
+from sqlalchemy import insert, select, update, delete
 
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects import sqlite
@@ -10,11 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only, joinedload
 from sqlalchemy.sql import Insert, Update, Delete, Select
 
-from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 from biodm.component import CRUDApiComponent
-from biodm.components import Base
-from biodm.managers import DatabaseManager
+from biodm.components import Base, Permission
 from biodm.exceptions import FailedRead, FailedDelete, FailedUpdate
+from biodm.managers import DatabaseManager
+from biodm.tables import Group, ListGroup
+from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
 
 SUPPORTED_INT_OPERATORS = ("gt", "ge", "lt", "le")
@@ -24,6 +25,17 @@ class DatabaseService(CRUDApiComponent):
     """Root Service class: manages database transactions for entities.
     Holds atomic database statement execution functions.
     """
+    @property
+    def _backend_specific_insert(self):
+        """Returns an insert statement builder according to DB backend."""
+        match self.app.db.engine.dialect:
+            case postgresql.asyncpg.dialect():
+                return postgresql.insert
+            case sqlite.dialect():
+                return sqlite.insert
+            case _:
+                return insert
+
     @DatabaseManager.in_session
     async def _insert(self, stmt: Insert, session: AsyncSession) -> (Any | None):
         """INSERT one into database."""
@@ -79,6 +91,8 @@ class UnaryEntityService(DatabaseService):
         # Entity info.
         self.table = table
         self.pk = tuple(table.col(name) for name in table.pk())
+        # Frequently accessed: also takes a snapshot at declaration time
+        #   which is super convenient to distinguish permissions relationships delcared at runtime.
         self.relationships = table.relationships()
         # Enable entity - service - table linkage so everything is conveniently available.
         table.svc = self
@@ -90,15 +104,23 @@ class UnaryEntityService(DatabaseService):
         """"""
         return f"{self.__class__.__name__}({self.table.__name__})"
 
+    @DatabaseManager.in_session
+    async def check_permissions(self, verb, groups, asso, join, session: AsyncSession) -> bool:
+        stmt = (
+            select(ListGroup)
+            .join(asso, onclause=asso.c[verb] == ListGroup.id)
+        )
+        for jtable in join:
+            stmt = stmt.join(jtable)
+        stmt = stmt.options(joinedload(asso.c[verb].groups))
+        allowed = await session.scalar(stmt)
+        return bool(set(groups) & set(g.name for g in allowed.groups))
+
     async def create(
         self, data, stmt_only: bool = False, **kwargs
     ) -> Insert | Base | List[Base]:
         """CREATE one or many rows. data: schema validation result."""
-        match self.app.db.engine.dialect:
-            case postgresql.asyncpg.dialect():
-                stmt = postgresql.insert(self.table)
-            case sqlite.dialect():
-                stmt = sqlite.insert(self.table)
+        stmt = self._backend_specific_insert(self.table)
 
         if isinstance(data, list):
             stmt = stmt.values(data)
@@ -121,12 +143,13 @@ class UnaryEntityService(DatabaseService):
         return stmt if stmt_only else await f_ins(stmt, **kwargs)
 
     def gen_cond(self, pk_val: List[Any]) -> Any:
-        """_summary_
+        """Generates (pk_1 == pk_1.type.python_type(val_1)) & (pk_2 == ...) ...).
+        Without evaluating at runtime, so it can be plugged in a where condition.
 
-        :param pk_val: _description_
-        :type pk_val: _type_
-        :return: _description_
-        :rtype: _type_
+        :param pk_val: Primary key values
+        :type pk_val: List[Any]
+        :return: CNF Clause
+        :rtype: Any
         """
         return unevalled_all(
             [
@@ -194,7 +217,8 @@ class UnaryEntityService(DatabaseService):
         fields: List[str],
         serializer: Callable = None
     ) -> Select:
-        """set load_only options of a select(table) statement given a list of fields.
+        """set load_only options of a select(table) statement given a list of fields,
+        and restrict serializer fields so that it doesn't trigger any lazy loading.
 
         :param stmt: select statement under construction
         :type stmt: Select
@@ -207,15 +231,19 @@ class UnaryEntityService(DatabaseService):
         :return: _description_
         :rtype: Select
         """
-        # Restrict serializer fields so that it doesn't trigger any lazy loading.
         nested, fields = partition(fields or [], lambda x: x in self.table.relationships())
         serializer = partial(serializer, only=fields + nested) if serializer else None
         stmt = stmt.options(
             load_only(
-                *[getattr(self.table, f) for f in fields]
+                *[
+                    getattr(self.table, f)
+                    for f in fields
+                ]
             ),
             *[
-                joinedload(getattr(self.table, n))
+                joinedload(
+                    getattr(self.table, n)
+                )
                 for n in nested
             ]
         ) if nested or fields else stmt
@@ -293,7 +321,7 @@ class UnaryEntityService(DatabaseService):
         serializer: Callable = None,
         **kwargs
     ) -> Base:
-        """READ one item from the value of it's primary key (components)
+        """READ one item from values of its primary key.
 
         :param pk_val: entity primary key values in order
         :type pk_val: List[Any]
@@ -339,18 +367,34 @@ class CompositeEntityService(UnaryEntityService):
         :param item: Parent item insert statement
         :type item: Insert
         :param nested: Nested items insert statement indexed by attribute name
-        :type nested: Dict[str, Insert]
+        :type nested: Dict[str, Insert | CompositeInsert | List[Insert] | List[CompositeInsert]]
         :param delayed: Nested list of items insert statements indexed by attribute name
-        :type delayed: Dict[str, Insert]
+        :type delayed: Dict[str, Insert | CompositeInsert | List[Insert] | List[CompositeInsert]]
         """
+        CompositeInsert = TypeVar('CompositeInsert')
         def __init__(self,
                      item: Insert,
-                     nested: Dict[str, Insert],
-                     delayed: Dict[str, Insert]):
+                     nested: Dict[
+                         str,
+                         Insert | CompositeInsert | List[Insert] | List[CompositeInsert]
+                     ]=None,
+                     delayed: Dict[
+                         str,
+                         Insert | CompositeInsert | List[Insert] | List[CompositeInsert]
+                     ]=None,
+        ):
             """Constructor."""
             self.item = item
             self.nested = nested or {}
             self.delayed = delayed or {}
+
+    @property
+    def runtime_relationships(self):
+        """Works because the property is fixed at instanciation time."""
+        return (
+            set(self.table.relationships().keys()) - 
+            set(self.relationships.keys())
+        )
 
     @DatabaseManager.in_session
     async def _insert_composite(
@@ -368,38 +412,64 @@ class CompositeEntityService(UnaryEntityService):
         :return: Inserted item
         :rtype: Base
         """
+        rels = self.table.relationships()
 
-        # Insert all nested objects, and keep track.
+        # Insert all nested objects.
         for key, sub in composite.nested.items():
-            composite.nested[key] = await self._insert(sub, session)
+            composite.nested[key] = await rels[key].target.decl_class.svc._insert(sub, session)
             await session.commit()
 
         # Insert main object.
         item = await self._insert(composite.item, session)
-
-        # Populate main object with nested object id if matching field is found.
-        # TODO: hypehen the importance of that convention in the documentation.
-        # TODO: Find way to not have it depend on the name.
+        
+        # Populate nested objects into main object.
         for key, sub in composite.nested.items():
-            attr = f"id_{key}"
-            if hasattr(item, attr):
-                setattr(item, attr, sub.id)
+            await getattr(item.awaitable_attrs, key)
+            setattr(item, key, sub)
+
         await session.commit()
 
-        # Populate many-to-item fields with delayed lists.
-        for key in composite.delayed.keys():
-            items = await self._insert_many(composite.delayed[key], session)
-            mto = await getattr(item.awaitable_attrs, key)
-            if isinstance(mto, list):
-                mto.extend(items)
-            else:
-                for e in list(items):
-                    mto.add(e)
+        # Populate many-to-item fields with 'delayed' (because needing item id) objects.
+        for key, delay in composite.delayed.items():
+            await getattr(item.awaitable_attrs, key)
+            target_svc = rels[key].target.decl_class.svc
+
+            # Populate remote_side if any.
+            if rels[key].secondary is None and hasattr(rels[key], 'remote_side'):
+                mapping = {}
+                for c in rels[key].remote_side:
+                    if c.foreign_keys:
+                        fk, = c.foreign_keys
+                        mapping[c.name] = getattr(item, fk.target_fullname.rsplit('.', maxsplit=1)[-1])
+
+                # Patch statements before inserting.
+                for one in to_it(delay):
+                    match one:
+                        case self.CompositeInsert():
+                            one.item = one.item.values(**mapping)
+                        case Insert():
+                            one = one.values(**mapping)
+
+            # Insert delayed and populate back into item.
+            match delay:
+                case list() | Insert():
+                    delay = await target_svc._insert_many(delay, session)
+                    delay = [elem for elem in delay if elem not in getattr(item, key)]
+
+                    if isinstance(getattr(item, key), list):
+                        getattr(item, key).extend(delay)
+                    else:
+                        getattr(item, key).update(delay)
+                case self.CompositeInsert():
+                    sub = await target_svc._insert_composite(delay, session)
+                    setattr(item, key, sub)
+
             await session.commit()
         return item
 
     async def _insert(self, stmt: Insert | CompositeInsert, session: AsyncSession) -> Base:
-        """Redirect in case of composite insert. Mid-level: No need for in_session decorator."""
+        """Redirect in case of composite insert.
+        Mid-level: No need for in_session decorator."""
         if isinstance(stmt, self.CompositeInsert):
             return await self._insert_composite(stmt, session)
         return await super()._insert(stmt, session)
@@ -410,9 +480,11 @@ class CompositeEntityService(UnaryEntityService):
         session: AsyncSession
     ) -> List[Base]:
         """Redirect in case of composite insert. Mid-level: No need for in_session decorator."""
-        if isinstance(stmt, Insert):
-            return await super()._insert_many(stmt, session)
-        return [await self._insert_composite(composite, session) for composite in stmt]
+        match stmt:
+            case Insert():
+                return await super()._insert_many(stmt, session)
+            case self.CompositeInsert:
+                return [await self._insert_composite(composite, session) for composite in stmt]
 
     async def _create_one(
         self,
@@ -420,15 +492,31 @@ class CompositeEntityService(UnaryEntityService):
         stmt_only: bool = False,
         **kwargs,
     ) -> Base | CompositeInsert:
-        """CREATE, accounting for nested entitites."""
+        """CREATE, accounting for nested entitites. Parses nested dictionaries in a
+        class based recursive tree building fashion.
+        Each service is responsible for building statements to insert in its associated table.
+        """
         nested = {}
         delayed = {}
+        perm_verbs = Permission.__dataclass_fields__.keys() - 'field'
 
-        # For all table relationships, check whether data contains that item.
-        for key, rel in self.relationships.items():
-            sub = data.get(key)
-            if not sub:
-                continue
+        # Relationships declared after initial instanciation are permissions.
+        for key in self.runtime_relationships & data.keys():
+            rel = self.table.relationships()[key]
+            sub = data.pop(key)
+            stmt_perm = self._backend_specific_insert(rel.target.decl_class)
+
+            perm_nested = {}
+            for verb in set(perm_verbs) & set(sub.keys()):
+                perm_nested[verb] = await ListGroup.svc.create(sub.get(verb), stmt_only=True)
+
+            stmt_perm = stmt_perm.returning(rel.target.decl_class)
+            delayed[key] = self.CompositeInsert(item=stmt_perm, delayed=perm_nested)
+    
+        # Remaining table relationships.
+        for key in self.relationships.keys() & data.keys():
+            rel = self.relationships[key]
+            sub = data.pop(key)
 
             # Retrieve associated service.
             svc = rel.target.decl_class.svc
@@ -442,8 +530,6 @@ class CompositeEntityService(UnaryEntityService):
             # List of entities: one - to - many relationship.
             elif isinstance(sub, list):
                 delayed[key] = nested_stmt
-            # Remove from data dict to avoid errors on building item statement.
-            del data[key]
 
         # Statement for original item.
         stmt = await super(CompositeEntityService, self).create(data, stmt_only=True)

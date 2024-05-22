@@ -3,8 +3,7 @@ from marshmallow.fields import String, List, Nested, Integer
 
 
 class GroupSchema(Schema):
-    """Schema for Keycloak Groups.
-       id field is purposefully left out as it is managed internally."""
+    """Schema for Keycloak Groups. id field is purposefully left out as we manage it internally."""
     name = String(required=True)
     # Test
     n_members = Integer(required=False)
@@ -18,5 +17,5 @@ class GroupSchema(Schema):
         # )
     )
 
-    parent = Nested('GroupSchema')
-    users = List(Nested('UserSchema'))  # , load_only=True
+    parent = Nested('GroupSchema', exclude=['parent', 'users']) #lambda: UserSchema()
+    users = List(Nested('UserSchema', exclude=['groups']))

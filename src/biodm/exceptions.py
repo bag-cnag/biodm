@@ -12,7 +12,7 @@ class DBError(RuntimeError):
     sa_error = None
 
 
-class ImplementionErrror(RuntimeError):
+class ImplementionError(RuntimeError):
     """Raised when a wrong use of components is detected."""
 
 
@@ -39,7 +39,11 @@ class PayloadJSONDecodingError(RuntimeError):
 
 
 class PayloadValidationError(RuntimeError):
-    """Raised when input data could not be coerced into an entity."""
+    """Raised when input data can not be coerced into an entity."""
+
+
+class SchemaError(RuntimeError):
+    """Raised when faulty schema pattern is detected."""
 
 
 ## Routing

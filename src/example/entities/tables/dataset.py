@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Set # Optional, 
+from typing import List, Set # Optional, 
 
 from sqlalchemy import Column, Identity, Integer, SmallInteger, ForeignKey, String, PrimaryKeyConstraint, UniqueConstraint
 from sqlalchemy.orm import Mapped, relationship
@@ -6,24 +6,21 @@ from sqlalchemy.orm import Mapped, relationship
 from biodm.components.table import Base, Permission
 from biodm.tables import Group, User
 from .asso import asso_dataset_tag
-if TYPE_CHECKING:
-    from .file import File
-    from .tag import Tag
+from .file import File
+from .tag import Tag
+from .project import Project
 
 
-class Dataset(Permission, Base):
+class Dataset(Base):
     # pk
     ## For PostgresSQL
-    # id:          Mapped[int] = Column(Integer, autoincrement=True)
-    # version:     Mapped[int] = Column(SmallInteger, server_default='1')
+    id:          Mapped[int] = Column(Integer, autoincrement=True)
+    version:     Mapped[int] = Column(SmallInteger, server_default='1')
 
     ## For sqlite
-    # TODO: test, document that composite pk are not well supported for sqlite.
-    id = Column(Integer, server_default='1')
-    version:     Mapped[int] = Column(SmallInteger, server_default='1')
-    __table_args__ = (
-        PrimaryKeyConstraint(id, version),
-    )
+    # # TODO: test, document that composite pk are not well supported for sqlite.
+    # id = Column(Integer, server_default='1')
+    # version:     Mapped[int] = Column(SmallInteger, server_default='1')
 
     # data fields
     name:        Mapped[str] = Column(String(50), nullable=False)
@@ -52,16 +49,14 @@ class Dataset(Permission, Base):
 
     # # Foreign keys
     username_user_contact: Mapped[int] = Column(ForeignKey("USER.username"),    nullable=False)
-    # # id_project:      Mapped[int] = Column(ForeignKey("PROJECT.id"), nullable=False)
+    id_project:      Mapped[int] = Column(ForeignKey("PROJECT.id"))
 
     # # relationships
-    # # TODO: figure out policy - cascade="save-update, merge"
-    contact: Mapped["User"]      = relationship(foreign_keys=[username_user_contact], lazy="select")
-    tags:    Mapped[Set["Tag"]]  = relationship(secondary=asso_dataset_tag, uselist=True, lazy="select")
-
-    # # project: Mapped[Project]       = relationship(back_populates="datasets")
-    files: Mapped[List["File"]] = relationship(back_populates="dataset", lazy="select")
-    # # primaryjoin="and_(Dataset.id == File.id_dataset, Dataset.version == File.version_dataset)", 
+    # policy - cascade="save-update, merge" ?
+    contact: Mapped["User"]       = relationship(foreign_keys=[username_user_contact], lazy="select")
+    tags:    Mapped[Set["Tag"]]   = relationship(secondary=asso_dataset_tag, uselist=True, lazy="select")
+    project: Mapped["Project"]    = relationship(back_populates="datasets", lazy="select")
+    files:   Mapped[List["File"]] = relationship(back_populates="dataset", lazy="select")
 
     # # permission_lv2: Mapped["Permission_lv2"] = relationship()
 
@@ -72,3 +67,12 @@ class Dataset(Permission, Base):
     #     # UniqueConstraint('id', 'version', name='uc_pk_dataset'),
     #     PrimaryKeyConstraint('id', 'version', name='pk_dataset'),
     # )
+
+    __permissions__ = (
+        # Flag many-to-entity (composition pattern) with permissions. 
+        Permission(files), #, create=True, visualize=True
+    )
+
+    __table_args__ = (
+        PrimaryKeyConstraint(id, version),
+    )

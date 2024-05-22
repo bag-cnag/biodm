@@ -61,6 +61,7 @@ class DatabaseManager(ApiComponent):
 
     async def init_db(self) -> None:
         """Drop all tables and create them."""
+        Base.setup_permissions(self.app)
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
@@ -75,24 +76,13 @@ class DatabaseManager(ApiComponent):
         below allows for conditional context management.
 
         Also performs serialization **within a sync session**:
-        - important for lazy nested attributes) when passed a serializer.
+        - Avoids errors in case serializing acceses a lazy attribute.
 
         It is doing so by extracting 'serializer' argument sometimes explicitely,
         sometimes implicitely passed around using kwargs dict) !! Thus all 'not final' functions
         i.e. defined outside of this class, onto which this decorator is applied should
         pass down **kwargs dictionary.
         """
-        # Weak protection: restrict decorator on functions that looks like this.
-        argspec = getfullargspec(db_exec)
-        assert 'self' in argspec.args
-        assert any((
-            'data'      in argspec.args,
-            'stmt'      in argspec.args,
-            'item'      in argspec.args,
-            'composite' in argspec.args
-        ))
-        assert 'session' in argspec.args
-
         # Callable.
         async def wrapper(*args, **kwargs):
             """ Applies a bit of arguments manipulation whose goal is to maximize

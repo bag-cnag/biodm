@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from .dataset import Dataset
 
 
-class File(Permission, S3File, Base):
+class File(S3File, Base):
     id_dataset = Column(Integer, nullable=False)
     version_dataset = Column(SmallInteger, nullable=False)
 
@@ -23,6 +23,7 @@ class File(Permission, S3File, Base):
 
     # relationships
     dataset: Mapped["Dataset"] = relationship(back_populates="files", foreign_keys=[id_dataset, version_dataset])
+
 
 #     # dataset: Mapped["Dataset"] = relationship(back_populates="files", foreign_keys=[id_dataset, version_dataset])
 #     # dataset: Mapped["Dataset"] = relationship('Dataset', primaryjoin="and_(Dataset.id == File.id_dataset, Dataset.version == File.version_dataset)")

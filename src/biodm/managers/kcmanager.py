@@ -82,10 +82,19 @@ class KeycloakManager(ApiComponent):
         )
 
     def _user_data_to_payload(self, data: dict):
-        return {
+        payload = {
             field: data.get(field, "")
             for field in ("username", "email", "firstName", "lastName")
         }
+        if "password" in data.keys():
+            payload["credentials"] = [
+                {
+                    "type": "password",
+                    "value": data.get("password"),
+                    "temporary": False
+                }
+            ]
+        return payload
 
     def _group_data_to_payload(self, data: dict):
         return {
@@ -171,3 +180,6 @@ class KeycloakManager(ApiComponent):
                 "Keycloak failed adding "
                 f"User(id={user_id}) to Group(id={group_id}): {e.error_message}"
             ) from e
+
+    async def get_user_groups(self, user_id: str):
+        return self.admin.get_user_groups(user_id)

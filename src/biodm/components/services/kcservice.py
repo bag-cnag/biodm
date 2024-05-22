@@ -68,7 +68,10 @@ class KCUserService(KCService):
                 await self.kc.group_user_add(user.id, gid)
             return user.id
         except FailedRead:
-            return await self.kc.create_user(data, groups)
+            id = await self.kc.create_user(data, groups)
+            # Take out password from user dict, as it is not stored locally.
+            data.pop('password')
+            return id
 
     async def create(self, data, stmt_only: bool = False, **kwargs) -> Base | List[Base]:
         """Create entities on Keycloak Side before passing to parent class for DB."""

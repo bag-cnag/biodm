@@ -1,8 +1,9 @@
 from __future__ import annotations
 from functools import partial
-from typing import TYPE_CHECKING, List, Any
+from typing import TYPE_CHECKING, List, Any, Dict
 
-from marshmallow.schema import RAISE #EXCLUDE
+from marshmallow import INCLUDE
+from marshmallow.schema import RAISE, INCLUDE
 from starlette.routing import Mount, Route
 from starlette.requests import Request
 from starlette.responses import Response
@@ -14,13 +15,14 @@ from biodm.components.services import (
     KCGroupService,
     KCUserService
 )
-from biodm.exceptions import InvalidCollectionMethod, PayloadEmptyError
-from biodm.utils.utils import json_response
+from biodm.exceptions import InvalidCollectionMethod, PayloadEmptyError, UnauthorizedError
+from biodm.utils.utils import json_response, coalesce_dicts
+from biodm.utils.security import extract_and_decode_token
+from biodm.components import Base
 from .controller import HttpMethod, EntityController
 
 if TYPE_CHECKING:
     from biodm import Api
-    from biodm.components import Base
     from marshmallow.schema import Schema
 
 
@@ -75,6 +77,7 @@ class ResourceController(EntityController):
         super().__init__(app=app)
         self.resource = entity if entity else self._infer_entity_name()
         self.table = table if table else self._infer_table()
+        self.table.ctrl = self
 
         self.pk = tuple(self.table.pk())
         self.svc = self._infer_svc()(app=self.app, table=self.table)
@@ -149,9 +152,19 @@ class ResourceController(EntityController):
         ] + child_routes)
 
     def _extract_pk_val(self, request: Request) -> List[Any]:
-        """Extracts id from request, raise exception if not found."""
+        """Extracts id from request.
+
+        :param request: incomming request
+        :type request: Request
+        :raises InvalidCollectionMethod: if primary key values are not found in the path.
+        :return: Primary key values
+        :rtype: List[Any]
+        """
         pk_val = [request.path_params.get(k) for k in self.pk]
         if not pk_val:
+            raise InvalidCollectionMethod
+        if len(pk_val) != len(self.pk):
+            # TODO: define a more specific error here.
             raise InvalidCollectionMethod
         return pk_val
 
@@ -169,6 +182,32 @@ class ResourceController(EntityController):
             raise PayloadEmptyError
         return body
 
+    def get_permissions(self, verb: str) -> List[Dict] | None:
+        if self.table in Base._Base__permissions.keys():
+            return [
+                perm
+                for perm in Base._Base__permissions[self.table]
+                if verb in perm['verbs']
+            ]
+        return None
+
+    async def check_permissions(self, verb: str, request: Request):
+        perms = self.get_permissions(verb)
+        if not perms:
+            return True
+
+        _, groups, _ = await extract_and_decode_token(self.app.kc, request)
+        for p in perms:
+            if not await self.svc.check_permissions(
+                verb=verb,
+                groups=groups,
+                join=p['from'],
+                asso=p['table'],
+            ):
+                return False
+
+        return True
+
     async def create(self, request: Request) -> Response:
         """Creates associated entity.
 
@@ -185,6 +224,9 @@ class ResourceController(EntityController):
           204:
               description: Empty Payload
         """
+        verb = "create"
+        # if not await self.check_permissions(verb, request):
+        #     raise UnauthorizedError("Insufficient permissions for this operation.")
         validated_data = self.validate(await self._extract_body(request))
         return json_response(
             data=await self.svc.create(

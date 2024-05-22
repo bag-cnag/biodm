@@ -5,18 +5,22 @@ from starlette.routing import Mount, Route
 from starlette.requests import Request
 from starlette.responses import Response
 
-from biodm.components.controllers import Controller, HttpMethod
+from biodm.components.controllers import ResourceController, HttpMethod
 from biodm.exceptions import ManifestError
 from biodm.tables import K8sInstance
+from biodm.schemas import K8sinstanceSchema
 from biodm.utils.utils import json_response
 
 
-class K8sController(Controller):
+class K8sController(ResourceController):
     """
     """
-    @property
-    def prefix(self):
-        return "/k8s_instances"
+    def __init__(self, app):
+        super().__init__(app=app, entity="k8sinstance", table=K8sInstance, schema=K8sinstanceSchema)
+    
+    # @property
+    # def prefix(self):
+    #     return "/k8s_instances"
 
     def routes(self, schema=False) -> Mount:
         """Routes for k8s instances management

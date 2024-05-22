@@ -3,8 +3,8 @@ import uvicorn
 
 from biodm.api import Api
 
-from entities.controllers import CONTROLLERS
 from entities import tables, schemas
+from entities import controllers 
 # from example import manifests
 import config
 
@@ -12,7 +12,7 @@ import config
 def main():
     app = Api(
         debug=config.DEBUG, 
-        controllers=CONTROLLERS,
+        controllers=controllers.CONTROLLERS,
         instance={
             'config': config,
             'tables': tables,
@@ -30,7 +30,7 @@ if __name__ == "__main__":
         host=config.SERVER_HOST,
         port=config.SERVER_PORT,
         loop="uvloop",
-        reload=config.DEV,
+        # reload=config.DEV,
         log_level="debug" if config.DEBUG else "info",
         access_log=False
     )

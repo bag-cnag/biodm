@@ -30,7 +30,7 @@ DATABASE_URL = f"postgresql://{PG_USER}:{PG_PASS}@{PG_HOST}/{PG_DB}"
 
 
 ## S3 Bucket.
-S3_ENDPOINT_URL        = config('S3_ENDPOINT_URL',        cast=str,  default="http://s3.local/")
+S3_ENDPOINT_URL        = config('S3_ENDPOINT_URL',        cast=str,  default="https://3tr.gpapdev.cnag.eu/")
 S3_BUCKET_NAME         = config('S3_BUCKET_NAME',         cast=str,  default="3trdevopal")
 S3_URL_EXPIRATION      = config('S3_URL_EXPIRATION',      cast=int,  default=3600)
 S3_PENDING_EXPIRATION  = config('S3_PENDING_EXPIRATION',  cast=int,  default=3600 * 24)
@@ -42,11 +42,11 @@ S3_PENDING_EXPIRATION  = config('S3_PENDING_EXPIRATION',  cast=int,  default=360
 """
 KC_HOST            = config("KC_HOST",            cast=str,   default="http://keycloak.local:8080")
 KC_REALM           = config("KC_REALM",           cast=str,   default="3TR")
-KC_PUBLIC_KEY      = config("KC_PUBLIC_KEY",      cast=str,   default="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtiWvIw3L02fmyj78fPRUU0dN+5zu+rB942pIfO6cexy05+SvnBA4uroHc1F424ZJWngRhfgX+wjL06a1T6sd4c9sfZl2gsP1gsweiajNuf9BCWi542yi3addiuQmbfn6tfmmR/Tr+p+TCrirQiZOp/fEAkGOX/m6y8/t7KMkZewc9rMlCyErld8CPnKMn3Gz8CIHUdcKA6Ena1HPvq/z3rWpBoGI7gycJSEIyxYR+wIXYuQ1EcXhJ6XTv2It0XNbU9VCL16b3vO1nY86bj2HrUfEiKvJLXp1uSzmw3XgF1LqO7z+NAtGUmZIZxpRA4nrrZd22IpSDz50g41qdOBh2wIDAQAB")
+KC_PUBLIC_KEY      = config("KC_PUBLIC_KEY",      cast=str,   default="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwI0btgaiQ45tD6KMbzXzF/WYOtZ0dqxf+KOlpQL3lTLusZcwen2Cwpe3hL+JSBNemVMN59ktDZzptJ7p4AmYmX20S31o5xd3WlZXn6UKGLtlTUPm2RBxXmgYELqH2Gnr7MvKRxUo4gsB1+CsW7cPlmGHe/MPYqSrkhy9koE4BfJYpZrcYjfCjadO0lPP1ZNNzW/JC8rf6Vp2dyGU7XhblaE7wB4SHCE9Yiy4e1gXChKlgx+qSibLcuVtx31fulHWVGNO/lVowK3H6FG+Yo34VeaE+oZWXgzejf/8XNh1yXldYmgQD3yLTuL3nOnOyRFvZf3bJRVk1wLdEny2vRxbPQIDAQAB")
 KC_ADMIN           = config("KC_ADMIN",           cast=str,   default="admin")
 KC_ADMIN_PASSWORD  = config("KC_ADMIN_PASSWORD",  cast=str,   default="1234")
 KC_CLIENT_ID       = config("KC_CLIENT_ID",       cast=str,   default="submission_client")
-KC_CLIENT_SECRET   = config("KC_CLIENT_SECRET",   cast=str,   default="Yu6lFwNnewcgVCenn5CArGBX0Cq1Fdor")
+KC_CLIENT_SECRET   = config("KC_CLIENT_SECRET",   cast=str,   default="lSFc2Y0xHGNpsTtKfAebGfY9nAffFAGw")
 KC_JWT_OPTIONS     = config("KC_JWT_OPTIONS",     cast=dict,  default={'verify_exp': False, 'verify_aud':False})
 
 ## Kubernetes.
