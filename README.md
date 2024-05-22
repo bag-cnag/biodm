@@ -16,10 +16,11 @@ BioDM is a fast, stateless and asynchronous REST API framework with the followin
   - _[SQLAlchemy](https://github.com/sqlalchemy/sqlalchemy/)_ tables
   - _[marshmallow](https://github.com/marshmallow-code/marshmallow)_ schemas
 
-- Abstract services ecosystem:
+- Interoperate services ecosystem:
   - Permissions leveraging _Keycloak_
   - Storage leveraging _S3_ protocol
-  - Jobs leveraging _Kubernetes_ cluster
+  - Jobs & Visualization leveraging _Kubernetes_ cluster
+-> Acts as an API gateway and records in the database.
 
 - Also sets up essentials:
   - Liveness endpoint
