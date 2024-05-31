@@ -7,7 +7,9 @@ from keycloak import KeycloakOpenID
 from keycloak.exceptions import KeycloakError, KeycloakDeleteError
 
 from biodm.component import ApiComponent
-from biodm.exceptions import KeycloakUnavailableError, FailedDelete, FailedUpdate, FailedCreate
+from biodm.exceptions import (
+    KeycloakUnavailableError, FailedDelete, FailedUpdate, FailedCreate, TokenDecodingError
+)
 
 if TYPE_CHECKING:
     from biodm.api import Api
@@ -39,7 +41,7 @@ class KeycloakManager(ApiComponent):
                 realm_name=realm,
                 username=admin,
                 password=admin_password,
-                verify=(not self.app.config.DEV),
+                verify=True,
             )
             self._openid = KeycloakOpenID(
                 server_url=host,
@@ -76,10 +78,12 @@ class KeycloakManager(ApiComponent):
         """Decode token."""
         def enclose_idrsa(idrsa) -> str:
             return f"-----BEGIN PUBLIC KEY-----\n {idrsa} \n-----END PUBLIC KEY-----"
-
-        return self.openid.decode_token(
-            token, key=enclose_idrsa(self.public_key), options=self.jwt_options
-        )
+        try:
+            return self.openid.decode_token(
+                token, key=enclose_idrsa(self.public_key), options=self.jwt_options
+            )
+        except Exception as e:
+            raise TokenDecodingError("Invalid Token")
 
     def _user_data_to_payload(self, data: dict):
         payload = {

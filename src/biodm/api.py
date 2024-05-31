@@ -12,6 +12,7 @@ from starlette.schemas import SchemaGenerator
 from starlette.types import ASGIApp
 from starlette.config import Config
 
+from biodm import Scope, config
 from biodm.basics import CORE_CONTROLLERS, K8sController
 from biodm.component import ApiComponent
 from biodm.managers import DatabaseManager, KeycloakManager, S3Manager, K8sManager
@@ -45,9 +46,17 @@ class HistoryMiddleware(BaseHTTPMiddleware):
         super().__init__(app, self.dispatch)
 
     async def dispatch(self, request, call_next):
+        response = await call_next(request)
         if auth_header(request):
             app = History.svc.app
-            username, _, _ = await extract_and_decode_token(app.kc, request)
+            try:
+                username, _, _ = await extract_and_decode_token(app.kc, request)
+            except Exception as _:
+                #  Token decoding failed: the request will fail later.
+                # return await call_next(request)
+                # return await (call_next(request))
+                return response
+
             body = await request.body()
             entry = {
                 'username_user': username,
@@ -56,7 +65,8 @@ class HistoryMiddleware(BaseHTTPMiddleware):
                 'content': str(body) if body else ""
             }
             await History.svc.create(entry, stmt_only=False)
-        return await call_next(request)
+        return response
+        # return (await call_next)(request)
 
 
 class Api(Starlette):
@@ -78,21 +88,29 @@ class Api(Starlette):
     def __init__(
         self,
         controllers: Optional[List[Controller]],
-        instance: Optional[Dict[str, Config | ModuleType]],
+        instance: Optional[Dict[str, ModuleType]],
+        debug: bool=False,
+        test: bool=False,
         *args,
         **kwargs
     ):
+        self.scope = Scope.PROD
+        if debug:
+            self.scope |= Scope.DEBUG
+        if test:
+            self.scope |= Scope.TEST
+
         ## Instance Info.
         self.tables: ModuleType = instance.get('tables')
         self.schemas: ModuleType = instance.get('schemas')
-        self.config: Config = instance.get('config')
+
         m = instance.get('manifests')
         if m:
-            self.config.K8_MANIFESTS = m
+            config.K8_MANIFESTS = m
 
         ## Logger.
         logging.basicConfig(
-            level=logging.DEBUG if self.config.DEBUG else logging.INFO,
+            level=logging.DEBUG if Scope.DEBUG in self.scope else logging.INFO,
             format=(
                 "%(asctime)s | %(levelname)-8s | %(module)s:%(funcName)s:%(lineno)d - %(message)s"
             )
@@ -106,19 +124,14 @@ class Api(Starlette):
         self.controllers = []
         classes = CORE_CONTROLLERS + controllers or []
         classes.append(K8sController)
-        routes = []
-        routes.extend(
-            self.adopt_controllers(
-                classes
-            )
-        )
+        routes = self.adopt_controllers(classes)
 
         ## Schema Generator.
         self.schema_generator = SchemaGenerator(
             {
                 "openapi": "3.0.0", "info": {
-                    "name": self.config.API_NAME,
-                    "version": self.config.API_VERSION,
+                    "name": config.API_NAME,
+                    "version": config.API_VERSION,
                     "backend": "biodm",
                     "backend_version": CORE_VERSION
                 }
@@ -137,16 +150,16 @@ class Api(Starlette):
         History.svc = UnaryEntityService(app=self, table=History)
         ListGroup.svc = CompositeEntityService(app=self, table=ListGroup)
 
-        super().__init__(routes=routes, *args, **kwargs)
+        super().__init__(routes=routes, debug=Scope.DEBUG in self.scope, *args, **kwargs)
 
         ## Middlewares
-        self.add_middleware(HistoryMiddleware, server_host=self.config.SERVER_HOST)
+        self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
             allow_origins=(
-                [self.config.SERVER_HOST, "*"] + (
-                    [self.config.KC_HOST]
-                    if hasattr(self.config, "KC_HOST")
+                [config.SERVER_HOST, "*"] + (
+                    [config.KC_HOST]
+                    if hasattr(config, "KC_HOST")
                     else []
                 )
             ),
@@ -154,8 +167,8 @@ class Api(Starlette):
             allow_headers=["*"],
             # max_age=10 # TODO: max age cache in config.
         )
-        if not self.config.DEV:
-            self.add_middleware(TimeoutMiddleware, timeout=self.config.SERVER_TIMEOUT)
+        if self.scope is Scope.PROD:
+            self.add_middleware(TimeoutMiddleware, timeout=config.SERVER_TIMEOUT)
 
         # Event handlers
         self.add_event_handler("startup", self.onstart)
@@ -166,6 +179,10 @@ class Api(Starlette):
         # self.add_exception_handler(DatabaseError, on_error)
         # self.add_exception_handler(Exception, on_error)
 
+    @property
+    def server_endpoint(self):
+        return f"{config.SERVER_SCHEME}{config.SERVER_HOST}:{config.SERVER_PORT}/"
+
     def _parse_config(self, prefix: str) -> Dict[str, Any]:
         """Returns config elements starting by prefix.
         :param prefix: prefix
@@ -175,7 +192,7 @@ class Api(Starlette):
         """
         return {
             k.lower().split(f"{prefix}_")[-1]: v
-            for k, v in self.config.__dict__.items()
+            for k, v in config.__dict__.items()
             if k.lower().startswith(f"{prefix}_")
         }
 
@@ -183,16 +200,38 @@ class Api(Starlette):
         """Conditionally deploy managers. Each manager connects to an external service.
         Appart from the DB, managers are optional, with respect to config population.
         """
-        # Always deploy DB.
         self.db = DatabaseManager(app=self)
-        for name, mngr in zip(
-            ("kc", "s3", "k8"), (KeycloakManager, S3Manager, K8sManager)
-        ):
-            # Get config entries for that manager.
-            c = self._parse_config(name)
-            if c:
-                self.__dict__[name] = mngr(app=self, **c)
-                self.logger.info(f"{name.upper()} manager UP.")
+        # others
+        kc = self._parse_config("kc")
+        if all((param in kc 
+                for param in ('host',
+                              'realm',
+                              'public_key',
+                              'admin',
+                              'admin_password',
+                              'client_id',
+                              'client_secret',
+                              'jwt_options'))):
+            self.kc = KeycloakManager(app=self, **kc)
+            self.logger.info(f"KC manager UP.")
+
+        s3 = self._parse_config("s3")
+        if all((param in s3 
+                for param in ('endpoint_url',
+                              'bucket_name',
+                              'access_key_id',
+                              'secret_access_key'))):
+            self.s3 = S3Manager(app=self, **s3)
+            self.logger.info(f"S3 manager UP.")
+
+        k8 = self._parse_config("k8")
+        if all((param in k8 
+                for param in ('host',
+                              'cert',
+                              'token'))):
+            self.k8 = K8sManager(app=self, **k8)
+            self.logger.info(f"K8 manager UP.")
+
 
     def adopt_controllers(self, controllers: List[Controller]) -> List:
         """Adopts controllers, and their associated routes."""
@@ -207,6 +246,6 @@ class Api(Starlette):
         return routes
 
     async def onstart(self) -> None:
-        if self.config.DEV or self.config.TEST:
+        if Scope.DEBUG in self.scope:
             """Dev mode: drop all and create tables."""
             await self.db.init_db()

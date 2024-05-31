@@ -16,14 +16,11 @@ services:
       - POSTGRES_PASSWORD=pass
       - POSTGRES_DB=keycloak
     restart: unless-stopped
-    # ports:
-    #   - 9999:5432
     healthcheck:
       test: pg_isready -U postgres
     networks:
       biodm-dev:
         ipv4_address: 10.10.0.5
-  # Start page: https://keycloak.local:8443/auth/
   keycloak:
     container_name: keycloak
     image: keycloak:22.0_local-certs
@@ -47,9 +44,7 @@ services:
     ports:
       - 8080:8080
       - 8443:8443
-      # - 5432:5432
     restart: unless-stopped
-    # command: start-dev
     healthcheck:
       test: curl 10.10.0.3:8443/health | grep -q "UP"
       interval: 10s
@@ -59,18 +54,20 @@ services:
     networks:
       biodm-dev:
         ipv4_address: 10.10.0.3
-  # s3: # Check status: aws s3 ls --endpoint-url http://s3.local:9090/3trdevopal/
-  #   image: adobe/s3mock:3.5.2
-  #   ports:
-  #     - 9090:9090 
-  #     - 9191:9191
-  #   tty: True
-  #   environment:
-  #     - initialBuckets=3trdevopal
-  #     - debug=true
-  #   networks:
-  #     biodm-dev:
-  #       ipv4_address: 10.10.0.4
+  s3:
+    image: bitnami/minio:2024-debian-12
+    ports:
+      - 9000:9000
+      - 9001:9001
+    tty: True
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=12345678
+      - MINIO_DEFAULT_BUCKETS=bucketdevel3tropal
+    restart: unless-stopped
+    networks:
+      biodm-dev:
+        ipv4_address: 10.10.0.4
 
 networks:
   biodm-dev:

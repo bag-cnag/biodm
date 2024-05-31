@@ -35,22 +35,24 @@ class K8sController(ResourceController):
             Route("/instance/{id}",  self.instance_info,  methods=[HttpMethod.GET.value]),
             Route("/schema",         self.openapi_schema),
         ])
-        if schema:
-            # Mock up an individual route for each available manifest, copying doc.
-            r_create = m.routes[0]
-            mans = self.k8s.manifests
-            keys = [k for k in mans.__dict__.keys() if not k.startswith('__')]
+        if not schema:
+            return [m]
 
-            for key in keys:
-                r_view = deepcopy(r_create)
-                r_view.path = f"/{key}"
+        # Mock up an individual route for each available manifest, copying doc.
+        r_create = m.routes[0]
+        mans = self.k8s.manifests
+        keys = [k for k in mans.__dict__.keys() if not k.startswith('__')]
 
-                def dummy():
-                    """"""
-                dummy.__doc__ = mans.__dict__[key].__doc__
-                r_view.endpoint = dummy
-                m.routes.append(r_view)
-        return m
+        for key in keys:
+            r_view = deepcopy(r_create)
+            r_view.path = f"/{key}"
+
+            def dummy():
+                """"""
+            dummy.__doc__ = mans.__dict__[key].__doc__
+            r_view.endpoint = dummy
+            m.routes.append(r_view)
+        return m.routes
 
     @property
     def k8s(self):

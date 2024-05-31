@@ -1,6 +1,6 @@
 .. biodm documentation master file
 *****************************************************
-biodm: A fast and RESTful Data Management framework
+BioDM: A fast and RESTful Data Management framework
 *****************************************************
 
 Welcome to biodm's documentation!
@@ -10,12 +10,12 @@ Welcome to biodm's documentation!
     :maxdepth: 2
     :caption: Contents:
 
-    install
-    quickstart
+    getting_started
     developer_manual
-    configuration
+    user_manual
     biodm/modules.rst
     licence
+
 
 Indices and tables
 ==================
@@ -23,3 +23,4 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+

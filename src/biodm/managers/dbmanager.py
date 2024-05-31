@@ -1,14 +1,17 @@
 from __future__ import annotations
 from contextlib import asynccontextmanager, AsyncExitStack
-from inspect import getfullargspec, signature
-from typing import AsyncGenerator, TYPE_CHECKING, Callable
+from inspect import signature
+from typing import AsyncGenerator, TYPE_CHECKING, Callable, List, Any
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.sql import Insert, Update, Delete, Select
 
+from biodm import Scope, config
 from biodm.component import ApiComponent
 from biodm.components import Base
 from biodm.exceptions import PostgresUnavailableError, DBError
+from biodm.exceptions import FailedRead, FailedDelete, FailedUpdate
 
 if TYPE_CHECKING:
     from biodm.api import Api
@@ -19,11 +22,11 @@ class DatabaseManager(ApiComponent):
     """Manages DB side query execution."""
     def __init__(self, app: Api):
         super().__init__(app=app)
-        self.database_url: str = self.async_database_url(app.config.DATABASE_URL)
+        self.database_url: str = self.async_database_url(config.DATABASE_URL)
         try:
             self.engine = create_async_engine(
                 self.database_url,
-                echo=app.config.DEBUG,
+                echo=Scope.DEBUG in app.scope,
             )
             self.async_session = async_sessionmaker(
                 self.engine,
@@ -35,7 +38,7 @@ class DatabaseManager(ApiComponent):
 
     @staticmethod
     def async_database_url(url) -> str:
-        """Add 'asyncpg' driver to a postgresql database url."""
+        """Adds a matching async driver to a database url."""
         match url.split("://"):
             case ["postgresql", _]:
                 return url.replace("postgresql://", "postgresql+asyncpg://")
@@ -68,20 +71,13 @@ class DatabaseManager(ApiComponent):
 
     @staticmethod
     def in_session(db_exec: Callable):
-        """Decorator that ensures db_exec receives a session.
-
-        session object is either passed as an argument (from nested obj creation) or a new
+        """Decorator that ensures db_exec receives a session. 
+        Session object is either passed as an argument (from nested obj creation) or a new
         context manager is opened. This decorator guarantees exactly 1 session per request.
-          > contextlib.AsyncExitStack()
-        below allows for conditional context management.
 
         Also performs serialization **within a sync session**:
-        - Avoids errors in case serializing acceses a lazy attribute.
-
-        It is doing so by extracting 'serializer' argument sometimes explicitely,
-        sometimes implicitely passed around using kwargs dict) !! Thus all 'not final' functions
-        i.e. defined outside of this class, onto which this decorator is applied should
-        pass down **kwargs dictionary.
+        - Avoids errors in case serializing acceses a lazy attribute
+        - All functions applying this decorator should pass down some **kwargs
         """
         # Callable.
         async def wrapper(*args, **kwargs):
@@ -103,14 +99,15 @@ class DatabaseManager(ApiComponent):
                 # Else it will get passed around.
                 bound_args.pop('kwargs')
 
-            svc: DatabaseService = bound_args['self']
+            self: DatabaseService = bound_args['self']
             session = bound_args.get('session', None)
 
+            # conditional context management.
             async with AsyncExitStack() as stack:
                 # Ensure session.
                 bound_args['session'] = (
                     session if session
-                    else await stack.enter_async_context(svc.app.db.session())
+                    else await stack.enter_async_context(self.app.db.session())
                 )
                 # Call and serialize result if requested.
                 db_res = await db_exec(**bound_args)

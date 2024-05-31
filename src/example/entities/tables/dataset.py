@@ -27,7 +27,6 @@ class Dataset(Base):
     # # description: Mapped[str] = Column(TEXT,       nullable=True)
     # # created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=)datetime.datetime.utcnow
     # # updated_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=)
-    # # permission_level = Column(CHAR(1),            nullable=False, server_default='3')
     # # licence_s3_path = Column(String(100),         nullable=True)
 
     # # # bio specific fields

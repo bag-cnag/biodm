@@ -1,23 +1,26 @@
+"""SQLAlchemy tables convenience Parent classes:
+- Declarative Base
+- File entity
+- Permission setup logic
+"""
 from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, List, Dict
-import datetime
 
 import marshmallow as ma
 from sqlalchemy import (
-    ForeignKeyConstraint, inspect, Column,
-    Integer, String, TIMESTAMP, ForeignKey,
+    BOOLEAN, ForeignKeyConstraint, inspect, Column, String, TIMESTAMP, ForeignKey,
 )
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, Relationship, backref, ONETOMANY
+from sqlalchemy.orm import DeclarativeBase, relationship, Relationship, backref, ONETOMANY
 
 from biodm.exceptions import ImplementionError
+from biodm.utils.utils import utcnow
 
 if TYPE_CHECKING:
     from biodm import Api
-    from biodm.tables import User
     from biodm.components.services import DatabaseService
     from biodm.components.controllers import ResourceController
 
@@ -72,7 +75,7 @@ class Base(DeclarativeBase, AsyncAttrs):
         :type field: Column
         :param verbs: enabled verbs
         :type verbs: List[str]
-        :return: name of permission relationship that gets populated into table and the new associative table.
+        :return: name of backref-ed attribute, permission table.
         :rtype: Tuple[str, Base]
         """
         # Defered imports as they depend on this module.
@@ -93,7 +96,7 @@ class Base(DeclarativeBase, AsyncAttrs):
                 [
                     f"{new_asso_name}.{key}"
                     for key in columns.keys()
-                ]   
+                ]
             ) + "]",
             passive_deletes=True
         )
@@ -200,11 +203,12 @@ class Base(DeclarativeBase, AsyncAttrs):
             - Creates an associative table
                 - indexed by Parent table pk
                     - children hold parent id
-                - holds listgroup objects mapped to enabled verbs
-            - Set ref for Children controller
-        -- Has to be done after all tables have been declared. --
+            - holds listgroup objects mapped to enabled verbs
+                - Set ref for Children controller
 
-        Currently assumes straight composition.
+        Has to be done after all tables have been declared.
+
+        Currently assumes straight composition:
         i.e. You cannot flag an o2m with the same target in two different parent classes.
         """
         lut = {}
@@ -223,7 +227,9 @@ class Base(DeclarativeBase, AsyncAttrs):
 
                     # Set extra load field onto associated schema.
                     # Load fields only -> permissions are not dumped.
-                    table.ctrl.schema.load_fields.update({rel_name: ma.fields.Nested(NewAssoSchema)})
+                    table.ctrl.schema.load_fields.update(
+                        {rel_name: ma.fields.Nested(NewAssoSchema)}
+                    )
 
                     # Set up look up table for incomming requests.
                     entry = {'table': NewAsso, 'from': [], 'verbs': verbs}
@@ -255,7 +261,7 @@ class Base(DeclarativeBase, AsyncAttrs):
     def pk(cls):
         """Return primary key names."""
         return (
-            str(pk).rsplit('.', maxsplit=1)[-1] 
+            str(pk).rsplit('.', maxsplit=1)[-1]
             for pk in cls.__table__.primary_key.columns
         )
 
@@ -274,22 +280,22 @@ class Base(DeclarativeBase, AsyncAttrs):
 class S3File:
     """Class to use in order to have a file managed on S3 bucket associated to this table
         Defaults internal fields that are expected by S3Service."""
-    id = Column(Integer, nullable=False, primary_key=True)
     filename = Column(String(100), nullable=False)
     extension = Column(String(10), nullable=False)
-    url = Column(String(200), nullable=False)
+    ready = Column(BOOLEAN, nullable=False, server_default='0')
+    url = Column(String(2000)) # , nullable=False
 
-    @declared_attr
-    def id_user_uploader(_):
-        return Column(ForeignKey("USER.id"),    nullable=False)
+    # @declared_attr
+    # def id_user_uploader(_):
+    #     return Column(ForeignKey("USER.id"),    nullable=False)
 
-    @declared_attr
-    @classmethod
-    def user(cls) -> Mapped["User"]:
-        return relationship(foreign_keys=[cls.id_user_uploader], lazy="select")
+    # @declared_attr
+    # @classmethod
+    # def user(cls) -> Mapped["User"]:
+    #     return relationship(foreign_keys=[cls.id_user_uploader], lazy="select")
 
     emited_at = Column(
-        TIMESTAMP(timezone=True), default=datetime.datetime.utcnow, nullable=False
+        TIMESTAMP(timezone=True), default=utcnow, nullable=False
     )
     validated_at = Column(TIMESTAMP(timezone=True))
 
@@ -302,7 +308,10 @@ class Permission:
     read: bool=False
     update: bool=False
     download: bool=False
-    visualize: bool=False
+
+    @classmethod
+    def fields(cls):
+        return set(cls.__dataclass_fields__.keys() - 'fields')
 
     def enabled_verbs(self):
         return [
@@ -310,11 +319,3 @@ class Permission:
             for verb, enabled in self.__dict__.items()
             if enabled and verb != 'field'
         ]
-
-    # verbs = [create, read, update, download, visualize]
-    # Flags.
-    # propagates: bool=True # ? 
-    # use_same: bool=True
-    # TODO: check inputs
-    # def __init__(
-    #     self,

@@ -9,6 +9,7 @@ from .exceptions import (
     InvalidCollectionMethod,
     PayloadEmptyError,
     UnauthorizedError,
+    TokenDecodingError
 )
 
 
@@ -49,6 +50,8 @@ async def onerror(_, exc):
                 status = 405
             case PayloadEmptyError():
                 status = 204
+            case TokenDecodingError():
+                status = 503
             case UnauthorizedError():
                 status = 511
             case _:

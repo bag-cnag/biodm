@@ -4,7 +4,7 @@
 .coverage
 
 # Envs
-.env
+.env.cnag
 venv*/
 
 # Caches

@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
 
 class File(S3File, Base):
+    id = Column(Integer, nullable=False, primary_key=True)
     id_dataset = Column(Integer, nullable=False)
     version_dataset = Column(SmallInteger, nullable=False)
 

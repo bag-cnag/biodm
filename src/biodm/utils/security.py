@@ -1,9 +1,9 @@
+"""Security convenience functions."""
 from datetime import datetime
 from functools import wraps, lru_cache
-from typing import List
+from typing import List, Tuple
 
 from starlette.requests import Request
-from tomlkit import key
 
 from biodm.exceptions import UnauthorizedError
 from biodm.managers.kcmanager import KeycloakManager
@@ -19,12 +19,17 @@ def auth_header(request) -> str | None:
 
 
 @lru_cache(128)
-async def extract_and_decode_token(kc: KeycloakManager, request: Request) -> tuple[str, List, List]:
-    """Cached because it may be called twice per request:
-      1. history middleware
-      2. protected function decorator.
-    """
+async def extract_and_decode_token(
+    kc: KeycloakManager,
+    request: Request
+) -> Tuple[str, List, List]:
+    """ Extracts and decode token from a request.
+    - Cached because it may be called several times per request.
 
+    :raises UnauthorizedError: token not provided.
+    :return: user_id, groups, projects
+    :rtype: Tuple[str, List, List]
+    """
     def extract_items(token, name, default=""):
         n = token.get(name, [])
         return [s.replace("/", "") for s in n] if n else [default]
@@ -43,7 +48,7 @@ async def extract_and_decode_token(kc: KeycloakManager, request: Request) -> tup
     userid = decoded.get("preferred_username")
     keycloak_id = (await User.svc.read(pk_val=[userid])).id
     groups = [
-        group['name'] 
+        group['name']
         for group in await kc.get_user_groups(keycloak_id)
     ] or ['no_groups']
     projects = extract_items(decoded, "group_projects", "no_projects")

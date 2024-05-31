@@ -4,6 +4,7 @@ from typing import List
 from starlette.routing import Route
 from starlette.responses import PlainTextResponse
 
+from biodm import config
 from biodm.components.controllers import Controller
 from biodm.utils.security import login_required
 from biodm.utils.utils import json_response
@@ -37,13 +38,13 @@ class RootController(Controller):
         """
         return json_response(json.dumps(
             self.schema_gen.get_schema(routes=self.app.routes),
-            indent=self.app.config.INDENT
+            indent=config.INDENT
         ), status_code=200)
 
     def handshake(self):
         return (
-            f"{self.app.config.SERVER_SCHEME}{self.app.config.SERVER_HOST}:"
-            f"{self.app.config.SERVER_PORT}/syn_ack"
+            f"{config.SERVER_SCHEME}{config.SERVER_HOST}:"
+            f"{config.SERVER_PORT}/syn_ack"
         )
 
     async def login(self, _):

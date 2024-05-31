@@ -1,5 +1,5 @@
-import sys
-from datetime import datetime 
+"""Utils."""
+import datetime as dt
 from functools import reduce
 import operator
 from os import path, utime
@@ -12,10 +12,13 @@ _T = TypeVar("_T")
 _U = TypeVar("_U")
 
 
-def utcnow() -> datetime:
-    if sys.version_info >= (2, 11):
-        from datetime import UTC
-        return datetime.now(UTC)
+def utcnow() -> dt.datetime:
+    """Support for python==3.10 and below."""
+    # pylint: disable=no-member
+    try:
+        return dt.datetime.now(dt.UTC)
+    except ImportError:
+        return dt.datetime.utcnow()
 
 
 def json_response(data: str, status_code: int) -> Response:
@@ -37,14 +40,9 @@ def touch(fname: str):
 
 
 # Collections
-def to_it(x: _T | Tuple[_T,...] | List[_T]) -> Tuple[_T,...] | List[_T]:
+def to_it(x: _T | Tuple[_T, ...] | List[_T]) -> Tuple[_T, ...] | List[_T]:
     """Return identity list/tuple or pack atomic value in a tuple."""
     return x if isinstance(x, (tuple, list)) else (x,)
-
-
-def it_to(x: _T | Tuple[_T,...] | List[_T]) -> _T | Tuple[_T,...] | List[_T]:
-    """Return element for a single element list/tuple else identity list/tuple."""
-    return x[0] if hasattr(x, '__len__') and len(x) == 1 else x
 
 
 def partition(
@@ -55,16 +53,18 @@ def partition(
     """Partition a list into two based on condition.
     Return list of values checking condition.
     If `excl_na`, values whose truth value is `False` will be evicted from both lists.
+
     :param ls: input list
     :type ls: list
     :param cond: Condition
-    :type cond: Callable[[Any], bool]
+    :type cond: Callable[[_T], bool]
     :param excl_na: Exclude empty flag
     :type excl: Optional[bool], True
     :return: Lists of elements separated around condition
-    :rtype: List[Any], List[Any]
+    :rtype: List[_T], List[_T]
     """
     ls_false = []
+    # List comprehension with cond(x) or ls.append() makes linters unhappy but runs twice faster.
     return [
         x for x in ls
         if (excl_na or x) and (cond(x) or ls_false.append(x))
@@ -79,6 +79,7 @@ def unevalled_all(ls: List[Any]):
 def unevalled_or(ls: List[Any]):
     """Build (ls[0] or ls[1] ... ls[n]) but does not evaluate like or() does."""
     return reduce(operator.or_, ls)
+
 
 def coalesce_dicts(ls: List[Dict[_T, _U]]) -> Dict[_T, _U]:
     """Assembles multiple dicts into one.

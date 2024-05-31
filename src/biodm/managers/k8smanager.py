@@ -3,6 +3,7 @@ from typing import Tuple, List, Any
 
 from kubernetes import client
 from biodm.component import ApiComponent
+from biodm.scope import Scope
 
 
 class K8sManager(ApiComponent):
@@ -41,8 +42,8 @@ class K8sManager(ApiComponent):
 
     def log(self, *args):
         """Conditional print"""
-        if self.app.config.DEBUG:
-            self.app.logger.debug(*args)
+        if Scope.DEBUG in self.app.scope:
+            self.logger.debug(*args)
 
     def change_namespace(self, namespace: str):
         """Change active namespace"""
