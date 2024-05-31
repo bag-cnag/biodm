@@ -1,24 +1,17 @@
 import json
 import pytest
-import os
-from pathlib import Path
-import re
 
 from typing import List
 import marshmallow as ma
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import relationship
-from starlette.config import Config
 from starlette.testclient import TestClient
 
-import biodm
 from biodm.api import Api
 from biodm.components import Base
 from biodm.components.controllers import ResourceController
 import biodm.config
-
-from . import config as testconfig
 
 ## SQLAlchemy
 asso_a_b = sa.Table(
@@ -88,49 +81,19 @@ class CController(ResourceController):
         super().__init__(app=app, entity="C", table=C, schema=CSchema)
 
 
-
-# with open(Path(Path(__file__).parent, '.env')) as f:
-#     config.__dict__ = dict(
-#         [
-#             re.sub('[\s+\"]', '', line).split("=")
-#             for line in f.readlines()
-#             if not line.startswith('#') and line.strip()
-#         ]
-#     )
-
-# ## Load config
-# @pytest.fixture(scope="session", autouse=True)
-# def set_env(monkeypatch):
-#     with open(Path(Path(__file__).parent, '.env')) as f:
-#         env = dict(
-#             [
-#                 re.sub('[\s+\"]', '', line).split("=")
-#                 for line in f.readlines()
-#                 if not line.startswith('#') and line.strip()
-#             ]
-#         )
-#         for k, v in env.items():
-#             monkeypatch.setenv(k, v)
-#         # os.environ.update(env)
-
-
-# @pytest.fixture(scope="session", autouse=True)
-# def set_config(monkeypatch):
-#     monkeypatch.setattr(biodm.config, "config", testconfig.config)
-
+app = Api(
+    debug=True,
+    controllers=[AController, BController, CController],
+    instance={
+        # 'tables': tables,
+        # 'schemas': schemas,
+        # 'manifests': manifests
+    },
+    test=True
+)
 
 @pytest.fixture()
 def client():
-    app = Api(
-        debug=True,
-        controllers=[AController, BController, CController],
-        instance={
-            # 'tables': tables,
-            # 'schemas': schemas,
-            # 'manifests': manifests
-        },
-        test=True
-    )
     with TestClient(app=app, backend_options={
         "use_uvloop": True
     }) as c:

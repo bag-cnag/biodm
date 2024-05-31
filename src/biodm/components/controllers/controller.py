@@ -133,7 +133,7 @@ class EntityController(Controller):
 
             # Restore to normal afterwards.
             cls.schema.dump_fields = dump_fields
-            return json.dumps(serialized, indent=cls.app.config.INDENT)
+            return json.dumps(serialized, indent=config.INDENT)
 
         except MissingGreenlet as e:
             raise AsyncDBError(

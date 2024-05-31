@@ -200,22 +200,38 @@ class Api(Starlette):
         """Conditionally deploy managers. Each manager connects to an external service.
         Appart from the DB, managers are optional, with respect to config population.
         """
-        # Always deploy DB.
         self.db = DatabaseManager(app=self)
+        # others
+        kc = self._parse_config("kc")
+        if all((param in kc 
+                for param in ('host',
+                              'realm',
+                              'public_key',
+                              'admin',
+                              'admin_password',
+                              'client_id',
+                              'client_secret',
+                              'jwt_options'))):
+            self.kc = KeycloakManager(app=self, **kc)
+            self.logger.info(f"KC manager UP.")
 
-        # S3_ENDPOINT_URL
-        # S3_BUCKET_NAME
-        # S3_ACCESS_KEY_ID
-        # S3_SECRET_ACCESS_KEY 
+        s3 = self._parse_config("s3")
+        if all((param in s3 
+                for param in ('endpoint_url',
+                              'bucket_name',
+                              'access_key_id',
+                              'secret_access_key'))):
+            self.s3 = S3Manager(app=self, **s3)
+            self.logger.info(f"S3 manager UP.")
 
-        for name, mngr in zip(
-            ("kc", "s3", "k8"), (KeycloakManager, S3Manager, K8sManager)
-        ):
-            # Get config entries for that manager.
-            c = self._parse_config(name)
-            if c:
-                self.__dict__[name] = mngr(app=self, **c)
-                self.logger.info(f"{name.upper()} manager UP.")
+        k8 = self._parse_config("k8")
+        if all((param in k8 
+                for param in ('host',
+                              'cert',
+                              'token'))):
+            self.k8 = K8sManager(app=self, **k8)
+            self.logger.info(f"K8 manager UP.")
+
 
     def adopt_controllers(self, controllers: List[Controller]) -> List:
         """Adopts controllers, and their associated routes."""
