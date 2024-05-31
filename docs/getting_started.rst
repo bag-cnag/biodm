@@ -27,6 +27,19 @@ Install
     pip3 install .
 
 
+Start Server
+------------
+
+E.g. for our `example` project.
+Configuration is done through `.env` files, thus server has to be run from its immediate directory.
+The one provided at `src/example/.env` is set on development environment values. 
+
+.. code-block:: bash
+
+    cd src/example/
+    python3 app.py
+
+
 Development environment
 -----------------------
 
@@ -189,9 +202,13 @@ Tests
 
 * run tests
 
+Just like example have to be run with its directory.
+
 .. code-block:: bash
 
-    pytest src/biodm/tests/
+    cd src/biodm/tests/
+    pytest
+    cd -
 
 * coverage
 

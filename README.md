@@ -45,8 +45,9 @@ OR
 pip3 install -r src/requirements/prod.txt
 ```
 
-Then you may run our `example` after populating  `./.env` with your desired configuration:
+Then you may run our `example` after populating  `src/example/.env` with your desired configuration:
 ```bash
+cd src/example/
 python3 src/example/app.py
 ```
 
