@@ -38,6 +38,9 @@ jobs:
         pip install .
         pip install -r src/requirements/prod.txt
     - name: Run tests
-      run: pytest src/biodm/tests/
+      run: |
+        cd src/biodm/tests/
+        pytest
+        cd -
     - name: Analysing the code with pylint
       run: pylint -d W0221 $(git ls-files 'src/biodm/*.py') --exit-zero
