@@ -481,6 +481,9 @@ class CompositeEntityService(UnaryEntityService):
     @overload
     async def _create_one(self, data, stmt_only: True, **kwargs) -> CompositeInsert: ...
 
+    @overload
+    async def _create_one(self, data, stmt_only: True, **kwargs) -> CompositeInsert: ...
+
     async def _create_one(
         self,
         data: dict,
