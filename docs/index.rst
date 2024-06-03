@@ -3,6 +3,9 @@
 BioDM: A fast and RESTful Data Management framework
 *****************************************************
 
+.. mdinclude:: ../README.md
+
+
 Welcome to biodm's documentation!
 ==================================
 

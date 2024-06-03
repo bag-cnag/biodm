@@ -160,7 +160,7 @@ class ResourceController(EntityController):
             Route(f"{self.prefix}",                   self.create,         methods=[HttpMethod.POST.value]),
             Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET.value]),
             Mount(self.prefix, routes=[
-                Route('/search',                      self.filter,         methods=[HttpMethod.GET.value]),
+                # Route('/search',                      self.filter,         methods=[HttpMethod.GET.value]),
                 Route('/schema',                      self.openapi_schema, methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}',               self.read,           methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}/{{attribute}}', self.read,           methods=[HttpMethod.GET.value]),
@@ -288,12 +288,12 @@ class ResourceController(EntityController):
         :rtype: Response
         ---
         responses:
-          201:
-              description: Creates associated entity.
-              examples: |
-                {"username": "user"}
-          204:
-              description: Empty Payload
+            201:
+                description: Creates associated entity.
+                examples: |
+                    {"username": "user"}
+            204:
+                description: Empty Payload
         """
         validated_data = self.validate(await self._extract_body(request))
         return json_response(

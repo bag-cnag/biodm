@@ -39,9 +39,12 @@ The one provided at `src/example/.env` is set on development environment values.
     cd src/example/
     python3 app.py
 
+.. _development-environment:
 
 Development environment
 -----------------------
+
+
 
 * Install in editable mode
 
@@ -126,20 +129,23 @@ Default values are:
     KC_REALM="3TR"
     KC_CLIENT_ID="submission_client"
 
-Once you've created the realm, create the client. Then 
-* set `Access Type` to confidential 
-* set `Inplicit Flow Enabled` to `True`.
-* Add Valid Redirect Uri:
+Once you've created the realm, create the client. Then
+
+  * set `Access Type` to confidential 
+  * set `Inplicit Flow Enabled` to `True`.
+  * Add Valid Redirect Uri:
 
     * **dev**: `http://*` and `https://*`
     * **prod**: provide the url of the login callback `{SERVER_HOST}/syn_ack`.
 
-**Note:** Depending on your keycloak version or running
-instance `SERVER_HOST` may have to be appended with `/auth`.
+.. note::
+
+    Depending on your keycloak version or running instance `SERVER_HOST` may have to be appended with `/auth`.
 
 Then you should provide the server with the `SECRET` field located in the
 `Credentials` tab, that appears **after** you changed access type and the realm public key
-located at `{KC_HOST}[auth/]realms/{KC_REALM}/`.
+located at ``{KC_HOST}[auth/]realms/{KC_REALM}/``.
+
 To be able to serve as a gateway to administrate keycloak concepts,
 the API also needs admin credentials:
 
@@ -223,3 +229,4 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
