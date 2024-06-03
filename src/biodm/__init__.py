@@ -1,5 +1,7 @@
 """BioDM framework."""
-from .scope import Scope
-
-__version__ = '0.1.3'
+__version__ = '0.2.0'
 __version_info__ = ([int(num) for num in __version__.split('.')])
+
+
+from .scope import Scope
+from .api import Api

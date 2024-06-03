@@ -88,7 +88,7 @@ class Api(Starlette):
     def __init__(
         self,
         controllers: Optional[List[Controller]],
-        instance: Optional[Dict[str, ModuleType]],
+        instance: Optional[Dict[str, ModuleType]]=None,
         debug: bool=False,
         test: bool=False,
         *args,
@@ -101,6 +101,7 @@ class Api(Starlette):
             self.scope |= Scope.TEST
 
         ## Instance Info.
+        instance = instance or {}
         self.tables: ModuleType = instance.get('tables')
         self.schemas: ModuleType = instance.get('schemas')
 

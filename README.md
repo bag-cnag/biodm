@@ -10,7 +10,7 @@
 
 ---
 
-BioDM is a fast, stateless and asynchronous REST API framework with the following core features:
+BioDM is a fast, modular, stateless and asynchronous REST API framework with the following core features:
 
 - Provide standard HTTP REST-to-CRUD endpoints from **developper provided** entity definitions:
   - _[SQLAlchemy](https://github.com/sqlalchemy/sqlalchemy/)_ tables

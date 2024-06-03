@@ -2,4 +2,5 @@
 Sphinx==7.3.7
 sphinx-rtd-theme==2.0.0
 sphinx-pyproject==0.3.0
+sphinx_mdinclude==0.6.1
 tomlkit==0.12.5

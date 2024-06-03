@@ -5,7 +5,7 @@
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
-from typing import Callable, Any, Sequence
+from typing import Any, Sequence
 from sphinx_pyproject import SphinxConfig
 from sphinx.ext.autodoc import between
 from biodm import __version__ as ver
@@ -15,7 +15,11 @@ config = SphinxConfig("../pyproject.toml", globalns=globals(), config_overrides 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.autodoc', 'sphinx_rtd_theme']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx_rtd_theme',
+    'sphinx_mdinclude',
+]
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
@@ -32,11 +36,9 @@ html_static_path = ['_static']
 ### Homebrew rules.
 def remove_after_marker(marker: str, what: Sequence[str] | None = None):
     """Returns a listerner that skims all that's after the last line equal to '---'."""
-    def process(app, 
-                what_: str, 
-                name: str, obj: Any, 
-                options: Any, 
-                lines: list[str]
+    def process(what_: str,
+                lines: list[str],
+                *_
     ) -> None:
         if what and what_ not in what:
             return

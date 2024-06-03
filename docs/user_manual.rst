@@ -1,113 +1,146 @@
+.. _user-manual:
+
 User Manual
-=================
+===========
 
-API Routes
+This section describes how your Users may communicate with the API once it is deployed.
+
+The examples are demonstrating using curl, but they are free to use any HTTP library out there.
+
+Base routes
+-----------
+
+* OpenAPI schema
+
+.. code-block:: bash
+
+    curl ${SERVER_ENDPOINT}/schema
+
+Yields full API schema in JSON form.
+
+* Liveness endpoint
+
+.. code-block:: bash
+
+    curl ${SERVER_ENDPOINT}/live
+
+Returns ``live``
+
+* Login
+
+.. code-block:: bash
+
+    curl ${SERVER_ENDPOINT}/login
+
+Returns a keycloak login url.
+Visiting and authenticating there gives you an authentication ``JSON Web Token`` that you shall 
+provide in header to hit protected routes, see authenticated next.
+
+.. code-block:: bash
+
+    curl ${SERVER_ENDPOINT}/login
+
+* Authenticated
+
+.. code-block:: bash
+
+    export TOKEN=ey....
+    curl -S "${SERVER_ENDPOINT}/authenticated"\
+         -H "Authorization: Bearer ${TOKEN}"
+
+This routes checks token and returns requesting user info: `username`, `groups` and `projects`.
 
 
-## Authentication
-Hitting the login endpoint **i.e.**
+* Syn Ack
 
-```bash
-http://127.0.0.1:8000/login
-```
+This route is the callback login route located at ``${SERVER_ENDPOINT}/syn_ack`` 
+and it is not meant to be accessed directly.
 
-will return an url towards keycloak login page **e.g.**
 
-```bash
-http://127.0.0.1:8443/auth/realms/3TR/protocol/openid-connect/auth?scope=openid&response_type=code&client_id=submission_client&redirect_uri=http://127.0.0.1:8000/syn_ack
-```
+Entity routes
+-------------
 
-visiting this webpage and authenticating lets you recover your token `ey...SomeVeryLongString` that you may use to authenticate actions on protected resources by passing it in `Authorization` header. **e.g.**
+For each entity being managed by a ``ResourceController``, the following routes are supported.
 
-```bash
-export TOKEN=ey....
-curl -S 'http://127.0.0.1:8000/authenticated' -H "Authorization: Bearer ${TOKEN}"
-```
+.. note::
 
-this route checks your token validity and return some user informations. **e.g.**
-```bash
-test, ['no_groups'], ['no_project']
-```
+    * As per REST standard, each entity is accessible under a resource prefix which is the name of the entity in plural form.
+    * URLs end **without** trailing slashes
+    * In the case of a multi-indexed entity (**i.e.** composite primary key), ``{id}`` 
+      refers to primary key elements separated by underscore symbol ``_``. 
 
-## Standard Requests examples
-**e.g.** curl requests for `Tag` ressource.
+* POST
 
-- GET
+.. code-block:: bash
+
+    curl -d ${JSON_OBJECT}\
+         ${SERVER_ENDPOINT}/my_resources
+
+* GET
+
 one
-```bash
-curl http://127.0.0.1:8000/tags/{id}
-```
+
+.. code-block:: bash
+
+    curl ${SERVER_ENDPOINT}/my_resources/{id}
+
 or all
-```bash
-curl http://127.0.0.1:8000/tags
-```
 
-- POST
-```bash
-curl -d '{"name": {name}}' http://127.0.0.1:8000/tags
-```
+.. code-block:: bash
 
-- PUT
-```bash
-curl -X PUT -H "Content-Type: application/json" -d '{"name":{othername}}' http://127.0.0.1:8000/tags/{id}
-```
+    curl ${SERVER_ENDPOINT}/my_resources
 
-- DELETE
-```bash
-curl -X DELETE http://127.0.0.1:8000/tags/{id}
-```
+* PUT
 
-- PATCH
-Not supported yet.
-It may or may not be necessary as updates can be made using PUT 
+.. code-block:: bash
 
+    curl -X PUT\
+         -H "Content-Type: application/json"\
+         -d ${UPDATED_JSON_OBJECT}\
+         ${SERVER_ENDPOINT}/my_resources/{id}
 
-### search
+* DELETE
 
-Each controlled entity supports a `/search` endpoint expecting QueryStrings formatted as 
-* `field`=`value` pairs
+.. code-block:: bash
 
-    * `,` indicates `OR` between multiple values
+    curl -X DELETE\
+         ${SERVER_ENDPOINT}/my_resources/{id}
 
-* separated by `&`
-* `nested.field` to select on a nested entity field 
+Filtering
+~~~~~~~~~
+
+When requesting all resources under a prefix (i.e. ``GET /my_resources``)
+it is possible to filter results by appending a QueryString starting with ``?``
+and followed by:
+
+* ``field=value`` pairs, separated by ``&``
+
+  * Use ``field=val1,val2,val3`` to ``OR`` between multiple values
+  * Use ``nested.field=val`` to select on a nested attribute field
+  * Use ``*`` in a string attribute for wildcards
+
+* ``field.op(value)``
+  
+  * Currently only ``[lt, le, gt, ge]`` operators are supported for numerical values.
 
 **e.g.** 
 
-_Note:_ when querying with `curl`, don't forget to escape the `&` or encore the whole url in quotes, else your scripting language will intepret it as several commands.s
+.. note::
 
-```bash
-curl http://127.0.0.1:8000/datasets/search?id={id}\&name={name1},{name2},...,{namen}\&group.name={group}
-```
+    When querying with ``curl``, don't forget to escape ``&`` symbol or encore the whole url in quotes, else your scripting language may intepret it as several commands.
 
-#### More complex queries
 
-We also support more complex searches for example:
+Files routes
+------------
+S3Controller managing storage for file entities bundles a few extra routes:
 
-- deeper nested entity querying
-    
-**e.g.** `/datasets/search?id={id}&group.admin.email_address=john@doe.com`
+Calling ``GET /my_file_resources`` shall only return associated metadata.
 
-- int fields: Support operators in ['gt', 'ge', 'lt', 'le']
+To fetch the file use
 
-**e.g.** `/datasets/search?sample_size.gt(5000)` 
+.. code-block:: bash
 
-to query for datasets with a sample_size field greater than 5000
+    curl ${SERVER_ENDPOINT}/my_file_resources/download/{id}
 
-- string fields: Support wildcards through '*' symbol
+That will return a boto3 presigned-url to directly download the file from the bucket.
 
-**e.g.** `/datasets/search?name=3TR_*`
-
-- More Ideas:
-
-We could support 'avg', 'mean', and 'std_dev':
-`search?numerical_field.avg().gt(32.5)`
-
-and
-`field.operator()=value` operation: `search?numerical_field.op()=val`
-
-and
-`reverse=True` flag that would return the exclusion set
-
-and
-'-' operator for string search
