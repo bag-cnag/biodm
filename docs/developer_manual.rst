@@ -60,6 +60,8 @@ over the following minimal example.
 .. code-block:: python
     :caption: demo.py
 
+    import marshmallow as ma
+    from marshmallow import fields as mf
     import sqlalchemy as sa
     from sqlalchemy import orm as sao
     from typing import List
@@ -211,8 +213,8 @@ On our example, this is how you could apply those on `DatasetController`:
             self.update = group_required(self.update, ['my_team'])
             self.delete = admin_required(self.delete)
 
-Here we restricted the creation and updating of datasets to ``my_team``, is ``admin`` priviledge 
-and reading data is left public.
+Here we restricted the creation and updating of datasets to ``my_team``, deletion is ``admin``
+priviledge and reading data is left public.
 
 In case you would also like to document your API endpoints, you may use those decorators in 
 combination with ``@overload_docstrings``, made to overload docstrings of controller methods:

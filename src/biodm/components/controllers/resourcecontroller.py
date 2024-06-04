@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from marshmallow.schema import Schema
 
 
-def overload_docstring(f):
+def overload_docstring(f): # flake8: noqa: E501  pylint: disable=line-too-long
     """Decorator to allow for docstring overloading.
 
     To apply on a "c-like" preprocessor on controllers subclasses.
@@ -40,7 +40,6 @@ def overload_docstring(f):
     behind the hood in python and depending on the version the .__doc__ attribute of a
     member function is not editable - Not the case as of python 3.11.2.
 
-    # flake8: noqa: E501  pylint: disable=line-too-long
     Relevant SO posts:
     - https://stackoverflow.com/questions/38125271/extending-or-overwriting-a-docstring-when-composing-classes
     - https://stackoverflow.com/questions/1782843/python-decorator-handling-docstrings
@@ -371,34 +370,29 @@ class ResourceController(EntityController):
         )
 
     async def delete(self, request: Request):
-        """
+        """ Delete resource.
+
         ---
-        description: Delete DB entry for entity with matching id.
-        parameters:
-          - in: path
-            id: entity id
-        responses:
-          200:
-              description: Deleted matching item
-          404:
-              description: Not Found
+
+        - description: Delete DB entry for entity with matching id.
+        - parameters:
+            - in: path
+              id: entity id
+
+        - responses:
+            - 200:
+                description: Deleted matching item
+
+            - 404:
+                description: Not Found
+
         """
         await self.svc.delete(pk_val=self._extract_pk_val(request))
         return json_response("Deleted.", status_code=200)
 
     async def filter(self, request: Request):
-        """
-        querystring shape:
-            prop1=val1: query for entries where prop1 = val1
-            prop2=valx,valy: query for entries where prop2 = valx or arg2 = valy
-            prop3.propx=vala: query for entries where nested entity prop3 has property propx = vala
-            prop4.[lt|gt|le|ge](valu): query for numerical comparison operators
-            prop5=foo*: wildcard symbol '*' for string search
+        """ Returns all resources, accepting a querystring filter.
 
-            all at once - separate using '&':
-                ?prop1=val1&prop2=valx,valy&prop3.propx=vala
-        if querystring is empty -> return all
-        -> /ressource/search <==> /ressource/
         ---
         description: Parses a querystring on the route /ressources/search?{querystring}
         """
