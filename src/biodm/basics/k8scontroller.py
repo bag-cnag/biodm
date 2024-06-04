@@ -13,11 +13,12 @@ from biodm.utils.utils import json_response
 
 
 class K8sController(ResourceController):
-    """
+    """Kubernetes Instances Controller.
+
     """
     def __init__(self, app):
         super().__init__(app=app, entity="k8sinstance", table=K8sInstance, schema=K8sinstanceSchema)
-    
+
     # @property
     # def prefix(self):
     #     return "/k8s_instances"
@@ -60,17 +61,14 @@ class K8sController(ResourceController):
 
     async def list_instances(self, request: Request) -> Response:
         """ List running K8s Instances.
-        ---
         """
         return '{}'
 
     async def create(self, request: Request) -> Response:
-        """ Deploys K8s Instance.
+        """Deploys K8s Instance.
 
         ---
-
         description: Deploy manifest matching identifier and tie it to requesting user.
-
         parameters:
           - in: path
             id: manifest id

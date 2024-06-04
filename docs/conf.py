@@ -80,5 +80,5 @@ add_module_names = False
 def setup(app):
     # app.connect('autodoc-process-docstring', remove_yaml_from_docstrings)
     # app.connect('autodoc-process-docstring', remove_after_marker('---'))
-    app.connect('autodoc-process-docstring', between(marker="---"))
+    app.connect('autodoc-process-docstring', between(marker="---", exclude=True))
     return app

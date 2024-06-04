@@ -32,7 +32,8 @@ class RootController(Controller):
         return PlainTextResponse("live\n")
 
     async def openapi_schema(self, _):
-        """ Generates openapi schema.
+        """Generates openapi schema.
+
         ---
         description: Returns full API schema
 
@@ -47,6 +48,9 @@ class RootController(Controller):
 
         :return: Syn_Ack url
         :rtype: str
+
+        ---
+
         """
         return (
             f"{config.SERVER_SCHEME}{config.SERVER_HOST}:"
@@ -74,13 +78,11 @@ class RootController(Controller):
 
         ---
         description: Login callback function.
-
         responses:
           200:
             description: Access token 'ey...verylongtoken'
           403:
             description: Unauthorized
-
         """
         code = request.query_params['code']
         token = await self.app.kc.redeem_code_for_token(code, redirect_uri=self.handshake())
@@ -88,10 +90,10 @@ class RootController(Controller):
 
     @login_required
     async def authenticated(self, _, userid, groups, projects):
-        """
+        """Token verification endpoint.
+
         ---
         description: Route to check token validity.
-
         responses:
           200:
             description: Userinfo - (user_id, groups, projects).
