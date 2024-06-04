@@ -1,4 +1,5 @@
 .. biodm documentation master file
+
 *****************************************************
 BioDM: A fast and RESTful Data Management framework
 *****************************************************
@@ -16,6 +17,7 @@ Welcome to biodm's documentation!
     getting_started
     developer_manual
     user_manual
+    advanced_use
     biodm/modules.rst
     licence
 

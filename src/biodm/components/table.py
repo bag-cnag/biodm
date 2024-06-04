@@ -220,25 +220,27 @@ class Base(DeclarativeBase, AsyncAttrs):
                         "A.K.A 'composition' pattern"
                     )
                 verbs = perm.enabled_verbs()
-                if verbs:
-                    # Declare permission table and associated schema.
-                    rel_name, NewAsso = cls._gen_perm_table(app, table, perm.field, verbs)
-                    NewAssoSchema = cls._gen_perm_schema(table, perm.field, verbs)
+                if not verbs:
+                    continue
 
-                    # Set extra load field onto associated schema.
-                    # Load fields only -> permissions are not dumped.
-                    table.ctrl.schema.load_fields.update(
-                        {rel_name: ma.fields.Nested(NewAssoSchema)}
-                    )
+                # Declare permission table and associated schema.
+                rel_name, NewAsso = cls._gen_perm_table(app, table, perm.field, verbs)
+                NewAssoSchema = cls._gen_perm_schema(table, perm.field, verbs)
 
-                    # Set up look up table for incomming requests.
-                    entry = {'table': NewAsso, 'from': [], 'verbs': verbs}
-                    cls._propagate_perm(
-                        lut=lut,
-                        origin=table,
-                        target=perm.field.target.decl_class,
-                        entry=entry
-                    )
+                # Set extra load field onto associated schema.
+                # Load fields only -> permissions are not dumped.
+                table.ctrl.schema.load_fields.update(
+                    {rel_name: ma.fields.Nested(NewAssoSchema)}
+                )
+
+                # Set up look up table for incomming requests.
+                entry = {'table': NewAsso, 'from': [], 'verbs': verbs}
+                cls._propagate_perm(
+                    lut=lut,
+                    origin=table,
+                    target=perm.field.target.decl_class,
+                    entry=entry
+                )
         cls._Base__permissions = lut
 
     @declared_attr
@@ -283,7 +285,7 @@ class S3File:
     filename = Column(String(100), nullable=False)
     extension = Column(String(10), nullable=False)
     ready = Column(BOOLEAN, nullable=False, server_default='0')
-    url = Column(String(2000)) # , nullable=False
+    upload_form = Column(String(2000)) # , nullable=False
 
     # @declared_attr
     # def id_user_uploader(_):

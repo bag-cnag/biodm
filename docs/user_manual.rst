@@ -1,5 +1,6 @@
 .. _user-manual:
 
+===========
 User Manual
 ===========
 
@@ -24,7 +25,7 @@ Yields full API schema in JSON form.
 
     curl ${SERVER_ENDPOINT}/live
 
-Returns ``live``
+Returns ``'live'``
 
 * Login
 
@@ -75,6 +76,8 @@ For each entity being managed by a ``ResourceController``, the following routes 
 
     curl -d ${JSON_OBJECT}\
          ${SERVER_ENDPOINT}/my_resources
+
+Supports submitting a resource and or a list of resource with nested resources.
 
 * GET
 
@@ -127,20 +130,91 @@ and followed by:
 
 .. note::
 
-    When querying with ``curl``, don't forget to escape ``&`` symbol or encore the whole url in quotes, else your scripting language may intepret it as several commands.
+    When querying with ``curl``, don't forget to escape ``&`` symbol or enclose the whole url in quotes, else your scripting language may intepret it as several commands.
 
 
-Files routes
-------------
-S3Controller managing storage for file entities bundles a few extra routes:
+File management
+---------------
 
-Calling ``GET /my_file_resources`` shall only return associated metadata.
+Files are stored leveraging an S3 bucket instance. Upload and Downloads are requested directly
+there through `boto3 presigned-urls <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-presigned-urls.html>`_.
 
-To fetch the file use
+* Upload
+
+On creating a file, the resource will contain a field named ``upload_form`` that is a presigned
+PUT request dictionary that you may use to perform direct upload.
+
+The following snippet lets you upload via script:
+
+.. code-block:: python
+    :caption: up_bucket.py
+
+    import requests
+
+    post = {'url': ..., 'fields': ...}
+
+    file_path = "/path/to/my_file.ext"
+    file_name = "my_file.ext"
+
+    with open(file_path, 'rb') as f:
+        files = {'file': (file_name, f)}
+        http_response = requests.post(
+            post['url'],
+            data=post['fields'],
+            files=files,
+            verify=True,
+            allow_redirects=True)
+        assert http_response.status_code == 201 
+
+* Download
+
+Calling ``GET /my_file_resources`` will only return associated metadata
+
+To download a file use the following endpoint.
 
 .. code-block:: bash
 
     curl ${SERVER_ENDPOINT}/my_file_resources/download/{id}
 
-That will return a boto3 presigned-url to directly download the file from the bucket.
+That will return a url to directly download the file via GET request.
+
+
+User permissions
+----------------
+
+When a Composition/One-to-Many relationship is flagged with permissions as described in
+:ref:`dev-user-permissions` a new field ``perm_{relationship_name}`` is available for that resource.
+
+**E.g.** Dataset resource in our example, would have an extra field ``perm_files``.
+
+A Permission is holding a ListGroup object for each enabled verbs.
+ListGroup being a routeless core table, allowing to manage lists of groups.
+
+**E.g.** In our example, CREATE/READ/DOWNLOAD are enabled,
+hence a json representation of a dataset with its permissions looks like this:
+
+.. code-block:: json
+    
+    {
+        "name": "ds_test",
+        "owner": {
+            "username": "my_dataset_owner" 
+        },
+        "perm_files": {
+            "create": {
+                "groups": [
+                    {"name": "genomics_team"},
+                    {"name": "IT_team"},
+                    {"..."}
+                ]
+            },
+            "update": {
+                "groups": {"..."}
+            },
+            "download": {
+                "groups": {"..."}
+            }
+        }
+    }
+
 

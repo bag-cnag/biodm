@@ -1,21 +1,23 @@
-=================
-Developer Manual
-=================
+.. _developer-manual:
 
-This section describes how to use `biodm` package in order to swiftly deploy a modular 
+================
+Developer Manual
+================
+
+This section describes how to use ``biodm`` package in order to swiftly deploy a modular 
 data management API tailored to your needs.
 
-You also may consult `src/example/` toy project, which encapsulates more complex project needs.  
+You also may consult ``src/example/`` toy project, which encapsulates more complex project needs.  
 
 Following, we will go in detail about the toolkit and builtins.
 
 
 Basics
--------
+------
 
 At the core of Data Management means storing collections of files and their associated metadata.
 
-`biodm` is leveraging SQLAlchemy ORM Tables definitions + matching Marshmallow Schemas, specifying 
+``BioDM`` is leveraging SQLAlchemy ORM Tables definitions + matching Marshmallow Schemas, specifying 
 metadata and relationships, to setup standard RESTful endpoints.
 
 
@@ -28,17 +30,31 @@ Each Controller is independently responsible for exposing a set of routes, valid
 `i/o` and send incomming Request data to a relevant ``biodm.component.ApiService`` subinstance.
 
 Services, are tied to a Table and calling each other in order to parse and adapt
-incomming data.
+input data.
 All Services are ``biodm.components.services.DatabaseService`` subinstances as their 
 primary mission is to faithfully log activity and maintain data integrity.
 
 
-Finally this internal representation is sent to a `biodm.component.managers`, each holding communication primities with external micro-services (i.e. DB, S3 bucket, Kubernetes and so on).
+Finally this internal representation is sent to a ``biodm.component.managers``, each holding communication primities with external micro-services (i.e. DB, S3 bucket, Kubernetes and so on).
+
+
+Configuration
+~~~~~~~~~~~~~
+``BioDM`` extends `Starlette <https://www.starlette.io/config/>`_,
+hence its Configuration system works by populating a ``.env`` file, preferably sitting in the same directory as the running script.
+
+We invite you to consult `config.py <https://github.com/bag-cnag/biodm/blob/main/src/biodm/config.py>`_
+to discover all possible options.
+
+Functionalities depending on external micro-services are enabled if matching configuration options are provided.
+
+**e.g.** Keycloak functionalities shall be activated, if and only if, defaultless config parameters prefixed by ``KC_`` are populated.
+Otherwise, User/Group tables shall still be deployed. However, they will not be synced against a keycloak server.
 
 Minimal Demo
-~~~~~~~~~~~~~
+~~~~~~~~~~~~
 
-Say you or your organization needs to store ``Datasets``, each containing a set of `File` we will go
+Say you or your organization needs to store ``Datasets``, each containing a set of ``File`` we will go
 over the following minimal example.
 
 .. code-block:: python
@@ -105,11 +121,14 @@ over the following minimal example.
 
 .. note::
 
-    Notice that File class inherits from ``S3File`` component and is paired with an ``S3Controller``.
+    Notice that File Table declarative Class inherits from ``S3File`` component and is
+    paired with an ``S3Controller``. Those two classes are automatically handling extra fields
+    that can be seen on ``FileSchema`` and extra routes.
+    For other tables, if you're only interested about standard functionalities, you should stick with ``Base`` and ``ResourceController``.
 
 .. note::
 
-    For file management this demo requires a s3 compatible storage service.
+    For file management this demo requires an ``s3`` compatible storage service.
     To quickly deploy micro-services dependencies for testing purposes, refer to
     :ref:`development-environment`.
 
@@ -125,16 +144,19 @@ The following variables have to be provided.
 
 Running this script deploys a server:
 
-   * Responding on standard RESTful routes (see :ref:`user-manual`) for:
+  * Responding on standard RESTful routes (see :ref:`user-manual`) for:
 
-       * **Instance tables**: Dataset, File
-       * **Core tables**: User, Group
+      * **Instance tables**: Dataset, File
+
+        * Serving pre-signed PUT/GET URLs for direct file upload/download. 
+
+      * **Core tables**: User, Group
          
-         * Keycloak not being enabled, those tables are managed locally.
+        * Keycloak not being enabled, those tables are managed locally.
 
-   * Internally managing core tables:
+  * Internally managing core tables:
 
-      * ListGroup, History
+     * ListGroup, History
 
 Permissions
 -----------
@@ -158,13 +180,17 @@ be provided in a ``.env`` file at the same level as your ``demo.py`` script.
 Coarse: Static rule on a Controller endpoint
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``biodm.utils.security`` module contains two decorators that are meant to be used
+``biodm.utils.security`` module contains three decorators that are meant to be used
 on Controller endpoints in order to apply static permissions directly within the codebase.
+
+
+* ``@token_required()``
+
+  * Protects the endpoint demanding incomming requests to by signed with a valid ``Keycloak JW Token``
 
 * ``@group_required(groups=[gname_1,... gname_n])``
 
-  *  Protects the endpoint demanding incomming requests to by signed with a
-     ``Keycloak JW Token`` assessing that requesting User is part of one of those groups.
+  *  Like token_required, and assesses that requesting User is part of one of those groups.
 
 * ``@admin_required()``
 
@@ -216,8 +242,10 @@ combination with ``@overload_docstrings``, made to overload docstrings of contro
         ...
 
 
+.. _dev-user-permissions:
+
 Fine: Dynamic user owned permissions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If your data management platform is intended to receive data from users external to your
 organisation, ``BioDM`` provide tools to let them in control of permissions.
@@ -239,7 +267,7 @@ In our example:
         files         : sao.Mapped[List["File"]] = sao.relationship(back_populates="dataset")
 
         __permissions__ = (
-            Permission(files, create=True, read=True, update=True),
+            Permission(files, create=True, read=False, update=True, download=True),
         )
 
 The latter enables ``File`` permissions at the ``Dataset`` level.

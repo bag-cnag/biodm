@@ -36,7 +36,7 @@ jobs:
           pip install -r src/requirements/docs.txt
       - name: Sphinx build
         run: |
-          sphinx-apidoc --implicit-namespaces -fo docs/biodm/ src/biodm -H "API Reference"
+          sphinx-apidoc --implicit-namespaces --separate -H "API Reference" -fo docs/biodm/ src/biodm "**/*tests*"
           python3 -m sphinx -b html docs/ _build/
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4

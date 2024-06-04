@@ -59,15 +59,18 @@ class K8sController(ResourceController):
         return self.app.k8s
 
     async def list_instances(self, request: Request) -> Response:
-        """
+        """ List running K8s Instances.
         ---
         """
         return '{}'
 
     async def create(self, request: Request) -> Response:
-        """
+        """ Deploys K8s Instance.
+
         ---
+
         description: Deploy manifest matching identifier and tie it to requesting user.
+
         parameters:
           - in: path
             id: manifest id
