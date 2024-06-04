@@ -191,7 +191,7 @@ A Permission is holding a ListGroup object for each enabled verbs.
 ListGroup being a routeless core table, allowing to manage lists of groups.
 
 **E.g.** In our example, CREATE/READ/DOWNLOAD are enabled,
-hence a json representation of a dataset with its permissions looks like this:
+hence a JSON representation of a dataset with its permissions looks like this:
 
 .. code-block:: json
     
