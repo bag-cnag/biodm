@@ -1,9 +1,9 @@
-================
+===============
 Getting Started
-================
+===============
 
 Install
---------
+-------
 
 * Using pip and git
 
@@ -30,9 +30,9 @@ Install
 Start Server
 ------------
 
-E.g. for our `example` project.
-Configuration is done through `.env` files, thus server has to be run from its immediate directory.
-The one provided at `src/example/.env` is set on development environment values. 
+E.g. for our ``example`` project.
+Configuration is done through ``.env`` files, thus server has to be run from its immediate directory.
+The one provided at ``src/example/.env`` is set on development environment values. 
 
 .. code-block:: bash
 
@@ -54,7 +54,7 @@ Development environment
     pip3 install -e .
 
 Quick dependency setup
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 **pre-requisites**:
     * Build local `Keycloak`_ image with your local certificates.
@@ -180,7 +180,7 @@ generate a key and populate:
     S3_SECRET_ACCESS_KEY={access_key}
 
 Documentation
---------------
+-------------
 
 * pre-requisite:
 
@@ -197,7 +197,7 @@ Then you may use the following:
 
 
 Tests
---------
+-----
 
 * pre-requisite:
 

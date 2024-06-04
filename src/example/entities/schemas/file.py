@@ -6,7 +6,7 @@ class FileSchema(Schema):
     id = Integer()
     filename = String(required=True)
     extension = String(required=True)
-    url = String(required=False, dump_only=True)
+    upload_form = String(required=False, dump_only=True)
     ready = Bool(required=False, dump_only=True)
     id_dataset = Integer(required=True)
     version_dataset = Integer(required=True)

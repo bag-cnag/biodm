@@ -53,6 +53,7 @@ class Controller(ApiComponent):
          - starlette: https://www.starlette.io/schemas/
          - doctrings: https://apispec.readthedocs.io/en/stable/
          - status codes: https://restfulapi.net/http-status-codes/
+
         ---
         description: Generatate API schema for routes managed by given Controller.
         responses:

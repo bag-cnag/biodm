@@ -71,13 +71,15 @@ class DatabaseManager(ApiComponent):
 
     @staticmethod
     def in_session(db_exec: Callable):
-        """Decorator that ensures db_exec receives a session. 
-        Session object is either passed as an argument (from nested obj creation) or a new
-        context manager is opened. This decorator guarantees exactly 1 session per request.
+        """Decorator that ensures db_exec receives a session.
+            Session object is either passed as an argument (from nested obj creation) or a new context
+            manager is opened. This decorator guarantees exactly 1 session per request.
 
-        Also performs serialization **within a sync session**:
+        Also performs serialization :strong:`within a sync session`:
+
         - Avoids errors in case serializing acceses a lazy attribute
-        - All functions applying this decorator should pass down some **kwargs
+        - All functions applying this decorator should pass down some `**kwargs`
+
         """
         # Callable.
         async def wrapper(*args, **kwargs):
