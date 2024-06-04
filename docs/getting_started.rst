@@ -221,12 +221,3 @@ Just like example have to be run with its directory.
 .. code-block:: bash
 
     pytest --cov-report term --cov=src/biodm src/biodm/tests/
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
