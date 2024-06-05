@@ -11,7 +11,7 @@
 # sys.path.insert(0, os.path.abspath("../src/biodm/"))
 
 
-from typing import Any, Sequence
+# from typing import Any, Sequence
 from sphinx_pyproject import SphinxConfig
 from sphinx.ext.autodoc import between
 from biodm import __version__ as ver
@@ -33,7 +33,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'biodm.tests*', '*confte
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'sqlalchemy': ('https://docs.sqlalchemy.org/en/20/', None),
-    'marshmallow': ('https://marshmallow.readthedocs.io/en/2.x-line/', None),
+    'marshmallow': ('https://marshmallow.readthedocs.io/en/stable/', None),
 }
 
 

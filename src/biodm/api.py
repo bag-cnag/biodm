@@ -102,8 +102,6 @@ class Api(Starlette):
 
         ## Instance Info.
         instance = instance or {}
-        self.tables: ModuleType = instance.get('tables')
-        self.schemas: ModuleType = instance.get('schemas')
 
         m = instance.get('manifests')
         if m:

@@ -26,7 +26,7 @@ SUPPORTED_INT_OPERATORS = ("gt", "ge", "lt", "le")
 
 class DatabaseService(ApiService):
     """DB Service class: manages database transactions for entities.
-    Holds atomic database statement execution functions.
+        Holds atomic database statement execution functions.
     """
     @property
     def _backend_specific_insert(self):
@@ -343,10 +343,6 @@ class UnaryEntityService(DatabaseService):
         stmt = stmt.where(self.gen_cond(pk_val))
         return await self._select(stmt, serializer=serializer, **kwargs)
 
-    # async def update(self, pk_val, data: dict, **kwargs) -> Base:
-    #     """TODO: change CRUDAPIComponent."""
-    #     raise NotImplementedError
-
     async def delete(self, pk_val, **kwargs) -> Any:
         """DELETE."""
         stmt = delete(self.table).where(self.gen_cond(pk_val))
@@ -373,7 +369,9 @@ class CompositeEntityService(UnaryEntityService):
 
     @property
     def runtime_relationships(self):
-        """Works because the property is fixed at instanciation time."""
+        """Evaluate relationships at runtime by computing the difference with
+          self.relatioships set a instanciation time.
+        """
         return set(self.table.relationships().keys()) - set(self.relationships.keys())
 
     @DatabaseManager.in_session
@@ -411,6 +409,7 @@ class CompositeEntityService(UnaryEntityService):
 
         # Populate many-to-item fields with 'delayed' (because needing item id) objects.
         for key, delay in composite.delayed.items():
+            # Load attribute.
             await getattr(item.awaitable_attrs, key)
             target_svc = rels[key].target.decl_class.svc
 
@@ -427,11 +426,10 @@ class CompositeEntityService(UnaryEntityService):
 
                 # Patch statements before inserting.
                 for one in to_it(delay):
-                    match one:
-                        case self.CompositeInsert():
-                            one.item = one.item.values(**mapping)
-                        case Insert():
-                            one = one.values(**mapping)
+                    if isinstance(one, self.CompositeInsert):
+                        one.item = one.item.values(**mapping)
+                    else:
+                        one = one.values(**mapping)
 
             # Insert delayed and populate back into item.
             match delay:

@@ -5,6 +5,8 @@ import asyncio
 from typing import TYPE_CHECKING, List, Any, Dict
 
 from marshmallow.schema import RAISE
+from marshmallow.class_registry import get_class
+from marshmallow.exceptions import RegistryError
 from starlette.routing import Mount, Route
 from starlette.requests import Request
 from starlette.responses import Response
@@ -67,6 +69,7 @@ class ResourceController(EntityController):
 
     Implements and exposes routes under a prefix named as the resource pluralized
     that act as a standard REST-to-CRUD interface.
+
     :param app: running server
     :type app: Api
     :param entity: entity name, defaults to None, inferred if None
@@ -85,7 +88,7 @@ class ResourceController(EntityController):
     ):
         """Constructor."""
         super().__init__(app=app)
-        self.resource = entity if entity else self._infer_entity_name()
+        self.resource = entity if entity else self._infer_resource_name()
         self.table = table if table else self._infer_table()
         self.table.ctrl = self
 
@@ -95,7 +98,7 @@ class ResourceController(EntityController):
 
         self._setup_permissions()
 
-    def _infer_entity_name(self) -> str:
+    def _infer_resource_name(self) -> str:
         """Infer entity name from controller name."""
         return self.__class__.__name__.split('Controller', maxsplit=1)[0]
 
@@ -124,26 +127,26 @@ class ResourceController(EntityController):
                 return CompositeEntityService if self.table.relationships() else UnaryEntityService
 
     def _infer_table(self) -> Base:
-        """Tries to import from instance module reference."""
-        try:
-            return self.app.tables.__dict__[self.resource]
-        except Exception as e:
-            raise ValueError(
-                f"{self.__class__.__name__} could not find {self.resource} Table."
-                " Alternatively if you are following another naming convention "
-                "you should provide it as 'table' arg when creating a new controller"
-            ) from e
+        """Try to find matching table in the registry."""
+        reg = Base.registry._class_registry.data
+        if self.resource in reg:
+            return reg[self.resource]()
+        raise ValueError(
+            f"{self.__class__.__name__} could not find {self.resource} Table."
+            " Alternatively if you are following another naming convention you should "
+            "provide the declarative_class as 'table' argument when defining a new controller."
+        )
 
     def _infer_schema(self) -> Schema:
-        """Tries to import from instance module reference."""
+        """Tries to import from marshmallow class registry."""
         isn = f"{self.resource}Schema"
         try:
-            return self.app.schemas.__dict__[isn]
-        except Exception as e:
+            return get_class(isn)
+        except RegistryError as e:
             raise ValueError(
                 f"{self.__class__.__name__} could not find {isn} Schema. "
-                "Alternatively if you are following another naming convention "
-                "you should provide it as 'schema' arg when creating a new controller"
+                "Alternatively if you are following another naming convention you should "
+                "provide the schema class as 'schema' argument when defining a new controller"
             ) from e
 
     def routes(self, child_routes=None, **_) -> List[Mount | Route]:
