@@ -2,6 +2,7 @@
 from datetime import datetime
 from functools import wraps, lru_cache
 from typing import List, Tuple
+from uu import decode
 
 from starlette.requests import Request
 
@@ -17,31 +18,18 @@ def auth_header(request) -> str | None:
         return None
     return (header.split("Bearer")[-1] if "Bearer" in header else header).strip()
 
-
 @lru_cache(128)
-async def extract_and_decode_token(
+async def decode_token(
     kc: KeycloakManager,
-    request: Request
+    token: str
 ) -> Tuple[str, List, List]:
-    """ Extracts and decode token from a request.
+    """ Decode token.
     - Cached because it may be called several times per request.
-
-    :raises UnauthorizedError: token not provided.
-    :return: user_id, groups, projects
-    :rtype: Tuple[str, List, List]
     """
-    def extract_items(token, name, default=""):
+    def parse_items(token, name, default=""):
         n = token.get(name, [])
         return [s.replace("/", "") for s in n] if n else [default]
 
-    # Extract.
-    token = auth_header(request)
-    if not token:
-        raise UnauthorizedError(
-            "This route is token protected. "
-            "Please provide it in header: "
-            "Authorization: Bearer <token>"
-        )
     decoded = await kc.decode_token(token)
 
     # Parse.
@@ -51,8 +39,28 @@ async def extract_and_decode_token(
         group['name']
         for group in await kc.get_user_groups(keycloak_id)
     ] or ['no_groups']
-    projects = extract_items(decoded, "group_projects", "no_projects")
+    projects = parse_items(decoded, "group_projects", "no_projects")
     return userid, groups, projects
+
+
+async def extract_and_decode_token(
+    kc: KeycloakManager,
+    request: Request
+) -> Tuple[str, List, List]:
+    """ Extracts and decode token from a request.
+
+    :raises UnauthorizedError: token not provided.
+    :return: user_id, groups, projects
+    :rtype: Tuple[str, List, List]
+    """
+    token = auth_header(request)
+    if not token:
+        raise UnauthorizedError(
+            "This route is token protected. "
+            "Please provide it in header: "
+            "Authorization: Bearer <token>"
+        )
+    return decode_token(kc, token)
 
 
 def group_required(f, groups: List):

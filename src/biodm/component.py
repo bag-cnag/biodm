@@ -1,10 +1,11 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, List, Dict, Callable
 
 if TYPE_CHECKING:
     import logging
     from biodm.api import Api
+    from biodm.components import Base
 
 
 class ApiComponent(ABC):
@@ -24,21 +25,33 @@ class ApiComponent(ABC):
 class ApiService(ApiComponent):
     """Service base class."""
     @abstractmethod
-    async def create(self, *args, **kwargs) -> Any:
+    async def create(
+        self,
+        data: Dict[str, Any] | List[Dict[str, Any]],
+        stmt_only: True,
+        **kwargs
+    ) -> Base | List[Base] | str:
         raise NotImplementedError
 
     @abstractmethod
-    async def read(self, *args, **kwargs) -> Any:
-        raise NotImplementedError
-
-    # @abstractmethod
-    # async def update(self, *args, **kwargs) -> Any:
-    #     raise NotImplementedError
-
-    @abstractmethod
-    async def delete(self, *args, **kwargs) -> Any:
+    async def read(
+        self,
+        pk_val: List[Any],
+        fields: List[str] = None,
+        serializer: Callable = None,
+        **kwargs
+    ) -> str:
         raise NotImplementedError
 
     @abstractmethod
-    async def filter(self, *args, **kwargs) -> Any:
+    async def filter(
+        self,
+        params: Dict[str, str],
+        serializer: Callable,
+        **kwargs
+    ) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def delete(self, pk_val, **kwargs) -> None:
         raise NotImplementedError

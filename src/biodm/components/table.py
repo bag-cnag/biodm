@@ -216,8 +216,8 @@ class Base(DeclarativeBase, AsyncAttrs):
             for perm in permissions:
                 if perm.field.direction is not ONETOMANY:
                     raise ImplementionError(
-                        "Permission should only be applied on one-to-many relationships fields. "
-                        "A.K.A 'composition' pattern"
+                        "Permission should only be applied on One-to-Many relationships fields "
+                        "A.K.A 'composition' pattern."
                     )
                 verbs = perm.enabled_verbs()
                 if not verbs:
@@ -306,9 +306,8 @@ class Permission:
     """Holds permissions for a given entity's attributes."""
     field: Column
     # Verbs.
-    create: bool=False
     read: bool=False
-    update: bool=False
+    write: bool=False
     download: bool=False
 
     @classmethod

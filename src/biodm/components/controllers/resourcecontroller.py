@@ -19,11 +19,12 @@ from biodm.components.services import (
     KCGroupService,
     KCUserService
 )
+from biodm.components.table import Permission
 from biodm.exceptions import (
     InvalidCollectionMethod, PayloadEmptyError, UnauthorizedError, PartialIndex
 )
 from biodm.utils.utils import json_response, to_it
-from biodm.utils.security import admin_required, extract_and_decode_token
+from biodm.utils.security import admin_required, auth_header, extract_and_decode_token
 from biodm.components import Base
 from .controller import HttpMethod, EntityController
 
@@ -96,7 +97,7 @@ class ResourceController(EntityController):
         self.svc: DatabaseService = self._infer_svc()(app=self.app, table=self.table)
         self.__class__.schema = (schema if schema else self._infer_schema())(unknown=RAISE)
 
-        self._setup_permissions()
+        # self._setup_permissions()
 
     def _infer_resource_name(self) -> str:
         """Infer entity name from controller name."""
@@ -206,78 +207,6 @@ class ResourceController(EntityController):
             raise PayloadEmptyError
         return body
 
-    def _setup_permissions(self):
-        """Decorates exposed methods with permission checks."""
-        routes = []
-        for r in self.routes():
-            if isinstance(r, Mount):
-                routes.extend(r.routes)
-            else:
-                routes.append(r)
-        exposed_methods = set(r.endpoint for r in routes)
-        for method in exposed_methods:
-            setattr(self, method.__name__, self.setup_permissions_check(method))
-
-    def setup_permissions_check(self, f):
-        """Set up permission check if server is not run in test mode."""
-        if Scope.TEST in self.app.scope:
-            return f
-
-        if f.__name__ == "delete":
-            return admin_required(f)
-
-        async def wrapper(request):
-            skip = False
-            match f.__name__:
-                case "create":
-                    verb = "create"
-                case "update":
-                    verb = "update"
-                case "read" | "filter":
-                    verb = "read"
-                case "download":
-                    verb = "download"
-                case _:
-                    # Others (/schema and co.) are public.
-                    skip = True
-            if not (skip or await self.check_permissions(verb, request)):
-                raise UnauthorizedError("Insufficient permissions for this operation.")
-            return await f(request)
-
-        wrapper.__name__ = f.__name__
-        wrapper.__doc__ = f.__doc__
-        return wrapper
-
-    def _get_permissions(self, verb: str) -> List[Dict] | None:
-        """Retrieve entries indexed with self.table containing given verb in permissions."""
-        if self.table in Base._Base__permissions:
-            return [
-                perm
-                for perm in Base._Base__permissions[self.table]
-                if verb in perm['verbs']
-            ]
-        return None
-
-    async def check_permissions(self, verb: str, request: Request):
-        """Verify that token bearer is part of allowed groups for that method."""
-        perms = self._get_permissions(verb)
-        if not perms:
-            return True
-
-        _, groups, _ = await extract_and_decode_token(self.app.kc, request)
-        return all(
-            await asyncio.gather(
-                *[
-                    self.svc.check_permission(
-                        verb=verb,
-                        groups=groups,
-                        permission=perm
-                    )
-                    for perm in perms
-                ]
-            )
-        )
-
     async def create(self, request: Request) -> Response:
         """Creates associated entity.
         Does "UPSERTS" behind the hood.
@@ -302,6 +231,7 @@ class ResourceController(EntityController):
             data=await self.svc.create(
                 data=validated_data,
                 stmt_only=False,
+                token=auth_header(request),
                 serializer=partial(
                     self.serialize, **{"many": isinstance(validated_data, list)}
                 ),
@@ -338,6 +268,7 @@ class ResourceController(EntityController):
             data=await self.svc.read(
                 pk_val=self._extract_pk_val(request),
                 fields=fields.split(',') if fields else None,
+                token=auth_header(request),
                 serializer=partial(self.serialize, **{"many": False}),
             ),
             status_code=200,
@@ -365,6 +296,7 @@ class ResourceController(EntityController):
             data=await self.svc.create(
                 data=validated_data,
                 stmt_only=False,
+                token=auth_header(request),
                 serializer=partial(
                     self.serialize, **{"many": isinstance(validated_data, list)}
                 ),
@@ -390,7 +322,7 @@ class ResourceController(EntityController):
                 description: Not Found
 
         """
-        await self.svc.delete(pk_val=self._extract_pk_val(request))
+        await self.svc.delete(pk_val=self._extract_pk_val(request), token=auth_header(request))
         return json_response("Deleted.", status_code=200)
 
     async def filter(self, request: Request):
@@ -402,6 +334,7 @@ class ResourceController(EntityController):
         return json_response(
             await self.svc.filter(
                 params=dict(request.query_params),
+                token=auth_header(request),
                 serializer=partial(self.serialize, many=True),
             ),
             status_code=200,

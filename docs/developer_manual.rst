@@ -73,7 +73,7 @@ over the following minimal example.
 
     # Tables
     class Dataset(bd.components.Base):
-        id            : sao.Mapped[int]          = sa.Column(sa.Integer,                  primary_key=True)
+        id            : sao.Mapped[int]          = sa.Column(sa.Integer,                      primary_key=True)
         name          : sao.Mapped[str]          = sa.Column(sa.String(50),                   nullable=False)
         username_owner: sao.Mapped[int]          = sa.Column(sa.ForeignKey("USER.username"),  nullable=False)
         owner         : sao.Mapped["User"]       = sao.relationship(foreign_keys=[username_owner])
@@ -93,11 +93,11 @@ over the following minimal example.
         files          = mf.List(mf.Nested("FileSchema"))
 
     class FileSchema(ma.Schema):
-        id             = mf.Integer(dump_only=True)
+        id             = mf.Integer(                dump_only=True)
         filename       = mf.String(required=True)
         extension      = mf.String(required=True)
-        url            = mf.String(dump_only=True)
-        ready          = mf.Bool(dump_only=True)
+        url            = mf.String(                 dump_only=True)
+        ready          = mf.Bool(                   dump_only=True)
         id_dataset     = mf.Integer(required=True,  load_only=True)
         dataset        = mf.Nested("DatasetSchema")
 

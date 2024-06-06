@@ -48,14 +48,14 @@ class Dataset(Base):
 
     # # Foreign keys
     username_user_contact: Mapped[int] = Column(ForeignKey("USER.username"),    nullable=False)
-    id_project:      Mapped[int] = Column(ForeignKey("PROJECT.id"))
+    id_project:      Mapped[int]       = Column(ForeignKey("PROJECT.id"),       nullable=False)
 
     # # relationships
     # policy - cascade="save-update, merge" ?
-    contact: Mapped["User"]       = relationship(foreign_keys=[username_user_contact], lazy="select")
-    tags:    Mapped[Set["Tag"]]   = relationship(secondary=asso_dataset_tag, uselist=True, lazy="select")
-    project: Mapped["Project"]    = relationship(back_populates="datasets", lazy="select")
-    files:   Mapped[List["File"]] = relationship(back_populates="dataset", lazy="select")
+    contact: Mapped["User"]       = relationship(foreign_keys=[username_user_contact])
+    tags:    Mapped[Set["Tag"]]   = relationship(secondary=asso_dataset_tag, uselist=True)
+    project: Mapped["Project"]    = relationship(back_populates="datasets")
+    files:   Mapped[List["File"]] = relationship(back_populates="dataset")
 
     # # permission_lv2: Mapped["Permission_lv2"] = relationship()
 

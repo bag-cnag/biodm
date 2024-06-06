@@ -23,7 +23,7 @@ Install
 
     git clone https://github.com/bag-cnag/biodm
     cd biodm/
-    pip3 install -r src/requirements/prod.txt
+    pip3 install -r src/requirements/common.txt
     pip3 install .
 
 
@@ -43,8 +43,6 @@ The one provided at ``src/example/.env`` is set on development environment value
 
 Development environment
 -----------------------
-
-
 
 * Install in editable mode
 

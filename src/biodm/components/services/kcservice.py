@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, List
+from typing import Any, Dict, List
 
 from biodm.components import Base
 from biodm.exceptions import FailedRead
@@ -23,10 +23,14 @@ class KCService(CompositeEntityService):
 
 
 class KCGroupService(KCService):
-    async def read_or_create(
-        self,
-        data: dict
-    ) -> str:
+    async def read_or_create(self, data: Dict[str, Any]) -> str:
+        """READ entry from Database, CREATE it if not found.
+
+        :param data: Entry object representation
+        :type data: Dict[str, Any]
+        :return: Group id
+        :rtype: str
+        """
         try:
             return (await self.read(data["name"])).id
         except FailedRead:
@@ -47,20 +51,30 @@ class KCGroupService(KCService):
         # DB
         return await super().create(data, stmt_only=stmt_only, **kwargs)
 
-    async def update(self, pk_val, data: dict, **kwargs) -> Base:
-        """"""
-        raise NotImplementedError
-        await self.kc.update_group(await self.read(pk_val).id, data)
-        return await super().update(id, data, **kwargs)
-
     async def delete(self, pk_val) -> Any:
-        """"""
+        """DELETE Group on Keycloak before deleting DB entry."""
         await self.kc.delete_group(await self.read(pk_val).id)
         return await super().delete(pk_val)
 
 
 class KCUserService(KCService):
-    async def read_or_create(self, data, groups: List[str] = None, group_ids=None) -> str:
+    async def read_or_create(
+        self,
+        data: Dict[str, Any],
+        groups: List[str] = None,
+        group_ids: List[str]=None
+    ) -> str:
+        """READ entry from Database, CREATE it if not found.
+
+        :param data: Entry object representation
+        :type data: Dict[str, Any]
+        :param groups: User groups, defaults to None
+        :type groups: List[str], optional
+        :param group_ids: User groups ids, defaults to None
+        :type group_ids: List[str], optional
+        :return: User id
+        :rtype: str
+        """
         try:
             user = await self.read(data["username"])
             group_ids = group_ids or []
@@ -74,7 +88,7 @@ class KCUserService(KCService):
             return id
 
     async def create(self, data, stmt_only: bool = False, **kwargs) -> Base | List[Base]:
-        """Create entities on Keycloak Side before passing to parent class for DB."""
+        """CREATE entities on Keycloak, before inserting in DB."""
         # KC
         if not stmt_only:
             for user in to_it(data):
@@ -89,13 +103,7 @@ class KCUserService(KCService):
         # DB
         return await super().create(data, stmt_only=stmt_only, **kwargs)
 
-    async def update(self, pk_val, data: dict, **kwargs) -> Base:
-        """"""
-        raise NotImplementedError
-        await self.kc.update_user(await self.read(pk_val).id, data)
-        return await super().update(pk_val, data, **kwargs)
-
     async def delete(self, pk_val) -> Any:
-        """"""
+        """DELETE User on Keycloak before deleting DB entry."""
         await self.kc.delete_user(await self.read(pk_val).id)
         return await super().delete(pk_val)

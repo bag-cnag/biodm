@@ -1,7 +1,9 @@
 """Database service: Translates requests data into SQLA statements and execute."""
 import asyncio
+from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
+from ossaudiodev import SNDCTL_TMR_CONTINUE
 from typing import List, Any, Tuple, Dict, Callable, TypeVar, overload
 
 from sqlalchemy import insert, select, delete
@@ -15,9 +17,11 @@ from sqlalchemy.sql import Insert, Update, Delete, Select
 
 from biodm.component import ApiService
 from biodm.components import Base, Permission
-from biodm.exceptions import FailedRead, FailedDelete, FailedUpdate
+from biodm.exceptions import FailedRead, FailedDelete, FailedUpdate, UnauthorizedError
 from biodm.managers import DatabaseManager
+from biodm.scope import Scope
 from biodm.tables import ListGroup
+from biodm.utils.security import decode_token
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
 
@@ -39,18 +43,95 @@ class DatabaseService(ApiService):
             case _:
                 return insert
 
-    @DatabaseManager.in_session
-    async def _insert(self, stmt: Insert, session: AsyncSession) -> (Any | None):
-        """INSERT one into database."""
-        return await session.scalar(stmt)
+    def _get_permissions(self, verb: str) -> List[Dict] | None:
+        """Retrieve entries indexed with self.table containing given verb in permissions."""
+        if self.table in Base._Base__permissions:
+            return [
+                perm
+                for perm in Base._Base__permissions[self.table]
+                if verb in perm['verbs']
+            ]
+        return None
+
+    async def _check_insert_permissions(
+        self,
+        pending: Base | List[Base],
+        session: AsyncSession,
+        token: str | None
+    ) -> bool:
+        verb = "write"
+        perms = self._get_permissions(verb)
+        if not perms:
+            return True
+
+        for permission in perms:
+            for one in to_it(pending):
+                stmt = (
+                    select(ListGroup)
+                    .join(
+                        permission['table'],
+                        onclause=permission['table'].__table__.c[f'id_{verb}'] == ListGroup.id)
+                )
+
+                # Join last table of the chain with currently inserted object.
+                join_chain = deepcopy(permission['from'])
+                jtable = join_chain.pop(-1)
+                stmt = stmt.join(
+                    jtable,
+                    onclause=unevalled_all([
+                        getattr(jtable, pk) == getattr(
+                            one,
+                            # Quite ugly, TODO: find a cleaner way if it exists.
+                            next(
+                                iter(
+                                    [
+                                        fk
+                                        for fk in self.table.__table__.foreign_keys
+                                        if (
+                                            fk.target_fullname
+                                            ==
+                                            f"{jtable.__tablename__}.{getattr(jtable, pk).name}"
+                                        )
+                                    ]
+                                )
+                            ).parent.name
+                        )
+                        for pk in jtable.pk()
+                    ])
+                )
+                # Join the rest of the chain.
+                for jtable in join_chain:
+                    stmt = stmt.join(jtable)
+
+                stmt = stmt.options(joinedload(ListGroup.groups))
+                allowed = await session.scalar(stmt)
+
+                if allowed.groups and not token:
+                    return False
+
+                _, groups, _ = await decode_token(self.app.kc, token)
+                if not set(groups) & set(g.name for g in allowed.groups):
+                    return False
+        return True
 
     @DatabaseManager.in_session
-    async def _insert_many(self, stmt: Insert, session: AsyncSession) -> List[Any]:
-        """INSERT many into database."""
-        return (await session.scalars(stmt)).all()
+    async def _insert(self, stmt: Insert, session: AsyncSession, token: str | None) -> Base:
+        """INSERT one object into the DB, check token write permissions before commit."""
+        item = await session.scalar(stmt)
+        if not await self._check_insert_permissions(item, session, token):
+            raise UnauthorizedError("No Write access.")
+        return item
 
     @DatabaseManager.in_session
-    async def _select(self, stmt: Select, session: AsyncSession) -> (Any | None):
+    async def _insert_many(self, stmt: Insert, session: AsyncSession, token: str | None) -> List[Base]:
+        """INSERT many objects into the DB database, check token write permission before commit."""
+        items = (await session.scalars(stmt)).all()
+        if not await self._check_insert_permissions(items, session, token):
+            raise UnauthorizedError("No Write access.")
+        return items
+
+    @DatabaseManager.in_session
+    async def _select(self, stmt: Select, session: AsyncSession) -> Base:
         """SELECT one from database."""
         row = await session.scalar(stmt)
         if row:
@@ -58,26 +139,9 @@ class DatabaseService(ApiService):
         raise FailedRead("Select returned no result.")
 
     @DatabaseManager.in_session
-    async def _select_many(self, stmt: Select, session: AsyncSession) -> List[Any]:
+    async def _select_many(self, stmt: Select, session: AsyncSession) -> List[Base]:
         """SELECT many from database."""
         return ((await session.execute(stmt)).scalars().unique()).all()
-
-    @DatabaseManager.in_session
-    async def _update(self, stmt: Update, session: AsyncSession):
-        """UPDATE database entry."""
-        result = await session.scalar(stmt)
-        # result = (await session.execute(stmt)).scalar()
-        if result:
-            return result
-        raise FailedUpdate("Query updated no result.")
-
-    @DatabaseManager.in_session
-    async def _merge(self, item: Base, session: AsyncSession) -> Base:
-        """Use session.merge feature: sync local object with one from db."""
-        item = await session.merge(item)
-        if item:
-            return item
-        raise FailedUpdate("Query updated no result.")
 
     @DatabaseManager.in_session
     async def _delete(self, stmt: Delete, session: AsyncSession) -> None:
@@ -106,45 +170,16 @@ class UnaryEntityService(DatabaseService):
         """"""
         return f"{self.__class__.__name__}({self.table.__name__})"
 
-    @DatabaseManager.in_session
-    async def check_permission(
+    async def create(
         self,
-        verb: str,
-        groups: List[str],
-        permission: Permission,
-        session: AsyncSession
-    ) -> bool:
-        """Check permission entry for a given verb.
+        data: Dict[str, Any] | List[Dict[str, Any]],
+        stmt_only: bool = False,
+        **kwargs
+    ) -> Base | List[Base] | str:
+        """CREATE one or many rows. data: schema validation result.
 
-        :param verb: entry verb.
-        :type verb: str
-        :param groups: Token bearer groups
-        :type groups: List[str]
-        :param permission: Permission entry
-        :type permission: Permission
-        :param session: SQLA Session
-        :type session: AsyncSession
-        :return: Check passed or failed
-        :rtype: bool
+        Does UPSERTS behind the hood, hence this method is also called on UPDATE.
         """
-        stmt = (
-            select(ListGroup)
-            .join(
-                permission['table'],
-                onclause=permission['table'].__table__.c[f'id_{verb}'] == ListGroup.id)
-        )
-        for jtable in permission['from']:
-            stmt = stmt.join(jtable)
-        stmt = stmt.options(joinedload(ListGroup.groups))
-
-        allowed = await session.scalar(stmt)
-        return bool(set(groups) & set(g.name for g in allowed.groups))
-
-    @overload
-    async def create(self, data, stmt_only: True, **kwargs) -> Insert: ...
-
-    async def create(self, data, stmt_only: bool = False, **kwargs) -> Base | List[Base]:
-        """CREATE one or many rows. data: schema validation result."""
         stmt = self._backend_specific_insert(self.table)
 
         if isinstance(data, list):
@@ -223,7 +258,7 @@ class UnaryEntityService(DatabaseService):
         self,
         stmt: Select,
         fields: List[str],
-        serializer: Callable = None
+        serializer: Callable
     ) -> Select:
         """set load_only options of a select(table) statement given a list of fields,
         and restrict serializer fields so that it doesn't trigger any lazy loading.
@@ -232,11 +267,9 @@ class UnaryEntityService(DatabaseService):
         :type stmt: Select
         :param fields: attribute fields
         :type fields: List[str]
-        :param nested: _description_
-        :type nested: List[str]
-        :param serializer: _description_, defaults to None
+        :param serializer: Serializer, defaults to None
         :type serializer: Callable, optional
-        :return: _description_
+        :return: statement restricted on field list
         :rtype: Select
         """
         nested, fields = partition(fields or [], lambda x: x in self.table.relationships())
@@ -257,7 +290,40 @@ class UnaryEntityService(DatabaseService):
         ) if nested or fields else stmt
         return stmt, serializer
 
-    async def filter(self, params: dict, serializer: Callable = None, **kwargs) -> List[Base]:
+    # async def _apply_read_permissions(self, stmt):
+    #     perms = self._get_permissions("read")
+    #     if perms:
+    #         stmt = 
+
+    async def read(
+        self,
+        pk_val: List[Any],
+        fields: List[str] = None,
+        serializer: Callable = None,
+        **kwargs
+    ) -> str:
+        """READ: fetch one ORM mapped object from value(s) of its primary key.
+
+        :param pk_val: entity primary key values in order
+        :type pk_val: List[Any]
+        :param fields: fields to restrict the query on, defaults to None
+        :type fields: List[str], optional
+        :param Serializer: Serializing function
+        :type fields: Callable
+        :return: Serialized SQLAlchemy result.
+        :rtype: str
+        """
+        stmt = select(self.table)
+        stmt, serializer = self._restrict_select_on_fields(stmt, fields or [], serializer)
+        stmt = stmt.where(self.gen_cond(pk_val))
+        return await self._select(stmt, serializer=serializer, **kwargs)
+
+    async def filter(
+        self,
+        params: Dict[str, str],
+        serializer: Callable,
+        **kwargs
+    ) -> str:
         """READ rows filted on query parameters."""
         # Get special parameters
         fields = params.pop('fields', None)
@@ -322,31 +388,10 @@ class UnaryEntityService(DatabaseService):
         stmt = stmt.offset(offset).limit(limit)
         return await self._select_many(stmt, serializer=serializer, **kwargs)
 
-    async def read(
-        self,
-        pk_val: List[Any],
-        fields: List[str] = None,
-        serializer: Callable = None,
-        **kwargs
-    ) -> Base:
-        """READ one item from values of its primary key.
-
-        :param pk_val: entity primary key values in order
-        :type pk_val: List[Any]
-        :param fields: fields to restrict the query on, defaults to None
-        :type fields: List[str], optional
-        :return: SQLAlchemy result item.
-        :rtype: Base
-        """
-        stmt = select(self.table)
-        stmt, serializer = self._restrict_select_on_fields(stmt, fields, serializer)
-        stmt = stmt.where(self.gen_cond(pk_val))
-        return await self._select(stmt, serializer=serializer, **kwargs)
-
-    async def delete(self, pk_val, **kwargs) -> Any:
+    async def delete(self, pk_val, **kwargs) -> None:
         """DELETE."""
         stmt = delete(self.table).where(self.gen_cond(pk_val))
-        return await self._delete(stmt, **kwargs)
+        await self._delete(stmt, **kwargs)
 
 
 class CompositeEntityService(UnaryEntityService):
@@ -378,7 +423,8 @@ class CompositeEntityService(UnaryEntityService):
     async def _insert_composite(
         self,
         composite: CompositeInsert,
-        session: AsyncSession
+        session: AsyncSession,
+        **kwargs
     ) -> Base:
         """Insert a composite entity into the db, accounting for nested entities,
         populating ids, and inserting in order according to cardinality.
@@ -391,14 +437,21 @@ class CompositeEntityService(UnaryEntityService):
         :rtype: Base
         """
         rels = self.table.relationships()
+        # Pack in session in kwargs for lower level calls.
+        kwargs.update({'session': session})
 
         # Insert all nested objects.
         for key, sub in composite.nested.items():
-            composite.nested[key] = await rels[key].target.decl_class.svc._insert(sub, session)
+            composite.nested[key] = await (
+                rels[key]
+                .target
+                .decl_class
+                .svc
+            )._insert(sub, **kwargs)
             await session.commit()
 
         # Insert main object.
-        item = await self._insert(composite.item, session)
+        item = await self._insert(composite.item, **kwargs)
 
         # Populate nested objects into main object.
         for key, sub in composite.nested.items():
@@ -435,7 +488,7 @@ class CompositeEntityService(UnaryEntityService):
             match delay:
                 case list() | Insert():
                     # Insert
-                    delay = await target_svc._insert_many(delay, session)
+                    delay = await target_svc._insert_many(delay, **kwargs)
                     await session.commit()
 
                     # Put in attribute the objects that are not already present.
@@ -450,34 +503,39 @@ class CompositeEntityService(UnaryEntityService):
                     else:
                         getattr(item, key).update(delay)
                 case self.CompositeInsert():
-                    sub = await target_svc._insert_composite(delay, session)
+                    sub = await target_svc._insert_composite(delay, **kwargs)
                     setattr(item, key, sub)
 
             await session.commit()
         return item
 
-    async def _insert(self, stmt: Insert | CompositeInsert, session: AsyncSession) -> Base:
+    async def _insert(
+        self,
+        stmt: Insert | CompositeInsert,
+        **kwargs
+    ) -> Base:
         """Redirect in case of composite insert."""
-        if isinstance(stmt, self.CompositeInsert):
-            return await self._insert_composite(stmt, session)
-        return await super()._insert(stmt, session)
+        if isinstance(stmt, Insert):
+            return await super()._insert(stmt, **kwargs)
+        return await self._insert_composite(stmt, **kwargs)
 
     async def _insert_many(
         self,
         stmt: Insert | List[CompositeInsert],
-        session: AsyncSession
+        **kwargs
     ) -> List[Base]:
-        """Redirect in case of composite insert. Mid-level: No need for in_session decorator."""
+        """Redirect in case of composite insert."""
         if isinstance(stmt, Insert):
-            return await super()._insert_many(stmt, session)
-        return await asyncio.gather(*[
-                self._insert_composite(composite, session)
-                for composite in stmt
-            ]
-        )
-
-    @overload
-    async def _create_one(self, data, stmt_only: True, **kwargs) -> CompositeInsert: ...
+            return await super()._insert_many(stmt, **kwargs)
+        return [
+            await self._insert_composite(composite, **kwargs)
+            for composite in stmt
+        ]
+        # return await asyncio.gather(*[
+        #         self._insert_composite(composite, **kwargs)
+        #         for composite in stmt
+        #     ], return_exceptions=True
+        # )
 
     @overload
     async def _create_one(self, data, stmt_only: True, **kwargs) -> CompositeInsert: ...
@@ -528,41 +586,32 @@ class CompositeEntityService(UnaryEntityService):
         composite = self.CompositeInsert(item=stmt, nested=nested, delayed=delayed)
         return composite if stmt_only else await self._insert_composite(composite, **kwargs)
 
-    @overload
-    async def _create_many(
-        self, data, stmt_only: True, session, **kwargs
-    ) -> List[CompositeInsert]: ...
-
     @DatabaseManager.in_session
     async def _create_many(
         self,
-        data: List[dict],
-        stmt_only: bool = False,
-        session: AsyncSession = None,
+        data: List[Dict[str, Any]],
         **kwargs,
-    ) -> List[Base]:
-        """Share session & top level stmt_only=True for list creation.
-           Issues a session.commit() after each insertion.
-        """
-        composites = []
-        for one in data:
-            composites.append(
-                await self._create_one(
-                    one, stmt_only=stmt_only, session=session, **kwargs
-                )
-            )
-            if not stmt_only:
-                await session.commit()
-        return composites
+    ) -> List[Base] | List[CompositeInsert]:
+        """Unpack and share kwargs for list creation."""
+        # asyncio.gather + sqlalchemy interesting issue:
+        # https://github.com/sqlalchemy/sqlalchemy/discussions/9312
+        # TODO: use TaskGroup ?
 
-    @overload
-    async def create(
-        self, data, stmt_only: True, **kwargs
-    ) -> CompositeInsert | List[CompositeInsert]: ...
+        # return await asyncio.gather(*[
+        #         self._create_one(one, **kwargs)
+        #         for one in data
+        #     ], return_exceptions=True
+        # )
+        return [
+            await self._create_one(one, **kwargs)
+            for one in data
+        ]
 
     async def create(
-        self, data: List[dict] | dict, stmt_only: bool = False, **kwargs
-    ) -> Base | List[Base]:
+        self,
+        data: List[Dict[str, Any]] | Dict[str, Any],
+        **kwargs
+    ) -> Base | List[Base] | CompositeInsert | List[CompositeInsert]:
         """CREATE, Handle list and single case."""
         f = self._create_many if isinstance(data, list) else self._create_one
-        return await f(data, stmt_only, **kwargs)
+        return await f(data, **kwargs)

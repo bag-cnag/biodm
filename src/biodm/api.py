@@ -39,34 +39,34 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
             return HTMLResponse("Request reached timeout.", status_code=504)
 
 
-class HistoryMiddleware(BaseHTTPMiddleware):
-    """Logins in authenticated user requests in History."""
-    def __init__(self, app: ASGIApp, server_host: str) -> None:
-        self.server_host = server_host
-        super().__init__(app, self.dispatch)
+# class HistoryMiddleware(BaseHTTPMiddleware):
+#     """Logins in authenticated user requests in History."""
+#     def __init__(self, app: ASGIApp, server_host: str) -> None:
+#         self.server_host = server_host
+#         super().__init__(app, self.dispatch)
 
-    async def dispatch(self, request, call_next):
-        response = await call_next(request)
-        if auth_header(request):
-            app = History.svc.app
-            try:
-                username, _, _ = await extract_and_decode_token(app.kc, request)
-            except Exception as _:
-                #  Token decoding failed: the request will fail later.
-                # return await call_next(request)
-                # return await (call_next(request))
-                return response
+#     async def dispatch(self, request, call_next):
+#         response = await call_next(request)
+#         if auth_header(request):
+#             app = History.svc.app
+#             try:
+#                 username, _, _ = await extract_and_decode_token(app.kc, request)
+#             except Exception as _:
+#                 #  Token decoding failed: the request will fail later.
+#                 # return await call_next(request)
+#                 # return await (call_next(request))
+#                 return response
 
-            body = await request.body()
-            entry = {
-                'username_user': username,
-                'endpoint': str(request.url).rsplit(self.server_host, maxsplit=1)[-1],
-                'method': request.method,
-                'content': str(body) if body else ""
-            }
-            await History.svc.create(entry, stmt_only=False)
-        return response
-        # return (await call_next)(request)
+#             body = await request.body()
+#             entry = {
+#                 'username_user': username,
+#                 'endpoint': str(request.url).rsplit(self.server_host, maxsplit=1)[-1],
+#                 'method': request.method,
+#                 'content': str(body) if body else ""
+#             }
+#             await History.svc.create(entry, stmt_only=False)
+#         return response
+#         # return (await call_next)(request)
 
 
 class Api(Starlette):
@@ -152,7 +152,7 @@ class Api(Starlette):
         super().__init__(routes=routes, debug=Scope.DEBUG in self.scope, *args, **kwargs)
 
         ## Middlewares
-        self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
+        # self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
             allow_origins=(
