@@ -4,6 +4,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
 from ossaudiodev import SNDCTL_TMR_CONTINUE
+from shlex import join
 from typing import List, Any, Tuple, Dict, Callable, TypeVar, overload
 
 from sqlalchemy import insert, select, delete
@@ -12,15 +13,16 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects import sqlite
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import load_only, joinedload
-from sqlalchemy.sql import Insert, Update, Delete, Select
+from sqlalchemy.orm import load_only, joinedload, with_parent
+from sqlalchemy.sql import Insert, Delete, Select
+from sqlalchemy import event
 
 from biodm.component import ApiService
 from biodm.components import Base, Permission
-from biodm.exceptions import FailedRead, FailedDelete, FailedUpdate, UnauthorizedError
+from biodm.exceptions import FailedRead, FailedDelete, UnauthorizedError
 from biodm.managers import DatabaseManager
 from biodm.scope import Scope
-from biodm.tables import ListGroup
+from biodm.tables import ListGroup, Group
 from biodm.utils.security import decode_token
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
@@ -53,86 +55,49 @@ class DatabaseService(ApiService):
             ]
         return None
 
-    async def _check_insert_permissions(
-        self,
-        pending: Base | List[Base],
-        session: AsyncSession,
-        token: str | None
-    ) -> bool:
-        verb = "write"
-        perms = self._get_permissions(verb)
-        if not perms:
-            return True
+    # async def _apply_read_permissions(self, stmt: Select, token: str | None):
+    #     verb = "read"
+    #     perms = self._get_permissions(verb)
 
-        for permission in perms:
-            for one in to_it(pending):
-                stmt = (
-                    select(ListGroup)
-                    .join(
-                        permission['table'],
-                        onclause=permission['table'].__table__.c[f'id_{verb}'] == ListGroup.id)
-                )
+    #     if token:
+    #         _, groups, _ = await decode_token(self.app.kc, token)
 
-                # Join last table of the chain with currently inserted object.
-                join_chain = deepcopy(permission['from'])
-                jtable = join_chain.pop(-1)
-                stmt = stmt.join(
-                    jtable,
-                    onclause=unevalled_all([
-                        getattr(jtable, pk) == getattr(
-                            one,
-                            # Quite ugly, TODO: find a cleaner way if it exists.
-                            next(
-                                iter(
-                                    [
-                                        fk
-                                        for fk in self.table.__table__.foreign_keys
-                                        if (
-                                            fk.target_fullname
-                                            ==
-                                            f"{jtable.__tablename__}.{getattr(jtable, pk).name}"
-                                        )
-                                    ]
-                                )
-                            ).parent.name
-                        )
-                        for pk in jtable.pk()
-                    ])
-                )
-                # Join the rest of the chain.
-                for jtable in join_chain:
-                    stmt = stmt.join(jtable)
-
-                stmt = stmt.options(joinedload(ListGroup.groups))
-                allowed = await session.scalar(stmt)
-
-                if allowed.groups and not token:
-                    return False
-
-                _, groups, _ = await decode_token(self.app.kc, token)
-                if not set(groups) & set(g.name for g in allowed.groups):
-                    return False
-        return True
+    #     for permission in perms:
+    #         stmt = (
+    #             stmt
+    #             .join(ListGroup)
+    #             .join(
+    #                 permission['table'],
+    #                 onclause=getattr(permission['table', f"id_{verb}"]) == ListGroup.id)
+    #             .join(
+    #                 Group,
+    #                 onclause=Group.name.in_(groups or [])
+    #             )
+    #         )
+    #         for jtable in permission['join']:
+    #             stmt = stmt.join(jtable)
+    #     return stmt
 
     @DatabaseManager.in_session
-    async def _insert(self, stmt: Insert, session: AsyncSession, token: str | None) -> Base:
+    async def _insert(self, stmt: Insert, session: AsyncSession) -> Base:
         """INSERT one object into the DB, check token write permissions before commit."""
         item = await session.scalar(stmt)
-        if not await self._check_insert_permissions(item, session, token):
-            raise UnauthorizedError("No Write access.")
+        # if not await self._check_insert_permissions(item, session, token):
+        #     raise UnauthorizedError("No Write access.")
         return item
 
     @DatabaseManager.in_session
-    async def _insert_many(self, stmt: Insert, session: AsyncSession, token: str | None) -> List[Base]:
+    async def _insert_many(self, stmt: Insert, session: AsyncSession) -> List[Base]:
         """INSERT many objects into the DB database, check token write permission before commit."""
         items = (await session.scalars(stmt)).all()
-        if not await self._check_insert_permissions(items, session, token):
-            raise UnauthorizedError("No Write access.")
+        # if not await self._check_insert_permissions(items, session, token):
+        #     raise UnauthorizedError("No Write access.")
         return items
 
     @DatabaseManager.in_session
     async def _select(self, stmt: Select, session: AsyncSession) -> Base:
         """SELECT one from database."""
+        # stmt = self._apply_read_permissions(stmt, token)
         row = await session.scalar(stmt)
         if row:
             return row
@@ -141,7 +106,13 @@ class DatabaseService(ApiService):
     @DatabaseManager.in_session
     async def _select_many(self, stmt: Select, session: AsyncSession) -> List[Base]:
         """SELECT many from database."""
-        return ((await session.execute(stmt)).scalars().unique()).all()
+        # stmt = self._apply_read_permissions(stmt, token)
+        items = (
+            (await session.execute(stmt))
+            .scalars()
+            .unique()
+        ).all()
+        return items
 
     @DatabaseManager.in_session
     async def _delete(self, stmt: Delete, session: AsyncSession) -> None:
@@ -170,16 +141,71 @@ class UnaryEntityService(DatabaseService):
         """"""
         return f"{self.__class__.__name__}({self.table.__name__})"
 
+    @DatabaseManager.in_session
+    async def _check_write_permissions(
+        self,
+        pending: Dict[str, Any] | List[Dict[str, Any]],
+        token: str | None,
+        session: AsyncSession,
+    ) -> None:
+        verb = "write"
+        perms = self._get_permissions(verb)
+
+        if not perms:
+            return True
+
+        if token:
+            _, groups, _ = await decode_token(self.app.kc, token)
+
+        for permission in perms:
+            for one in to_it(pending):
+                origin = permission['from'][0] 
+                entity = permission['table'].entity.prop
+
+                stmt = (
+                    select(ListGroup)
+                    .join(
+                        permission['table'],
+                        onclause=permission['table'].__table__.c[f'id_{verb}'] == ListGroup.id
+                    )
+                    .where(*[
+                        pair[0] == pair[1]
+                        for pair in entity.local_remote_pairs
+                    ])
+                    .join(
+                        origin,
+                        onclause=unevalled_all([
+                            one.get(fk.parent.name) == getattr(origin, fk.column.name)
+                            for fk in self.table.__table__.foreign_keys
+                            if fk.column.name in origin.__table__.columns
+                        ])
+                    )
+                )
+                for jtable in permission['from'][1:]:
+                    stmt = stmt.join(jtable)
+
+                stmt = stmt.options(joinedload(ListGroup.groups))
+                allowed = await session.scalar(stmt)
+
+                if not allowed.groups:
+                    continue
+
+                if token and not set(groups) & set(g.name for g in allowed.groups):
+                    raise UnauthorizedError("No Write access.")
+
     async def create(
         self,
         data: Dict[str, Any] | List[Dict[str, Any]],
         stmt_only: bool = False,
+        token: str | None = None,
         **kwargs
     ) -> Base | List[Base] | str:
         """CREATE one or many rows. data: schema validation result.
 
-        Does UPSERTS behind the hood, hence this method is also called on UPDATE.
+        - Does UPSERTS behind the hood, hence this method is also called on UPDATE
+        - Perform write permission check according to input data
         """
+        await self._check_write_permissions(data, token)
         stmt = self._backend_specific_insert(self.table)
 
         if isinstance(data, list):
@@ -290,11 +316,6 @@ class UnaryEntityService(DatabaseService):
         ) if nested or fields else stmt
         return stmt, serializer
 
-    # async def _apply_read_permissions(self, stmt):
-    #     perms = self._get_permissions("read")
-    #     if perms:
-    #         stmt = 
-
     async def read(
         self,
         pk_val: List[Any],
@@ -313,9 +334,8 @@ class UnaryEntityService(DatabaseService):
         :return: Serialized SQLAlchemy result.
         :rtype: str
         """
-        stmt = select(self.table)
+        stmt = select(self.table, self.gen_cond(pk_val))
         stmt, serializer = self._restrict_select_on_fields(stmt, fields or [], serializer)
-        stmt = stmt.where(self.gen_cond(pk_val))
         return await self._select(stmt, serializer=serializer, **kwargs)
 
     async def filter(
@@ -544,6 +564,7 @@ class CompositeEntityService(UnaryEntityService):
         self,
         data: dict,
         stmt_only: bool = False,
+        token: str | None = None,
         **kwargs,
     ) -> Base:
         """CREATE, accounting for nested entitites. Parses nested dictionaries in a
@@ -570,7 +591,7 @@ class CompositeEntityService(UnaryEntityService):
             rel, sub = self.relationships[key], data.pop(key)
 
             # Get statement(s) for nested entity:
-            nested_stmt = await rel.target.decl_class.svc.create(sub, stmt_only=True)
+            nested_stmt = await rel.target.decl_class.svc.create(sub, stmt_only=True, token=token)
 
             # Single nested entity.
             if isinstance(sub, dict):
@@ -580,7 +601,7 @@ class CompositeEntityService(UnaryEntityService):
                 delayed[key] = nested_stmt
 
         # Statement for original item.
-        stmt = await super().create(data, stmt_only=True)
+        stmt = await super().create(data, stmt_only=True, token=token)
 
         # Pack & return.
         composite = self.CompositeInsert(item=stmt, nested=nested, delayed=delayed)

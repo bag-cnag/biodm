@@ -18,7 +18,7 @@ def auth_header(request) -> str | None:
         return None
     return (header.split("Bearer")[-1] if "Bearer" in header else header).strip()
 
-@lru_cache(128)
+# @lru_cache(128)
 async def decode_token(
     kc: KeycloakManager,
     token: str

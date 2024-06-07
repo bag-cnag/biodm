@@ -24,7 +24,7 @@ if __name__ == "__main__":
     try:
         import uvloop as _
         loop="uvloop"
-    except:
+    except ImportError:
         loop="auto"
 
     uvicorn.run(
