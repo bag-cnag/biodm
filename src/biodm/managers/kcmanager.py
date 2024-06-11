@@ -32,6 +32,10 @@ class KeycloakManager(ApiComponent):
         jwt_options: dict
     ):
         super().__init__(app=app)
+        from biodm.utils.security import UserInfo
+        # Set for token decoding.
+        UserInfo.kc = self
+
         self.jwt_options = jwt_options
         self.public_key = public_key
         try:

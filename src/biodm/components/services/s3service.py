@@ -41,7 +41,7 @@ class S3Service(UnaryEntityService):
         file.ready = True
 
     async def download(self, pk_val):
-        file = await self.read(pk_val)
+        file = await self.read(pk_val, fields=['filename', 'extension'])
         return self.s3.create_presigned_download_url(f"{file.filename}.{file.extension}")
 
     async def download_success(self, pk_val):

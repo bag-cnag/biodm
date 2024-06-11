@@ -1,14 +1,34 @@
 """Security convenience functions."""
 from datetime import datetime
 from functools import wraps, lru_cache
-from typing import List, Tuple
+from typing import List, Tuple, TYPE_CHECKING
 from uu import decode
 
 from starlette.requests import Request
 
 from biodm.exceptions import UnauthorizedError
-from biodm.managers.kcmanager import KeycloakManager
 from biodm.tables import User
+from .utils import aobject
+if TYPE_CHECKING:
+    from biodm.managers.kcmanager import KeycloakManager
+
+
+class UserInfo(aobject):
+    """Hold user info for a given request."""
+    from biodm.managers.kcmanager import KeycloakManager
+    kc: KeycloakManager
+    _info: Tuple[str, List, List] = None
+
+    async def __init__(self, request: Request) -> None:
+        self.token = auth_header(request) 
+        if self.kc and self.token:
+            self._info = await decode_token(self.kc, self.token)
+
+    @property
+    def info(self) -> Tuple[str, List, List] | False:
+        if self._info:
+            return self._info
+        return False
 
 
 def auth_header(request) -> str | None:
@@ -20,7 +40,7 @@ def auth_header(request) -> str | None:
 
 # @lru_cache(128)
 async def decode_token(
-    kc: KeycloakManager,
+    kc,
     token: str
 ) -> Tuple[str, List, List]:
     """ Decode token.
@@ -34,7 +54,7 @@ async def decode_token(
 
     # Parse.
     userid = decoded.get("preferred_username")
-    keycloak_id = (await User.svc.read(pk_val=[userid])).id
+    keycloak_id = (await User.svc.read(pk_val=[userid], fields=['id'])).id
     groups = [
         group['name']
         for group in await kc.get_user_groups(keycloak_id)
@@ -44,7 +64,7 @@ async def decode_token(
 
 
 async def extract_and_decode_token(
-    kc: KeycloakManager,
+    kc,
     request: Request
 ) -> Tuple[str, List, List]:
     """ Extracts and decode token from a request.

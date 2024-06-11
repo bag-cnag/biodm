@@ -1,11 +1,12 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, TYPE_CHECKING, List, Dict, Callable
+from typing import Any, TYPE_CHECKING, List, Dict
 
 if TYPE_CHECKING:
     import logging
     from biodm.api import Api
     from biodm.components import Base
+    from biodm.utils import UserInfo
 
 
 class ApiComponent(ABC):
@@ -28,7 +29,8 @@ class ApiService(ApiComponent):
     async def create(
         self,
         data: Dict[str, Any] | List[Dict[str, Any]],
-        stmt_only: True,
+        stmt_only: bool,
+        user_info: UserInfo,
         **kwargs
     ) -> Base | List[Base] | str:
         raise NotImplementedError
@@ -37,8 +39,8 @@ class ApiService(ApiComponent):
     async def read(
         self,
         pk_val: List[Any],
-        fields: List[str] = None,
-        serializer: Callable = None,
+        fields: List[str],
+        user_info: UserInfo,
         **kwargs
     ) -> str:
         raise NotImplementedError
@@ -46,12 +48,18 @@ class ApiService(ApiComponent):
     @abstractmethod
     async def filter(
         self,
+        fields: List[str],
         params: Dict[str, str],
-        serializer: Callable,
+        user_info: UserInfo,
         **kwargs
     ) -> str:
         raise NotImplementedError
 
     @abstractmethod
-    async def delete(self, pk_val, **kwargs) -> None:
+    async def delete(
+        self,
+        pk_val: List[Any],
+        user_info: UserInfo,
+        **kwargs
+    ) -> None:
         raise NotImplementedError

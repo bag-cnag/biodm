@@ -24,6 +24,7 @@ from biodm.exceptions import (
     InvalidCollectionMethod, PayloadEmptyError, UnauthorizedError, PartialIndex
 )
 from biodm.utils.utils import json_response, to_it
+from biodm.utils.security import UserInfo
 from biodm.utils.security import admin_required, auth_header, extract_and_decode_token
 from biodm.components import Base
 from .controller import HttpMethod, EntityController
@@ -200,12 +201,24 @@ class ResourceController(EntityController):
         :raises PayloadEmptyError: in case payload is empty
         :return: request body
         :rtype: bytes
-        ---
         """
         body = await request.body()
         if body == b'{}':
             raise PayloadEmptyError
         return body
+
+    def _extract_fields(self, query_params: Dict[str, Any]) -> List[str]:
+        """Extracts fields from request query parameters.
+           Defaults to ``self.schema.dump_fields.keys()``.
+
+        :param request: incomming request
+        :type request: Request
+        :return: field list
+        :rtype: List[str]
+        """
+        fields = query_params.pop('fields', None)
+        fields = fields.split(',') if fields else None
+        return fields or self.schema.dump_fields.keys()
 
     async def create(self, request: Request) -> Response:
         """Creates associated entity.
@@ -231,14 +244,14 @@ class ResourceController(EntityController):
             data=await self.svc.create(
                 data=validated_data,
                 stmt_only=False,
-                token=auth_header(request),
+                user_info=await UserInfo(request),
                 serializer=partial(
                     self.serialize, **{"many": isinstance(validated_data, list)}
                 ),
             ),
             status_code=201,
         )
-
+ 
     async def read(self, request: Request) -> Response:
         """Fetch associated entity matching id in the path.
 
@@ -263,13 +276,13 @@ class ResourceController(EntityController):
           404:
               description: Not Found
         """
-        fields = request.query_params.get('fields')
+        fields = self._extract_fields(dict(request.query_params))
         return json_response(
             data=await self.svc.read(
                 pk_val=self._extract_pk_val(request),
-                fields=fields.split(',') if fields else None,
-                token=auth_header(request),
-                serializer=partial(self.serialize, **{"many": False}),
+                fields=fields,
+                user_info=await UserInfo(request),
+                serializer=partial(self.serialize, many=False, only=fields),
             ),
             status_code=200,
         )
@@ -296,10 +309,8 @@ class ResourceController(EntityController):
             data=await self.svc.create(
                 data=validated_data,
                 stmt_only=False,
-                token=auth_header(request),
-                serializer=partial(
-                    self.serialize, **{"many": isinstance(validated_data, list)}
-                ),
+                user_info=await UserInfo(request),
+                serializer=partial(self.serialize, many=isinstance(validated_data, list)),
             ),
             status_code=201,
         )
@@ -322,7 +333,10 @@ class ResourceController(EntityController):
                 description: Not Found
 
         """
-        await self.svc.delete(pk_val=self._extract_pk_val(request), token=auth_header(request))
+        await self.svc.delete(
+            pk_val=self._extract_pk_val(request),
+            user_info=await UserInfo(request),
+        )
         return json_response("Deleted.", status_code=200)
 
     async def filter(self, request: Request):
@@ -331,11 +345,14 @@ class ResourceController(EntityController):
         ---
         description: Parses a querystring on the route /ressources/search?{querystring}
         """
+        params = dict(request.query_params)
+        fields = self._extract_fields(params)
         return json_response(
             await self.svc.filter(
-                params=dict(request.query_params),
-                token=auth_header(request),
-                serializer=partial(self.serialize, many=True),
+                fields=fields,
+                params=params,
+                user_info=await UserInfo(request),
+                serializer=partial(self.serialize, many=True, only=fields),
             ),
             status_code=200,
         )
