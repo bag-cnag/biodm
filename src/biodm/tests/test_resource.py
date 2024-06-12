@@ -129,7 +129,7 @@ def test_filter_resource_op(client):
     item1 = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'},{'name': 'bap'},]}
     item2 = {'x': 3, 'y': 4, 'bs': [{'name': 'tit'},{'name': 'tat'},]}
 
-    _ = client.post('/as', content=json_bytes([item1, item2]))
+    res = client.post('/as', content=json_bytes([item1, item2]))
     response = client.get('/as?x.lt(2)')
     json_response = next(iter(json.loads(response.text)))
 
