@@ -69,7 +69,7 @@ class Dataset(Base):
 
     __permissions__ = (
         # Flag many-to-entity (composition pattern) with permissions. 
-        Permission(files), #, create=True, visualize=True
+        Permission(files, read=True, write=True),
     )
 
     __table_args__ = (

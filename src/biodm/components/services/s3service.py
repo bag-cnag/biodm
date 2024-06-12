@@ -4,9 +4,10 @@ from typing import List, Any, Tuple, Dict, Callable, TypeVar, overload
 
 from boto3 import client
 from botocore.exceptions import ClientError
-from h11 import Data
 from sqlalchemy import Insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from starlette.responses import RedirectResponse
 
 from biodm.managers import DatabaseManager
 from .dbservice import UnaryEntityService
@@ -24,7 +25,7 @@ class S3Service(UnaryEntityService):
         """INSERT special case for file: populate url after getting entity id."""
         item = await session.scalar(stmt)
 
-        item.url = str(self.s3.create_presigned_post(
+        item.upload_form = str(self.s3.create_presigned_post(
             object_name=f"{item.filename}.{item.extension}",
             callback=f"{self.app.server_endpoint}files/up_success/{item.id}"
         ))
@@ -42,7 +43,9 @@ class S3Service(UnaryEntityService):
 
     async def download(self, pk_val):
         file = await self.read(pk_val, fields=['filename', 'extension'])
-        return self.s3.create_presigned_download_url(f"{file.filename}.{file.extension}")
+        return RedirectResponse(
+            self.s3.create_presigned_download_url(f"{file.filename}.{file.extension}")
+        )
 
     async def download_success(self, pk_val):
         pass

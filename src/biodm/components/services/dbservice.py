@@ -2,15 +2,13 @@
 import asyncio
 from copy import deepcopy
 from dataclasses import dataclass
-from functools import partial
-from logging import info
 from operator import or_
 from typing import List, Any, Tuple, Dict, TypeVar, overload
 
 from sqlalchemy import insert, select, delete, or_
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import load_only, joinedload
+from sqlalchemy.orm import load_only, selectinload, ONETOMANY, MANYTOONE
 from sqlalchemy.sql import Insert, Delete, Select
 
 from biodm.component import ApiService
@@ -164,13 +162,13 @@ class UnaryEntityService(DatabaseService):
                 for jtable in permission['from'][:-1]:
                     stmt = stmt.join(jtable)
 
-                stmt = stmt.options(joinedload(ListGroup.groups))
+                stmt = stmt.options(selectinload(ListGroup.groups))
                 allowed = await session.scalar(stmt)
 
-                if not allowed.groups:
+                if allowed and not allowed.groups:
                     continue
 
-                if not set(groups) & set(g.name for g in allowed.groups):
+                if not allowed or not set(groups) & set(g.name for g in allowed.groups):
                     raise UnauthorizedError("No Write access.")
 
     async def create(
@@ -285,31 +283,36 @@ class UnaryEntityService(DatabaseService):
             return stmt
 
         if not user_info.info:
-            raise UnauthorizedError("No Read access.")
+            # Plug in dummy value in order to fail the condition in query.
+            # TODO: Document 'no_groups' as forbidden group name / make a condition.
+            groups = ['no_groups']
+        else:
+            _, groups, _ = user_info.info
 
-        _, groups, _ = user_info.info
+        # Build nested query to filter permitted results.
         for permission in perms:
+            link, chain = permission['from'][-1], permission['from'][:-1]
             entity = permission['table'].entity.prop
-            for jtable in reversed(permission['from']):
-                stmt = stmt.join(jtable, full=True)
 
-            stmt = (
-                stmt
+            inner = select(link)
+            for jtable in chain:
+                inner = inner.join(jtable)
+
+            inner = (
+                inner
                 .join(
                     permission['table'],
-                    *[
+                    onclause=unevalled_all([
                         pair[0] == pair[1]
                         for pair in entity.local_remote_pairs
-                    ],
-                    full=True
+                    ])
                 )
                 .join(
                     ListGroup,
                     onclause=permission['table'].__table__.c[f'id_{verb}'] == ListGroup.id,
-                    full=True
                 )
-                .join(asso_list_group, full=True)
-                .join(Group, full=True)
+                .join(asso_list_group)
+                .join(Group)
                 .where(
                     or_(
                         Group.name.in_(groups),
@@ -318,7 +321,9 @@ class UnaryEntityService(DatabaseService):
                         )
                     )
                 )
+                .subquery()
             )
+            stmt = stmt.join(inner)
         return stmt
 
     def _restrict_select_on_fields(
@@ -341,6 +346,8 @@ class UnaryEntityService(DatabaseService):
         """
         nested, fields = partition(fields, lambda x: x in self.relationships)
         stmt = self._apply_read_permissions(user_info, stmt)
+
+        # Fields
         stmt = stmt.options(
             load_only(
                 *[
@@ -348,14 +355,25 @@ class UnaryEntityService(DatabaseService):
                     for f in fields
                 ]
             ),
-            *[
-                joinedload(
-                    getattr(self.table, n)
-                )
-                for n in nested
-            ]
-        ) if nested or fields else stmt
+        ) if fields else stmt
 
+        for n in nested:
+            relationship, attr = self.relationships[n], getattr(self.table, n)
+            if relationship.direction in (MANYTOONE, ONETOMANY):
+                stmt = stmt.join(attr)
+                stmt = (
+                    relationship
+                    .target
+                    .decl_class
+                    .svc
+                    ._apply_read_permissions(user_info, stmt)
+                )
+            else:
+                stmt = stmt.options(
+                    selectinload(
+                        getattr(self.table, n)
+                    )
+                )
         return stmt
 
     async def read(

@@ -2,7 +2,6 @@
 from datetime import datetime
 from functools import wraps, lru_cache
 from typing import List, Tuple, TYPE_CHECKING
-from uu import decode
 
 from starlette.requests import Request
 
@@ -20,15 +19,42 @@ class UserInfo(aobject):
     _info: Tuple[str, List, List] = None
 
     async def __init__(self, request: Request) -> None:
-        self.token = auth_header(request) 
-        if self.kc and self.token:
-            self._info = await decode_token(self.kc, self.token)
+        self.token = self.auth_header(request)
+        if self.token:
+            self._info = await self.decode_token(self.token)
 
     @property
-    def info(self) -> Tuple[str, List, List] | False:
-        if self._info:
-            return self._info
-        return False
+    def info(self) -> Tuple[str, List, List] | None:
+        return self._info
+
+    @staticmethod
+    def auth_header(request) -> str | None:
+        """Check and return token from headers if present else returns None."""
+        header = request.headers.get("Authorization")
+        if not header:
+            return None
+        return (header.split("Bearer")[-1] if "Bearer" in header else header).strip()
+
+    async def decode_token(
+        self,
+        token: str
+    ) -> Tuple[str, List, List]:
+        """ Decode token."""
+        def parse_items(token, name, default=""):
+            n = token.get(name, [])
+            return [s.replace("/", "") for s in n] if n else [default]
+
+        decoded = await self.kc.decode_token(token)
+
+        # Parse.
+        userid = decoded.get("preferred_username")
+        keycloak_id = (await User.svc.read(pk_val=[userid], fields=['id'])).id
+        groups = [
+            group['name']
+            for group in await self.kc.get_user_groups(keycloak_id)
+        ] or ['no_groups']
+        projects = parse_items(decoded, "group_projects", "no_projects")
+        return userid, groups, projects
 
 
 def auth_header(request) -> str | None:
@@ -105,12 +131,13 @@ def login_required(f):
 
     @wraps(f)
     async def wrapper(controller, request, *args, **kwargs):
-        userid, groups, projects = await extract_and_decode_token(controller.app.kc, request)
+        userid, groups, projects = (await extract_and_decode_token(controller.app.kc, request))
         timestamp = datetime.now().strftime("%I:%M%p on %B %d, %Y")
         controller.app.logger.info(
             f'{timestamp}\t{userid}\t{",".join(groups)}\t'
             f"{str(request.url)}-{request.method}"
         )
+        # TODO: pass user_info ?
         return await f(
             controller,
             request,
