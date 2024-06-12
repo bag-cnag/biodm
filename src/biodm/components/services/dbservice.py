@@ -266,6 +266,9 @@ class UnaryEntityService(DatabaseService):
              - permission list is empty (public)
              - permission list contains one of the requesting user groups
 
+        DEV: possible improvement for this function:
+        - https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria
+
         :param user_info: User Info, if = None -> Internal request
         :type user_info: UserInfo
         :param stmt: Select statement in construction
