@@ -2,6 +2,7 @@
 import asyncio
 from copy import deepcopy
 from dataclasses import dataclass
+from multiprocessing import Value
 from operator import or_
 from typing import List, Any, Tuple, Dict, TypeVar, overload
 
@@ -13,7 +14,7 @@ from sqlalchemy.sql import Insert, Delete, Select
 
 from biodm.component import ApiService
 from biodm.components import Base, Permission
-from biodm.exceptions import FailedRead, FailedDelete, UnauthorizedError
+from biodm.exceptions import FailedRead, FailedDelete, ImplementionError, UnauthorizedError
 from biodm.managers import DatabaseManager
 from biodm.scope import Scope
 from biodm.tables import ListGroup, Group
@@ -236,16 +237,14 @@ class UnaryEntityService(DatabaseService):
                     f"Expecting either 'field=v1,v2' pairs or integrer"
                     f" operators 'field.op(v)' op in {SUPPORTED_INT_OPERATORS}")
 
-    def _filter_process_attr(self, stmt: Select, attr: List[str]):
-        """Iterates over attribute parts (e.g. table.attr.x.y.z) joining tables along the way.
+    def _filter_process_attr(self, attr: List[str]):
+        """Iterates over attribute parts to find the table that contains this attribute.
 
-        :param stmt: select statement under construction
-        :type stmt: Select
         :param attr: attribute name parts of the querystring
         :type attr: List[str]
-        :raises ValueError: When name is incorrect.
-        :return: Resulting statement and handles to column object and its type
-        :rtype: Tuple[Select, Tuple[Column, type]]
+        :raises ValueError: When name or part of it is incorrect.
+        :return: Pointers to column object and its python type
+        :rtype: Tuple[Column, type]
         """
         table = self.table
         for nested in attr[:-1]:
@@ -253,10 +252,9 @@ class UnaryEntityService(DatabaseService):
             if jtn is None:
                 raise ValueError(f"Invalid nested entity name {nested}.")
             jtable = jtn.decl_class
-            stmt = stmt.join(jtable)
             table = jtable
 
-        return stmt, table.colinfo(attr[-1])
+        return table.colinfo(attr[-1])
 
     def _apply_read_permissions(
         self,
@@ -360,7 +358,7 @@ class UnaryEntityService(DatabaseService):
         for n in nested:
             relationship, attr = self.relationships[n], getattr(self.table, n)
             if relationship.direction in (MANYTOONE, ONETOMANY):
-                stmt = stmt.join(attr)
+                stmt = stmt.join(attr, full=True)
                 stmt = (
                     relationship
                     .target
@@ -411,13 +409,14 @@ class UnaryEntityService(DatabaseService):
         limit = params.pop('end', None)
         reverse = params.pop('reverse', None)
         # TODO: apply limit to nested lists as well.
-        # TODO: apply permissions.
 
         stmt = select(self.table)
         stmt = self._restrict_select_on_fields(stmt, fields, user_info)
 
         for dskey, csval in params.items():
             attr, values = dskey.split("."), csval.split(",")
+            if len(attr) > 2:
+                raise ValueError("Filtering not supported for depth > 1.")
             # exclude = False
             # if attr == 'exclude' and values == 'True':
             #     exclude = True
@@ -426,7 +425,7 @@ class UnaryEntityService(DatabaseService):
             operator = None if csval else self._parse_int_operators(attr)
             # elif any(op in dskey for op in SUPPORTED_INT_OPERATORS):
             #     raise ValueError("'field.op()=value' type of query is not yet supported.")
-            stmt, (col, ctype) = self._filter_process_attr(stmt, attr)
+            col, ctype = self._filter_process_attr(attr)
 
             # Numerical operators.
             if operator:
@@ -688,7 +687,6 @@ class CompositeEntityService(UnaryEntityService):
         # asyncio.gather + sqlalchemy interesting issue:
         # https://github.com/sqlalchemy/sqlalchemy/discussions/9312
         # TODO: use TaskGroup ?
-
         # return await asyncio.gather(*[
         #         self._create_one(one, **kwargs)
         #         for one in data

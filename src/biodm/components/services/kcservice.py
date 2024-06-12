@@ -23,9 +23,6 @@ class KCService(CompositeEntityService):
         raise NotImplementedError
 
 
-## TODO: check permissions before KC CRUD actions.
-
-
 class KCGroupService(KCService):
     async def read_or_create(self, data: Dict[str, Any], user_info: UserInfo = None) -> str:
         """READ entry from Database, CREATE it if not found.
