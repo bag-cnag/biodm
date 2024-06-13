@@ -201,15 +201,12 @@ hence a JSON representation of a dataset with its permissions looks like this:
             "username": "my_dataset_owner" 
         },
         "perm_files": {
-            "create": {
+            "write": {
                 "groups": [
                     {"name": "genomics_team"},
                     {"name": "IT_team"},
                     {"..."}
                 ]
-            },
-            "update": {
-                "groups": [{"..."}]
             },
             "download": {
                 "groups": [{"..."}]
