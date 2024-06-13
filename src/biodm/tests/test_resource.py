@@ -131,6 +131,10 @@ def test_filter_resource_op(client):
 
     res = client.post('/as', content=json_bytes([item1, item2]))
     response = client.get('/as?x.lt(2)')
+    json_response = json.loads(response.text)
+
+    assert json_response
+
     json_response = next(iter(json.loads(response.text)))
 
     assert response.status_code == 200

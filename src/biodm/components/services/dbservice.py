@@ -361,7 +361,11 @@ class UnaryEntityService(DatabaseService):
         for n in nested:
             relationship, attr = self.relationships[n], getattr(self.table, n)
             if relationship.direction in (MANYTOONE, ONETOMANY):
-                stmt = stmt.join(attr, full=True)
+                stmt = stmt.join_from(
+                    self.table,
+                    attr,
+                    isouter=True
+                )
                 stmt = (
                     relationship
                     .target
