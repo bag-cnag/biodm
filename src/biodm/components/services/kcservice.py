@@ -2,8 +2,7 @@ from abc import abstractmethod
 from typing import Any, Dict, List
 
 from biodm.components import Base
-from biodm.exceptions import FailedRead
-from biodm.tables import Group, User, user
+from biodm.tables import Group, User
 from biodm.utils.security import UserInfo
 from biodm.utils.utils import to_it
 from .dbservice import CompositeEntityService
@@ -92,6 +91,7 @@ class KCUserService(KCService):
                 await self.kc.group_user_add(user['id'], gid)
             return user['id']
         else:
+            # Important to remove password as it is not stored locally.
             id = await self.kc.create_user(data, groups)
             data.pop('password')
             return id

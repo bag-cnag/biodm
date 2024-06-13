@@ -243,6 +243,10 @@ combination with ``@overload_docstrings``, made to overload docstrings of contro
 
         ...
 
+.. note::
+
+    ``@overload_docstrings`` returns the parent class method, hence if you use the latter variant,
+    be sure to use it first even if you do not wish to document that endpoint.
 
 .. _dev-user-permissions:
 
@@ -253,7 +257,12 @@ If your data management platform is intended to receive data from users external
 organisation, ``BioDM`` provide tools to let them in control of permissions.
 
 ``biodm.components.Permission`` class is designed as an extra SQLAlchemy table argument that let
-you flag composition pattern (i.e. One-to-Many relationships) with permissions.
+you flag composition pattern (i.e. One-to-Many relationships) with the following permissions that
+will be applied recursively for all children of that particular entity:
+
+- ``Read``
+- ``Write``
+- ``Download``
 
 In our example:
 
@@ -269,7 +278,7 @@ In our example:
         files         : sao.Mapped[List["File"]] = sao.relationship(back_populates="dataset")
 
         __permissions__ = (
-            Permission(files, create=True, read=False, update=True, download=True),
+            Permission(files, write=True, read=False, download=True),
         )
 
 The latter enables ``File`` permissions at the ``Dataset`` level.
