@@ -21,7 +21,7 @@ class Dataset(Base):
     # # TODO: test, document that composite pk are not well supported for sqlite.
     # id = Column(Integer, server_default='1')
     # version:     Mapped[int] = Column(SmallInteger, server_default='1')
-
+    # # TODO: check sqlalchemy versionned entity flag.
     # data fields
     name:        Mapped[str] = Column(String(50), nullable=False)
     # # description: Mapped[str] = Column(TEXT,       nullable=True)

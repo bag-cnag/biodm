@@ -243,7 +243,7 @@ combination with ``@overload_docstrings``, made to overload docstrings of contro
 
         ...
 
-.. note::
+.. warning::
 
     ``@overload_docstrings`` returns the parent class method, hence if you use the latter variant,
     be sure to use it first even if you do not wish to document that endpoint.

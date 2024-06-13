@@ -17,7 +17,6 @@ class S3Controller(ResourceController):
 
     def routes(self, child_routes=[], **_) -> List[Mount | Route]:
         """Add an endpoint for successful file uploads and direct download."""
-        # TODO: check if AWS calls back with POST or PUT
         file_routes = [
             Route(f'/download/{self.qp_id}',    self.download,              methods=[HttpMethod.GET.value]),
             # Route(f'/up_success/{self.qp_id}',  self.file_upload_success,   methods=[HttpMethod.POST.value]),

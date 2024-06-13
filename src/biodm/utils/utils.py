@@ -1,11 +1,9 @@
 """Utils."""
-from collections.abc import MutableMapping
-from contextlib import suppress
 import datetime as dt
 from functools import reduce
 import operator
 from os import path, utime
-from typing import Any, Iterable, List, Callable, MutableSequence, Set, Tuple, TypeVar, Dict
+from typing import Any, List, Callable, Tuple, TypeVar, Dict
 
 from starlette.responses import Response
 
