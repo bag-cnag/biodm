@@ -1,17 +1,15 @@
 from __future__ import annotations
 from contextlib import asynccontextmanager, AsyncExitStack
 from inspect import signature
-from typing import AsyncGenerator, TYPE_CHECKING, Callable, List, Any
+from typing import AsyncGenerator, TYPE_CHECKING, Callable
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.sql import Insert, Update, Delete, Select
 
 from biodm import Scope, config
 from biodm.component import ApiComponent
 from biodm.components import Base
 from biodm.exceptions import PostgresUnavailableError, DBError
-from biodm.exceptions import FailedRead, FailedDelete, FailedUpdate
 
 if TYPE_CHECKING:
     from biodm.api import Api
@@ -81,39 +79,24 @@ class DatabaseManager(ApiComponent):
         - All functions applying this decorator should pass down some `**kwargs`
 
         """
-        # Callable.
         async def wrapper(*args, **kwargs):
-            """ Applies a bit of arguments manipulation whose goal is to maximize
-                convenience of use of the decorator by allowing explicing or implicit
-                argument calling.
-                Then produces and passes down a session if needed.
+            """ Produce and passes down a session if needed.
                 Finally after the function returns, serialization is applied if needed.
-
-                Doc:
-                - https://docs.python.org/3/library/inspect.html#inspect.Signature.bind
             """
             serializer = kwargs.pop('serializer', None)
 
-            bound_args = signature(db_exec).bind_partial(*args, **kwargs)
-            bound_args.apply_defaults()
-            bound_args = bound_args.arguments
-            if bound_args.get('kwargs') == {}:
-                # Else it will get passed around.
-                bound_args.pop('kwargs')
-
-            self: DatabaseService = bound_args['self']
-            session = bound_args.get('session', None)
-
             # conditional context management.
             async with AsyncExitStack() as stack:
+                self: DatabaseService = args[0]
+                session = kwargs.pop('session', None)
                 # Ensure session.
-                bound_args['session'] = (
+                session = (
                     session if session
                     else await stack.enter_async_context(self.app.db.session())
                 )
                 # Call and serialize result if requested.
-                db_res = await db_exec(**bound_args)
-                return await bound_args['session'].run_sync(
+                db_res = await db_exec(*args, session=session, **kwargs)
+                return await session.run_sync(
                     lambda _, data: serializer(data), db_res
                 ) if serializer else db_res
 

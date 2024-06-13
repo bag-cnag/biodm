@@ -1,15 +1,29 @@
 """Utils."""
+from collections.abc import MutableMapping
+from contextlib import suppress
 import datetime as dt
 from functools import reduce
 import operator
 from os import path, utime
-from typing import Any, List, Callable, Tuple, TypeVar, Dict
+from typing import Any, Iterable, List, Callable, MutableSequence, Set, Tuple, TypeVar, Dict
 
 from starlette.responses import Response
 
 
 _T = TypeVar("_T")
 _U = TypeVar("_U")
+
+
+class aobject(object):
+    """Inheriting this class allows you to define an async __init__.
+    So you can create objects by doing something like `await MyClass(params)`.
+
+    Courtesy of: https://stackoverflow.com/a/45364670/6847689
+    """
+    async def __new__(cls, *args, **kwargs):
+        instance = super().__new__(cls)
+        await instance.__init__(*args, **kwargs)
+        return instance
 
 
 def utcnow() -> dt.datetime:

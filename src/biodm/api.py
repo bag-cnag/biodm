@@ -20,8 +20,8 @@ from biodm.components.controllers import Controller
 from biodm.components.services import UnaryEntityService, CompositeEntityService
 from biodm.error import onerror
 from biodm.exceptions import RequestError
+from biodm.utils.security import UserInfo
 from biodm.utils.utils import to_it
-from biodm.utils.security import extract_and_decode_token, auth_header
 from biodm.tables import History, ListGroup
 from biodm import __version__ as CORE_VERSION
 
@@ -46,18 +46,10 @@ class HistoryMiddleware(BaseHTTPMiddleware):
         super().__init__(app, self.dispatch)
 
     async def dispatch(self, request, call_next):
-        response = await call_next(request)
-        if auth_header(request):
-            app = History.svc.app
-            try:
-                username, _, _ = await extract_and_decode_token(app.kc, request)
-            except Exception as _:
-                #  Token decoding failed: the request will fail later.
-                # return await call_next(request)
-                # return await (call_next(request))
-                return response
-
+        user_info = UserInfo(request)
+        if user_info.info:
             body = await request.body()
+            username, _, _ = user_info.info
             entry = {
                 'username_user': username,
                 'endpoint': str(request.url).rsplit(self.server_host, maxsplit=1)[-1],
@@ -65,8 +57,8 @@ class HistoryMiddleware(BaseHTTPMiddleware):
                 'content': str(body) if body else ""
             }
             await History.svc.create(entry, stmt_only=False)
-        return response
         # return (await call_next)(request)
+        return await call_next(request)
 
 
 class Api(Starlette):
@@ -102,8 +94,6 @@ class Api(Starlette):
 
         ## Instance Info.
         instance = instance or {}
-        self.tables: ModuleType = instance.get('tables')
-        self.schemas: ModuleType = instance.get('schemas')
 
         m = instance.get('manifests')
         if m:
@@ -154,7 +144,7 @@ class Api(Starlette):
         super().__init__(routes=routes, debug=Scope.DEBUG in self.scope, *args, **kwargs)
 
         ## Middlewares
-        self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
+        # self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
             allow_origins=(

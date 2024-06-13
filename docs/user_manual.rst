@@ -209,12 +209,10 @@ hence a JSON representation of a dataset with its permissions looks like this:
                 ]
             },
             "update": {
-                "groups": {"..."}
+                "groups": [{"..."}]
             },
             "download": {
-                "groups": {"..."}
+                "groups": [{"..."}]
             }
         }
     }
-
-

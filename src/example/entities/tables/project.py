@@ -29,6 +29,6 @@ class Project(Base):
     # id_user_responsible = Column(Integer, nullable=False)
 
     __permissions__ = (
-        Permission(datasets, create=True, read=True, update=True),
-        Permission(visualizations, create=True)
+        Permission(datasets, read=True, write=True),
+        Permission(visualizations, write=True)
     )

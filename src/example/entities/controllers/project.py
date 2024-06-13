@@ -3,7 +3,7 @@ from biodm.utils.security import admin_required
 
 
 class ProjectController(ResourceController):
-    @admin_required
+    # @admin_required
     @overload_docstring
     async def create(**kwargs):
         """
@@ -16,12 +16,12 @@ class ProjectController(ResourceController):
               description: Empty Payload.
         """
 
-    @admin_required
+    # @admin_required
     @overload_docstring
     async def update(**kwargs):
         """abc"""
 
-    @admin_required
+    # @admin_required
     @overload_docstring
     async def delete(**kwargs):
         """abc"""

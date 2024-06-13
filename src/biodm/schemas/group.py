@@ -17,5 +17,5 @@ class GroupSchema(Schema):
         # )
     )
 
-    parent = Nested('GroupSchema', exclude=['parent', 'users']) #lambda: UserSchema()
+    parent = Nested('GroupSchema', exclude=['parent', 'users'])
     users = List(Nested('UserSchema', exclude=['groups']))

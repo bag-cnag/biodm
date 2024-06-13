@@ -5,6 +5,8 @@ import asyncio
 from typing import TYPE_CHECKING, List, Any, Dict
 
 from marshmallow.schema import RAISE
+from marshmallow.class_registry import get_class
+from marshmallow.exceptions import RegistryError
 from starlette.routing import Mount, Route
 from starlette.requests import Request
 from starlette.responses import Response
@@ -17,11 +19,12 @@ from biodm.components.services import (
     KCGroupService,
     KCUserService
 )
+from biodm.components.table import Permission
 from biodm.exceptions import (
     InvalidCollectionMethod, PayloadEmptyError, UnauthorizedError, PartialIndex
 )
 from biodm.utils.utils import json_response, to_it
-from biodm.utils.security import admin_required, extract_and_decode_token
+from biodm.utils.security import UserInfo
 from biodm.components import Base
 from .controller import HttpMethod, EntityController
 
@@ -67,6 +70,7 @@ class ResourceController(EntityController):
 
     Implements and exposes routes under a prefix named as the resource pluralized
     that act as a standard REST-to-CRUD interface.
+
     :param app: running server
     :type app: Api
     :param entity: entity name, defaults to None, inferred if None
@@ -85,7 +89,7 @@ class ResourceController(EntityController):
     ):
         """Constructor."""
         super().__init__(app=app)
-        self.resource = entity if entity else self._infer_entity_name()
+        self.resource = entity if entity else self._infer_resource_name()
         self.table = table if table else self._infer_table()
         self.table.ctrl = self
 
@@ -93,9 +97,9 @@ class ResourceController(EntityController):
         self.svc: DatabaseService = self._infer_svc()(app=self.app, table=self.table)
         self.__class__.schema = (schema if schema else self._infer_schema())(unknown=RAISE)
 
-        self._setup_permissions()
+        # self._setup_permissions()
 
-    def _infer_entity_name(self) -> str:
+    def _infer_resource_name(self) -> str:
         """Infer entity name from controller name."""
         return self.__class__.__name__.split('Controller', maxsplit=1)[0]
 
@@ -124,26 +128,26 @@ class ResourceController(EntityController):
                 return CompositeEntityService if self.table.relationships() else UnaryEntityService
 
     def _infer_table(self) -> Base:
-        """Tries to import from instance module reference."""
-        try:
-            return self.app.tables.__dict__[self.resource]
-        except Exception as e:
-            raise ValueError(
-                f"{self.__class__.__name__} could not find {self.resource} Table."
-                " Alternatively if you are following another naming convention "
-                "you should provide it as 'table' arg when creating a new controller"
-            ) from e
+        """Try to find matching table in the registry."""
+        reg = Base.registry._class_registry.data
+        if self.resource in reg:
+            return reg[self.resource]()
+        raise ValueError(
+            f"{self.__class__.__name__} could not find {self.resource} Table."
+            " Alternatively if you are following another naming convention you should "
+            "provide the declarative_class as 'table' argument when defining a new controller."
+        )
 
     def _infer_schema(self) -> Schema:
-        """Tries to import from instance module reference."""
+        """Tries to import from marshmallow class registry."""
         isn = f"{self.resource}Schema"
         try:
-            return self.app.schemas.__dict__[isn]
-        except Exception as e:
+            return get_class(isn)
+        except RegistryError as e:
             raise ValueError(
                 f"{self.__class__.__name__} could not find {isn} Schema. "
-                "Alternatively if you are following another naming convention "
-                "you should provide it as 'schema' arg when creating a new controller"
+                "Alternatively if you are following another naming convention you should "
+                "provide the schema class as 'schema' argument when defining a new controller"
             ) from e
 
     def routes(self, child_routes=None, **_) -> List[Mount | Route]:
@@ -196,84 +200,24 @@ class ResourceController(EntityController):
         :raises PayloadEmptyError: in case payload is empty
         :return: request body
         :rtype: bytes
-        ---
         """
         body = await request.body()
         if body == b'{}':
             raise PayloadEmptyError
         return body
 
-    def _setup_permissions(self):
-        """Decorates exposed methods with permission checks."""
-        routes = []
-        for r in self.routes():
-            if isinstance(r, Mount):
-                routes.extend(r.routes)
-            else:
-                routes.append(r)
-        exposed_methods = set(r.endpoint for r in routes)
-        for method in exposed_methods:
-            setattr(self, method.__name__, self.setup_permissions_check(method))
+    def _extract_fields(self, query_params: Dict[str, Any]) -> List[str]:
+        """Extracts fields from request query parameters.
+           Defaults to ``self.schema.dump_fields.keys()``.
 
-    def setup_permissions_check(self, f):
-        """Set up permission check if server is not run in test mode."""
-        if Scope.TEST in self.app.scope:
-            return f
-
-        if f.__name__ == "delete":
-            return admin_required(f)
-
-        async def wrapper(request):
-            skip = False
-            match f.__name__:
-                case "create":
-                    verb = "create"
-                case "update":
-                    verb = "update"
-                case "read" | "filter":
-                    verb = "read"
-                case "download":
-                    verb = "download"
-                case _:
-                    # Others (/schema and co.) are public.
-                    skip = True
-            if not (skip or await self.check_permissions(verb, request)):
-                raise UnauthorizedError("Insufficient permissions for this operation.")
-            return await f(request)
-
-        wrapper.__name__ = f.__name__
-        wrapper.__doc__ = f.__doc__
-        return wrapper
-
-    def _get_permissions(self, verb: str) -> List[Dict] | None:
-        """Retrieve entries indexed with self.table containing given verb in permissions."""
-        if self.table in Base._Base__permissions:
-            return [
-                perm
-                for perm in Base._Base__permissions[self.table]
-                if verb in perm['verbs']
-            ]
-        return None
-
-    async def check_permissions(self, verb: str, request: Request):
-        """Verify that token bearer is part of allowed groups for that method."""
-        perms = self._get_permissions(verb)
-        if not perms:
-            return True
-
-        _, groups, _ = await extract_and_decode_token(self.app.kc, request)
-        return all(
-            await asyncio.gather(
-                *[
-                    self.svc.check_permission(
-                        verb=verb,
-                        groups=groups,
-                        permission=perm
-                    )
-                    for perm in perms
-                ]
-            )
-        )
+        :param request: incomming request
+        :type request: Request
+        :return: field list
+        :rtype: List[str]
+        """
+        fields = query_params.pop('fields', None)
+        fields = fields.split(',') if fields else None
+        return fields or self.schema.dump_fields.keys()
 
     async def create(self, request: Request) -> Response:
         """Creates associated entity.
@@ -299,13 +243,14 @@ class ResourceController(EntityController):
             data=await self.svc.create(
                 data=validated_data,
                 stmt_only=False,
+                user_info=await UserInfo(request),
                 serializer=partial(
                     self.serialize, **{"many": isinstance(validated_data, list)}
                 ),
             ),
             status_code=201,
         )
-
+ 
     async def read(self, request: Request) -> Response:
         """Fetch associated entity matching id in the path.
 
@@ -330,12 +275,13 @@ class ResourceController(EntityController):
           404:
               description: Not Found
         """
-        fields = request.query_params.get('fields')
+        fields = self._extract_fields(dict(request.query_params))
         return json_response(
             data=await self.svc.read(
                 pk_val=self._extract_pk_val(request),
-                fields=fields.split(',') if fields else None,
-                serializer=partial(self.serialize, **{"many": False}),
+                fields=fields,
+                user_info=await UserInfo(request),
+                serializer=partial(self.serialize, many=False, only=fields),
             ),
             status_code=200,
         )
@@ -362,9 +308,8 @@ class ResourceController(EntityController):
             data=await self.svc.create(
                 data=validated_data,
                 stmt_only=False,
-                serializer=partial(
-                    self.serialize, **{"many": isinstance(validated_data, list)}
-                ),
+                user_info=await UserInfo(request),
+                serializer=partial(self.serialize, many=isinstance(validated_data, list)),
             ),
             status_code=201,
         )
@@ -387,7 +332,10 @@ class ResourceController(EntityController):
                 description: Not Found
 
         """
-        await self.svc.delete(pk_val=self._extract_pk_val(request))
+        await self.svc.delete(
+            pk_val=self._extract_pk_val(request),
+            user_info=await UserInfo(request),
+        )
         return json_response("Deleted.", status_code=200)
 
     async def filter(self, request: Request):
@@ -396,10 +344,14 @@ class ResourceController(EntityController):
         ---
         description: Parses a querystring on the route /ressources/search?{querystring}
         """
+        params = dict(request.query_params)
+        fields = self._extract_fields(params)
         return json_response(
             await self.svc.filter(
-                params=dict(request.query_params),
-                serializer=partial(self.serialize, many=True),
+                fields=fields,
+                params=params,
+                user_info=await UserInfo(request),
+                serializer=partial(self.serialize, many=True, only=fields),
             ),
             status_code=200,
         )

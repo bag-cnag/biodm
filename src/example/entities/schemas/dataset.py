@@ -2,6 +2,7 @@ from marshmallow import Schema, validate, pre_load, ValidationError
 from marshmallow.fields import String, Date, List, Nested, Integer, UUID
 
 
+
 class DatasetSchema(Schema):
     id = Integer()
     version = Integer()
@@ -13,13 +14,8 @@ class DatasetSchema(Schema):
     #     #     [g.name for g in Group]
     #     # )
     # )
-    username_user_contact = String(
-        required=True,
-        # validate=validate.OneOf(
-        #     [u.id for u in User]
-        # )
-    )
-    id_project = Integer()
+    username_user_contact = String(required=True)
+    id_project = Integer(required=True)
 
     # owner_group = Nested('GroupSchema') # , only=('name', 'n_members',)
     contact = Nested('UserSchema') # , only=('username', )
@@ -41,6 +37,16 @@ class DatasetSchema(Schema):
         elif contact_id and not id_uc:
             ret["username_user_contact"] = contact_id
         elif not id_uc:
+            raise ValidationError("Need one of username_user_contact or contact fields.")
+
+        id_pr = data.get('id_project')
+        project_id = data.get('project', {}).get('id')
+
+        if id_pr and project_id:
+            assert(id_uc == project_id)
+        elif project_id and not id_pr:
+            ret["id_project"] = project_id
+        elif not id_pr:
             raise ValidationError("Need one of username_user_contact or contact fields.")
 
         # name_group = data.get('name_owner_group')

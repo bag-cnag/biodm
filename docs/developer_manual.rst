@@ -73,7 +73,7 @@ over the following minimal example.
 
     # Tables
     class Dataset(bd.components.Base):
-        id            : sao.Mapped[int]          = sa.Column(sa.Integer,                  primary_key=True)
+        id            : sao.Mapped[int]          = sa.Column(sa.Integer,                      primary_key=True)
         name          : sao.Mapped[str]          = sa.Column(sa.String(50),                   nullable=False)
         username_owner: sao.Mapped[int]          = sa.Column(sa.ForeignKey("USER.username"),  nullable=False)
         owner         : sao.Mapped["User"]       = sao.relationship(foreign_keys=[username_owner])
@@ -93,22 +93,22 @@ over the following minimal example.
         files          = mf.List(mf.Nested("FileSchema"))
 
     class FileSchema(ma.Schema):
-        id             = mf.Integer(dump_only=True)
+        id             = mf.Integer(                dump_only=True)
         filename       = mf.String(required=True)
         extension      = mf.String(required=True)
-        url            = mf.String(dump_only=True)
-        ready          = mf.Bool(dump_only=True)
+        url            = mf.String(                 dump_only=True)
+        ready          = mf.Bool(                   dump_only=True)
         id_dataset     = mf.Integer(required=True,  load_only=True)
         dataset        = mf.Nested("DatasetSchema")
 
     # Controllers
     class DatasetController(ResourceController):
         def __init__(self, app):
-            super().__init__(app=app, table=Dataset, schema=DatasetSchema)
+            super().__init__(app=app)
 
     class FileController(S3Controller):
         def __init__(self, app):
-            super().__init__(app=app, table=File, schema=FileSchema)
+            super().__init__(app=app)
 
     # Server
     def main():
@@ -208,7 +208,7 @@ On our example, this is how you could apply those on `DatasetController`:
 
     class DatasetController(bdc.ResourceController):
         def __init__(self, app):
-            super().__init__(app=app, table=Dataset, schema=DatasetSchema)
+            super().__init__(app=app)
             self.create = group_required(self.create, ['my_team'])
             self.update = group_required(self.update, ['my_team'])
             self.delete = admin_required(self.delete)
@@ -226,7 +226,7 @@ combination with ``@overload_docstrings``, made to overload docstrings of contro
 
     class DatasetController(bdc.ResourceController):
         def __init__(self, app):
-            super().__init__(app=app, table=Dataset, schema=DatasetSchema)
+            super().__init__(app=app)
 
         @group_required(['my_team'])
         @overload_docstring
@@ -243,6 +243,10 @@ combination with ``@overload_docstrings``, made to overload docstrings of contro
 
         ...
 
+.. note::
+
+    ``@overload_docstrings`` returns the parent class method, hence if you use the latter variant,
+    be sure to use it first even if you do not wish to document that endpoint.
 
 .. _dev-user-permissions:
 
@@ -253,7 +257,12 @@ If your data management platform is intended to receive data from users external
 organisation, ``BioDM`` provide tools to let them in control of permissions.
 
 ``biodm.components.Permission`` class is designed as an extra SQLAlchemy table argument that let
-you flag composition pattern (i.e. One-to-Many relationships) with permissions.
+you flag composition pattern (i.e. One-to-Many relationships) with the following permissions that
+will be applied recursively for all children of that particular entity:
+
+- ``Read``
+- ``Write``
+- ``Download``
 
 In our example:
 
@@ -269,7 +278,7 @@ In our example:
         files         : sao.Mapped[List["File"]] = sao.relationship(back_populates="dataset")
 
         __permissions__ = (
-            Permission(files, create=True, read=False, update=True, download=True),
+            Permission(files, write=True, read=False, download=True),
         )
 
 The latter enables ``File`` permissions at the ``Dataset`` level.
