@@ -4,6 +4,17 @@ Getting Started
 
 Install
 -------
+* Recommended: :pep:`405` Create virtual environment
+
+.. code-block:: bash
+
+    python3 -m venv venv
+    source venv/bin/activate/
+
+.. warning::
+
+    using built in python tools such as ``venv`` and ``pip`` is preferred.
+    ``conda`` and co. package managers are currently untested.
 
 * Using pip and git
 
@@ -23,7 +34,7 @@ Install
 
     git clone https://github.com/bag-cnag/biodm
     cd biodm/
-    pip3 install -r src/requirements/common.txt
+    pip3 install -r src/requirements/dev.txt
     pip3 install .
 
 
@@ -38,6 +49,13 @@ The one provided at ``src/example/.env`` is set on development environment value
 
     cd src/example/
     python3 app.py
+
+.. warning::
+
+    As of current sqlite version ``libsqlite3-0/stable,now 3.40.1-2 amd64`` composite primary keys such
+    as the one ``example`` uses to showcase datasets versionning are not supported.
+    That means you will not be able to run example with an ``sqlite`` database.
+    SQLAlchemy has some primitives for versionned tables, that may solve the issue in a future version.
 
 .. _development-environment:
 
@@ -218,4 +236,6 @@ Just like example have to be run with its directory.
 
 .. code-block:: bash
 
-    pytest --cov-report term --cov=src/biodm src/biodm/tests/
+    cd src/biodm/tests/
+    pytest --cov-report term --cov=../
+    cd -
