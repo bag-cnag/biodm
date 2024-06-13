@@ -612,10 +612,11 @@ class CompositeEntityService(UnaryEntityService):
         """Redirect in case of composite insert."""
         if isinstance(stmt, Insert):
             return await super()._insert_many(stmt, **kwargs)
-        return [
+        items = [
             await self._insert_composite(composite, **kwargs)
             for composite in stmt
         ]
+        return items
         # return await asyncio.gather(*[
         #         self._insert_composite(composite, **kwargs)
         #         for composite in stmt

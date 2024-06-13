@@ -24,7 +24,7 @@ class KCService(CompositeEntityService):
 
 
 class KCGroupService(KCService):
-    async def read_or_create(self, data: Dict[str, Any], user_info: UserInfo = None) -> str:
+    async def read_or_create(self, data: Dict[str, Any]) -> str:
         """READ entry from Database, CREATE it if not found.
 
         :param data: Entry object representation
@@ -32,10 +32,9 @@ class KCGroupService(KCService):
         :return: Group id
         :rtype: str
         """
-        try:
-            return (await self.read(data["name"], fields=['id'], user_info=user_info)).id
-        except FailedRead:
-            return await self.kc.create_group(data)
+        group_id = await self.kc.get_group_by_path(data["name"])
+        group_id = group_id or await self.kc.create_group(data)
+        return group_id
 
     async def create(
         self,
@@ -45,21 +44,22 @@ class KCGroupService(KCService):
         **kwargs
     ) -> Base | List[Base]:
         """Create entities on Keycloak Side before passing to parent class for DB."""
-        # KC
+        # Check permissions
+        await self._check_write_permissions(user_info, data)
+        # Create on keycloak side
         if not stmt_only:
             for group in to_it(data):
                 # Group first.
-                group['id'] = await self.read_or_create(group, user_info)
+                group['id'] = await self.read_or_create(group)
                 # Then Users.
                 for user in group.get("users", []):
                     user['id'] = await User.svc.read_or_create(
                         user,
                         [group["name"]],
                         [group['id']],
-                        user_info=user_info
                     )
         # DB
-        return await super().create(data, stmt_only=stmt_only, user_info=user_info, **kwargs)
+        return await super().create(data, stmt_only=stmt_only, **kwargs)
 
     async def delete(self, pk_val, user_info: UserInfo = None) -> Any:
         """DELETE Group on Keycloak before deleting DB entry."""
@@ -73,7 +73,6 @@ class KCUserService(KCService):
         data: Dict[str, Any],
         groups: List[str] = None,
         group_ids: List[str]=None,
-        user_info: UserInfo=None,
     ) -> str:
         """READ entry from Database, CREATE it if not found.
 
@@ -86,33 +85,33 @@ class KCUserService(KCService):
         :return: User id
         :rtype: str
         """
-        try:
-            user_id = (await self.read(data["username"], fields=['id'], user_info=user_info)).id
+        user = await self.kc.get_user_by_username(data["username"])
+        if user:
             group_ids = group_ids or []
             for gid in group_ids:
-                await self.kc.group_user_add(user_id, gid)
-            return user_id
-        except FailedRead:
+                await self.kc.group_user_add(user['id'], gid)
+            return user['id']
+        else:
             id = await self.kc.create_user(data, groups)
-            # Take out password from user dict, as it is not stored locally.
             data.pop('password')
             return id
 
     async def create(self, data, stmt_only: bool = False, user_info: UserInfo=None, **kwargs) -> Base | List[Base]:
         """CREATE entities on Keycloak, before inserting in DB."""
-        # KC
+        await self._check_write_permissions(user_info, data)
+
         if not stmt_only:
             for user in to_it(data):
                 # Groups first.
                 group_names, group_ids = [], []
                 for group in user.get("groups", []):
-                    group['id'] = await Group.svc.read_or_create(group, user_info=user_info)
+                    group['id'] = await Group.svc.read_or_create(group)
                     group_names.append(group['name'])
                     group_ids.append(group['id'])
                 # Then User.
-                user['id'] = await self.read_or_create(user, group_names, group_ids, user_info=user_info)
-        # DB
-        return await super().create(data, stmt_only=stmt_only, user_info=user_info, **kwargs)
+                user['id'] = await self.read_or_create(user, group_names, group_ids)
+
+        return await super().create(data, stmt_only=stmt_only, **kwargs)
 
     async def delete(self, pk_val, user_info: UserInfo) -> Any:
         """DELETE User on Keycloak before deleting DB entry."""

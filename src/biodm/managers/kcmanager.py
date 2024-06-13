@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, List
 from keycloak import KeycloakAdmin
 from keycloak import KeycloakOpenIDConnection
 from keycloak import KeycloakOpenID
-from keycloak.exceptions import KeycloakError, KeycloakDeleteError
+from keycloak.exceptions import KeycloakError, KeycloakDeleteError, KeycloakGetError
 
 from biodm.component import ApiComponent
 from biodm.exceptions import (
@@ -102,6 +102,7 @@ class KeycloakManager(ApiComponent):
                     "temporary": False
                 }
             ]
+        self.admin.get_user
         return payload
 
     def _group_data_to_payload(self, data: dict):
@@ -150,6 +151,7 @@ class KeycloakManager(ApiComponent):
 
     async def create_group(self, data: dict) -> str:
         """Create group."""
+        # TODO: include parent
         try:
             return self.admin.create_group({"name": data["name"]})
         except KeycloakError as e:
@@ -191,3 +193,15 @@ class KeycloakManager(ApiComponent):
 
     async def get_user_groups(self, user_id: str):
         return self.admin.get_user_groups(user_id)
+
+    async def get_group_by_path(self, path: str):
+        try:
+            return self.admin.get_group_by_path(path)
+        except KeycloakGetError:
+            return None
+
+    async def get_user_by_username(self, username: str):
+        users = self.admin.get_users({"username": username})
+        if len(users) > 0:
+            return users[0]
+        return None

@@ -1,9 +1,11 @@
 """Utils."""
+from collections.abc import MutableMapping
+from contextlib import suppress
 import datetime as dt
 from functools import reduce
 import operator
 from os import path, utime
-from typing import Any, List, Callable, Tuple, TypeVar, Dict
+from typing import Any, Iterable, List, Callable, MutableSequence, Set, Tuple, TypeVar, Dict
 
 from starlette.responses import Response
 
@@ -97,3 +99,51 @@ def coalesce_dicts(ls: List[Dict[_T, _U]]) -> Dict[_T, _U]:
     """Assembles multiple dicts into one.
     - Overlapping keys: override value in order."""
     return reduce(operator.or_, ls, {})
+
+
+# def delete_keys_from_dict(d: Dict[_T, _U] | List[Dict[_T, _U]], keys: List[str]) -> Dict[_T, _U]:
+#     keys_set = set(keys)
+#     modified_dict = {}
+
+#     if isinstance(d, list) and isinstance(d[0], dict):
+#         return [delete_keys_from_dict(value, keys_set) for value in d]
+
+#     for key, value in d.items():
+#         if key not in keys_set:
+#             match value:
+#                 case MutableMapping():
+#                     modified_dict[key] = delete_keys_from_dict(value, keys_set)
+#                 case list():
+#                     if isinstance(value[0], dict):
+#                         modified_dict[key] = [delete_keys_from_dict(value, keys_set) for value in d]
+#                     else:
+#                         modified_dict[key] = value    
+#                 case _:
+#                     modified_dict[key] = value
+#     return modified_dict
+
+
+
+def delete_keys_from_dict(
+    d: Dict[str, _T] | MutableSequence[Dict[str, _T]],
+    keys: Iterable[str]
+):
+    """Inspired from: https://stackoverflow.com/a/49723101/6847689."""
+    def delete_keys_from_list_dict(ls: List[Dict[str, _T]], keys_set: Set[str]):
+        if len(ls) > 0 and isinstance(ls[0], dict):
+            for one in ls:
+                delete_keys_from_dict(one, keys_set)
+
+    keys_set = set(keys)
+
+    if isinstance(d, list):
+        delete_keys_from_list_dict(d, keys_set)
+    else:
+        for key in keys_set:
+            with suppress(KeyError):
+                del d[key]
+        for key, value in d.items():
+            if isinstance(value, MutableMapping):
+                delete_keys_from_dict(value, keys_set)
+            elif isinstance(value, list):
+                delete_keys_from_list_dict(value, keys_set)
