@@ -25,7 +25,6 @@ from biodm.exceptions import (
 )
 from biodm.utils.utils import json_response, to_it
 from biodm.utils.security import UserInfo
-from biodm.utils.security import admin_required, auth_header, extract_and_decode_token
 from biodm.components import Base
 from .controller import HttpMethod, EntityController
 
