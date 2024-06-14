@@ -1,0 +1,21 @@
+biodm.basics package
+====================
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   biodm.basics.groupcontroller
+   biodm.basics.k8scontroller
+   biodm.basics.rootcontroller
+   biodm.basics.usercontroller
+
+Module contents
+---------------
+
+.. automodule:: biodm.basics
+   :members:
+   :undoc-members:
+   :show-inheritance:

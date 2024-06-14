@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Manual &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Advanced Use" href="advanced_use.html" />
+    <link rel="prev" title="Developer Manual" href="developer_manual.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.3.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer_manual.html">Developer Manual</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">User Manual</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#base-routes">Base routes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#entity-routes">Entity routes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#filtering">Filtering</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#file-management">File management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#user-permissions">User permissions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_use.html">Advanced Use</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biodm/modules.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">User Manual</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/user_manual.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="user-manual">
+<span id="id1"></span><h1>User Manual<a class="headerlink" href="#user-manual" title="Link to this heading"></a></h1>
+<p>This section describes how your Users may communicate with the API once it is deployed.</p>
+<p>The examples are demonstrating using curl, but they are free to use any HTTP library out there.</p>
+<section id="base-routes">
+<h2>Base routes<a class="headerlink" href="#base-routes" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>OpenAPI schema</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/schema
+</pre></div>
+</div>
+<p>Yields full API schema in JSON form.</p>
+<ul class="simple">
+<li><p>Liveness endpoint</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/live
+</pre></div>
+</div>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">'live'</span></code></p>
+<ul class="simple">
+<li><p>Login</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/login
+</pre></div>
+</div>
+<p>Returns a keycloak login url.
+Visiting and authenticating there gives you an authentication <code class="docutils literal notranslate"><span class="pre">JSON</span> <span class="pre">Web</span> <span class="pre">Token</span></code> that you shall
+provide in header to hit protected routes, see authenticated next.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/login
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Authenticated</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">TOKEN</span><span class="o">=</span>ey....
+curl<span class="w"> </span>-S<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span><span class="s2">/authenticated&quot;</span><span class="se">\</span>
+<span class="w">     </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="si">${</span><span class="nv">TOKEN</span><span class="si">}</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+<p>This routes checks token and returns requesting user info: <cite>username</cite>, <cite>groups</cite> and <cite>projects</cite>.</p>
+<ul class="simple">
+<li><p>Syn Ack</p></li>
+</ul>
+<p>This route is the callback login route located at <code class="docutils literal notranslate"><span class="pre">${SERVER_ENDPOINT}/syn_ack</span></code>
+and it is not meant to be accessed directly.</p>
+</section>
+<section id="entity-routes">
+<h2>Entity routes<a class="headerlink" href="#entity-routes" title="Link to this heading"></a></h2>
+<p>For each entity being managed by a <code class="docutils literal notranslate"><span class="pre">ResourceController</span></code>, the following routes are supported.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>As per REST standard, each entity is accessible under a resource prefix which is the name of the entity in plural form.</p></li>
+<li><p>URLs end <strong>without</strong> trailing slashes</p></li>
+<li><p>In the case of a multi-indexed entity (<strong>i.e.</strong> composite primary key), <code class="docutils literal notranslate"><span class="pre">{id}</span></code>
+refers to primary key elements separated by underscore symbol <code class="docutils literal notranslate"><span class="pre">_</span></code>.</p></li>
+</ul>
+</div>
+<ul class="simple">
+<li><p>POST</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">JSON_OBJECT</span><span class="si">}</span><span class="se">\</span>
+<span class="w">     </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/my_resources
+</pre></div>
+</div>
+<p>Supports submitting a resource and or a list of resource with nested resources.</p>
+<ul class="simple">
+<li><p>GET</p></li>
+</ul>
+<p>one</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/my_resources/<span class="o">{</span>id<span class="o">}</span>
+</pre></div>
+</div>
+<p>or all</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/my_resources
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>PUT</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>PUT<span class="se">\</span>
+<span class="w">     </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="se">\</span>
+<span class="w">     </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">UPDATED_JSON_OBJECT</span><span class="si">}</span><span class="se">\</span>
+<span class="w">     </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/my_resources/<span class="o">{</span>id<span class="o">}</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>DELETE</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>DELETE<span class="se">\</span>
+<span class="w">     </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/my_resources/<span class="o">{</span>id<span class="o">}</span>
+</pre></div>
+</div>
+<section id="filtering">
+<h3>Filtering<a class="headerlink" href="#filtering" title="Link to this heading"></a></h3>
+<p>When requesting all resources under a prefix (i.e. <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/my_resources</span></code>)
+it is possible to filter results by appending a QueryString starting with <code class="docutils literal notranslate"><span class="pre">?</span></code>
+and followed by:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">field=value</span></code> pairs, separated by <code class="docutils literal notranslate"><span class="pre">&amp;</span></code></p>
+<ul>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">field=val1,val2,val3</span></code> to <code class="docutils literal notranslate"><span class="pre">OR</span></code> between multiple values</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">nested.field=val</span></code> to select on a nested attribute field</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">*</span></code> in a string attribute for wildcards</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">field.op(value)</span></code></p>
+<ul>
+<li><p>Currently only <code class="docutils literal notranslate"><span class="pre">[lt,</span> <span class="pre">le,</span> <span class="pre">gt,</span> <span class="pre">ge]</span></code> operators are supported for numerical values.</p></li>
+</ul>
+</li>
+</ul>
+<p><strong>e.g.</strong></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When querying with <code class="docutils literal notranslate"><span class="pre">curl</span></code>, don’t forget to escape <code class="docutils literal notranslate"><span class="pre">&amp;</span></code> symbol or enclose the whole url in quotes, else your scripting language may intepret it as several commands.</p>
+</div>
+</section>
+</section>
+<section id="file-management">
+<h2>File management<a class="headerlink" href="#file-management" title="Link to this heading"></a></h2>
+<p>Files are stored leveraging an S3 bucket instance. Upload and Downloads are requested directly
+there through <a class="reference external" href="https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-presigned-urls.html">boto3 presigned-urls</a>.</p>
+<ul class="simple">
+<li><p>Upload</p></li>
+</ul>
+<p>On creating a file, the resource will contain a field named <code class="docutils literal notranslate"><span class="pre">upload_form</span></code> that is a presigned
+PUT request dictionary that you may use to perform direct upload.</p>
+<p>The following snippet lets you upload via script:</p>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-text">up_bucket.py</span><a class="headerlink" href="#id2" title="Link to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">requests</span>
+
+<span class="n">post</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;url&#39;</span><span class="p">:</span> <span class="o">...</span><span class="p">,</span> <span class="s1">&#39;fields&#39;</span><span class="p">:</span> <span class="o">...</span><span class="p">}</span>
+
+<span class="n">file_path</span> <span class="o">=</span> <span class="s2">&quot;/path/to/my_file.ext&quot;</span>
+<span class="n">file_name</span> <span class="o">=</span> <span class="s2">&quot;my_file.ext&quot;</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">files</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;file&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">f</span><span class="p">)}</span>
+    <span class="n">http_response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="n">post</span><span class="p">[</span><span class="s1">&#39;url&#39;</span><span class="p">],</span>
+        <span class="n">data</span><span class="o">=</span><span class="n">post</span><span class="p">[</span><span class="s1">&#39;fields&#39;</span><span class="p">],</span>
+        <span class="n">files</span><span class="o">=</span><span class="n">files</span><span class="p">,</span>
+        <span class="n">verify</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">allow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">http_response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">201</span>
+</pre></div>
+</div>
+</div>
+<ul class="simple">
+<li><p>Download</p></li>
+</ul>
+<p>Calling <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/my_file_resources</span></code> will only return associated metadata</p>
+<p>To download a file use the following endpoint.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/my_file_resources/download/<span class="o">{</span>id<span class="o">}</span>
+</pre></div>
+</div>
+<p>That will return a url to directly download the file via GET request.</p>
+</section>
+<section id="user-permissions">
+<h2>User permissions<a class="headerlink" href="#user-permissions" title="Link to this heading"></a></h2>
+<p>When a Composition/One-to-Many relationship is flagged with permissions as described in
+<a class="reference internal" href="developer_manual.html#dev-user-permissions"><span class="std std-ref">Fine: Dynamic user owned permissions</span></a> a new field <code class="docutils literal notranslate"><span class="pre">perm_{relationship_name}</span></code> is available for that resource.</p>
+<p><strong>E.g.</strong> Dataset resource in our example, would have an extra field <code class="docutils literal notranslate"><span class="pre">perm_files</span></code>.</p>
+<p>A Permission is holding a ListGroup object for each enabled verbs.
+ListGroup being a routeless core table, allowing to manage lists of groups.</p>
+<p><strong>E.g.</strong> In our example, CREATE/READ/DOWNLOAD are enabled,
+hence a JSON representation of a dataset with its permissions looks like this:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ds_test&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my_dataset_owner&quot;</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;perm_files&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;write&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;groups&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;genomics_team&quot;</span><span class="p">},</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IT_team&quot;</span><span class="p">},</span>
+<span class="w">                </span><span class="p">{</span><span class="s2">&quot;...&quot;</span><span class="p">}</span>
+<span class="w">            </span><span class="p">]</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;download&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;groups&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="s2">&quot;...&quot;</span><span class="p">}]</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="developer_manual.html" class="btn btn-neutral float-left" title="Developer Manual" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="advanced_use.html" class="btn btn-neutral float-right" title="Advanced Use" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

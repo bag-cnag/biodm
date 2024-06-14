@@ -1,0 +1,7 @@
+biodm.basics.usercontroller module
+==================================
+
+.. automodule:: biodm.basics.usercontroller
+   :members:
+   :undoc-members:
+   :show-inheritance:

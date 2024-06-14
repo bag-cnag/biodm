@@ -1,0 +1,23 @@
+biodm.tables package
+====================
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   biodm.tables.asso
+   biodm.tables.group
+   biodm.tables.history
+   biodm.tables.k8sinstance
+   biodm.tables.listgroup
+   biodm.tables.user
+
+Module contents
+---------------
+
+.. automodule:: biodm.tables
+   :members:
+   :undoc-members:
+   :show-inheritance:

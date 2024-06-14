@@ -1,0 +1,7 @@
+biodm.basics.groupcontroller module
+===================================
+
+.. automodule:: biodm.basics.groupcontroller
+   :members:
+   :undoc-members:
+   :show-inheritance:

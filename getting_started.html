@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting Started &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Developer Manual" href="developer_manual.html" />
+    <link rel="prev" title="BioDM: A fast and RESTful Data Management framework" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.3.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#install">Install</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#start-server">Start Server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#development-environment">Development environment</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#quick-dependency-setup">Quick dependency setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#individual-configuration">Individual configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id2">Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tests">Tests</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="developer_manual.html">Developer Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_use.html">Advanced Use</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biodm/modules.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Getting Started</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/getting_started.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="getting-started">
+<h1>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading"></a></h1>
+<section id="install">
+<h2>Install<a class="headerlink" href="#install" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Recommended: <span class="target" id="index-0"></span><a class="pep reference external" href="https://peps.python.org/pep-0405/"><strong>PEP 405</strong></a> Create virtual environment</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>venv
+<span class="nb">source</span><span class="w"> </span>venv/bin/activate/
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>using built in python tools such as <code class="docutils literal notranslate"><span class="pre">venv</span></code> and <code class="docutils literal notranslate"><span class="pre">pip</span></code> is preferred.
+<code class="docutils literal notranslate"><span class="pre">conda</span></code> and co. package managers are currently untested.</p>
+</div>
+<ul class="simple">
+<li><p>Using pip and git</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3<span class="w"> </span>install<span class="w"> </span>git+https://github.com/bag-cnag/biodm
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Install with kubernetes functionalities</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;biodm[kubernetes] @ git+https://github.com/bag-cnag/biodm&quot;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Build from sources</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/bag-cnag/biodm
+<span class="nb">cd</span><span class="w"> </span>biodm/
+pip3<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>src/requirements/dev.txt
+pip3<span class="w"> </span>install<span class="w"> </span>.
+</pre></div>
+</div>
+</section>
+<section id="start-server">
+<h2>Start Server<a class="headerlink" href="#start-server" title="Link to this heading"></a></h2>
+<p>E.g. for our <code class="docutils literal notranslate"><span class="pre">example</span></code> project.
+Configuration is done through <code class="docutils literal notranslate"><span class="pre">.env</span></code> files, thus server has to be run from its immediate directory.
+The one provided at <code class="docutils literal notranslate"><span class="pre">src/example/.env</span></code> is set on development environment values.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>src/example/
+python3<span class="w"> </span>app.py
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>As of current sqlite version <code class="docutils literal notranslate"><span class="pre">libsqlite3-0/stable,now</span> <span class="pre">3.40.1-2</span> <span class="pre">amd64</span></code> composite primary keys such
+as the one <code class="docutils literal notranslate"><span class="pre">example</span></code> uses to showcase datasets versionning are not supported.
+That means you will not be able to run example with an <code class="docutils literal notranslate"><span class="pre">sqlite</span></code> database.
+SQLAlchemy has some primitives for versionned tables, that may solve the issue in a future version.</p>
+</div>
+</section>
+<section id="development-environment">
+<span id="id1"></span><h2>Development environment<a class="headerlink" href="#development-environment" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Install in editable mode</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>src/requirements/dev.txt
+pip3<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+</pre></div>
+</div>
+<section id="quick-dependency-setup">
+<h3>Quick dependency setup<a class="headerlink" href="#quick-dependency-setup" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt><strong>pre-requisites</strong>:</dt><dd><ul class="simple">
+<li><p>Build local <a class="reference internal" href="#keycloak">Keycloak</a> image with your local certificates.</p></li>
+</ul>
+</dd>
+</dl>
+<p>To start all service dependnencies at once and skip individual configuration you may use the provided <cite>compose.yml</cite>.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
+</pre></div>
+</div>
+<p>Default configuration parameters are using the following hostnames that you
+may add to your host table for convenience.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>cat<span class="w"> </span>&gt;&gt;<span class="w"> </span>/etc/hosts<span class="w"> </span><span class="s">&lt;&lt;EOF</span>
+<span class="s"># biodm-dev</span>
+<span class="s">10.10.0.2       postgres.local</span>
+<span class="s">10.10.0.3       keycloak.local</span>
+<span class="s">10.10.0.4       s3bucket.local</span>
+<span class="s">EOF</span>
+</pre></div>
+</div>
+<p><strong>post-requisites</strong> - in doubt see <a class="reference internal" href="#individual-configuration">Individual configuration</a> below:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Create Keycloak realm and client</p></li>
+<li><p>Emit Minio access key</p></li>
+<li><p>Populate config with generated credentials</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="individual-configuration">
+<h3>Individual configuration<a class="headerlink" href="#individual-configuration" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Database</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--name<span class="w"> </span>api-db<span class="w"> </span>-e<span class="w"> </span><span class="nv">POSTGRES_PASSWORD</span><span class="o">=</span>pass<span class="w"> </span>-d<span class="w"> </span>postgres:16-bookworm
+docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-u<span class="w"> </span>postgres<span class="w"> </span>api-db<span class="w"> </span>createdb<span class="w"> </span>biodm
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Keycloak</p></li>
+</ul>
+<p id="keycloak">First you need to build the image yourself according to the <a class="reference external" href="https://www.keycloak.org/server/containers/">documentation</a>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>docker/<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+docker<span class="w"> </span>build<span class="w"> </span>.<span class="w"> </span>-t<span class="w"> </span>keycloak:22.0.0_local-certs<span class="w"> </span>-f<span class="w"> </span>Dockerfile.keycloak-22.0.0_local-certs<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+<span class="nb">cd</span><span class="w"> </span>-
+</pre></div>
+</div>
+<p>Keycloak also needs a databse:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--name<span class="w"> </span>kc-db<span class="w"> </span>-e<span class="w"> </span><span class="nv">POSTGRES_PASSWORD</span><span class="o">=</span>pass<span class="w"> </span>-d<span class="w"> </span>postgres:16-bookworm
+docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-u<span class="w"> </span>postgres<span class="w"> </span>biodm-pg<span class="w"> </span>createdb<span class="w"> </span>keycloak
+</pre></div>
+</div>
+<p>Then you may start keycloak itself:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--name<span class="w"> </span>local_keycloak<span class="w"> </span>-e<span class="w"> </span><span class="nv">KEYCLOAK_USER</span><span class="o">=</span>admin<span class="w"> </span>-e<span class="w"> </span><span class="nv">KEYCLOAK_PASSWORD</span><span class="o">=</span>admin<span class="w"> </span>-p<span class="w"> </span><span class="m">8443</span>:8080<span class="w"> </span>keycloak:22.0.5_local-certs
+</pre></div>
+</div>
+<p class="rubric">Configuration</p>
+<p>Once keycloak is running you need to configure a realm and a client for the app to log in.
+Default values are:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">KC_REALM</span><span class="o">=</span><span class="s2">&quot;3TR&quot;</span>
+<span class="nv">KC_CLIENT_ID</span><span class="o">=</span><span class="s2">&quot;submission_client&quot;</span>
+</pre></div>
+</div>
+<p>Once you’ve created the realm, create the client. Then</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>set <cite>Access Type</cite> to confidential</p></li>
+<li><p>set <cite>Inplicit Flow Enabled</cite> to <cite>True</cite>.</p></li>
+<li><p>Add Valid Redirect Uri:</p>
+<ul>
+<li><p><strong>dev</strong>: <cite>http://*</cite> and <cite>https://*</cite></p></li>
+<li><p><strong>prod</strong>: provide the url of the login callback <cite>{SERVER_HOST}/syn_ack</cite>.</p></li>
+</ul>
+</li>
+</ul>
+</div></blockquote>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Depending on your keycloak version or running instance <cite>SERVER_HOST</cite> may have to be appended with <cite>/auth</cite>.</p>
+</div>
+<p>Then you should provide the server with the <cite>SECRET</cite> field located in the
+<cite>Credentials</cite> tab, that appears <strong>after</strong> you changed access type and the realm public key
+located at <code class="docutils literal notranslate"><span class="pre">{KC_HOST}[auth/]realms/{KC_REALM}/</span></code>.</p>
+<p>To be able to serve as a gateway to administrate keycloak concepts,
+the API also needs admin credentials:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">KC_HOST</span><span class="o">={</span>url<span class="o">}</span>
+<span class="nv">KC_CLIENT_SECRET</span><span class="o">={</span>secret<span class="o">}</span>
+<span class="nv">KC_PUBLIC_KEY</span><span class="o">={</span>public_key<span class="o">}</span>
+<span class="nv">KC_ADMIN</span><span class="o">={</span>admin_id<span class="o">}</span>
+<span class="nv">KC_ADMIN_PASSWORD</span><span class="o">={</span>admin_password<span class="o">}</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Minio</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>-e<span class="w"> </span><span class="nv">MINIO_ROOT_USER</span><span class="o">=</span>admin<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-e<span class="w"> </span><span class="nv">MINIO_ROOT_PASSWORD</span><span class="o">=</span><span class="m">12345678</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-e<span class="w"> </span><span class="nv">MINIO_DEFAULT_BUCKETS</span><span class="o">=</span>bucketdevel3tropal<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-p<span class="w"> </span><span class="m">9000</span>:9000<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-p<span class="w"> </span><span class="m">9001</span>:9001<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>bitnami/minio:2024-debian-12
+</pre></div>
+</div>
+<p>Then visit the administration interface at <cite>localhost:9001</cite>,
+generate a key and populate:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">S3_ENDPOINT_URL</span><span class="o">={</span>url<span class="o">}</span>
+<span class="nv">S3_BUCKET_NAME</span><span class="o">={</span>bucket_name<span class="o">}</span>
+<span class="nv">S3_ACCESS_KEY_ID</span><span class="o">={</span>access_key_id<span class="o">}</span>
+<span class="nv">S3_SECRET_ACCESS_KEY</span><span class="o">={</span>access_key<span class="o">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id2">
+<h2>Documentation<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>pre-requisite:</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>src/requirements/docs.txt
+</pre></div>
+</div>
+<p>Then you may use the following:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sphinx-apidoc<span class="w"> </span>--implicit-namespaces<span class="w"> </span>-fo<span class="w"> </span>docs/biodm/<span class="w"> </span>src/biodm<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;API Reference&quot;</span>
+python3<span class="w"> </span>-m<span class="w"> </span>sphinx<span class="w"> </span>-b<span class="w"> </span>html<span class="w"> </span>docs/<span class="w"> </span>docs/build/html
+</pre></div>
+</div>
+</section>
+<section id="tests">
+<h2>Tests<a class="headerlink" href="#tests" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>pre-requisite:</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>src/requirements/dev.txt
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>run tests</p></li>
+</ul>
+<p>Just like example have to be run with its directory.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>src/biodm/tests/
+pytest
+<span class="nb">cd</span><span class="w"> </span>-
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>coverage</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>src/biodm/tests/
+pytest<span class="w"> </span>--cov-report<span class="w"> </span>term<span class="w"> </span>--cov<span class="o">=</span>../
+<span class="nb">cd</span><span class="w"> </span>-
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="BioDM: A fast and RESTful Data Management framework" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="developer_manual.html" class="btn btn-neutral float-right" title="Developer Manual" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

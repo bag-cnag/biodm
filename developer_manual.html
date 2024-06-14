@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Developer Manual &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="User Manual" href="user_manual.html" />
+    <link rel="prev" title="Getting Started" href="getting_started.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.3.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Developer Manual</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#basics">Basics</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#concepts">Concepts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#minimal-demo">Minimal Demo</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#permissions">Permissions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#coarse-static-rule-on-a-controller-endpoint">Coarse: Static rule on a Controller endpoint</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fine-dynamic-user-owned-permissions">Fine: Dynamic user owned permissions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_use.html">Advanced Use</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biodm/modules.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Developer Manual</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/developer_manual.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="developer-manual">
+<span id="id1"></span><h1>Developer Manual<a class="headerlink" href="#developer-manual" title="Link to this heading"></a></h1>
+<p>This section describes how to use <code class="docutils literal notranslate"><span class="pre">biodm</span></code> package in order to swiftly deploy a modular
+data management API tailored to your needs.</p>
+<p>You also may consult <code class="docutils literal notranslate"><span class="pre">src/example/</span></code> toy project, which encapsulates more complex project needs.</p>
+<p>Following, we will go in detail about the toolkit and builtins.</p>
+<section id="basics">
+<h2>Basics<a class="headerlink" href="#basics" title="Link to this heading"></a></h2>
+<p>At the core of Data Management means storing collections of files and their associated metadata.</p>
+<p><code class="docutils literal notranslate"><span class="pre">BioDM</span></code> is leveraging SQLAlchemy ORM Tables definitions + matching Marshmallow Schemas, specifying
+metadata and relationships, to setup standard RESTful endpoints.</p>
+<section id="concepts">
+<h3>Concepts<a class="headerlink" href="#concepts" title="Link to this heading"></a></h3>
+<p>The main server class <code class="docutils literal notranslate"><span class="pre">biodm.Api</span></code> is a vessel for <code class="docutils literal notranslate"><span class="pre">biodm.components.controllers.Controller</span></code>
+subinstances.</p>
+<p>Each Controller is independently responsible for exposing a set of routes, validating and serializing
+<cite>i/o</cite> and send incomming Request data to a relevant <code class="docutils literal notranslate"><span class="pre">biodm.component.ApiService</span></code> subinstance.</p>
+<p>Services, are tied to a Table and calling each other in order to parse and adapt
+input data.
+All Services are <code class="docutils literal notranslate"><span class="pre">biodm.components.services.DatabaseService</span></code> subinstances as their
+primary mission is to faithfully log activity and maintain data integrity.</p>
+<p>Finally this internal representation is sent to a <code class="docutils literal notranslate"><span class="pre">biodm.component.managers</span></code>, each holding communication primities with external micro-services (i.e. DB, S3 bucket, Kubernetes and so on).</p>
+</section>
+<section id="configuration">
+<h3>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">BioDM</span></code> extends <a class="reference external" href="https://www.starlette.io/config/">Starlette</a>,
+hence its Configuration system works by populating a <code class="docutils literal notranslate"><span class="pre">.env</span></code> file, preferably sitting in the same directory as the running script.</p>
+<p>We invite you to consult <a class="reference external" href="https://github.com/bag-cnag/biodm/blob/main/src/biodm/config.py">config.py</a>
+to discover all possible options.</p>
+<p>Functionalities depending on external micro-services are enabled if matching configuration options are provided.</p>
+<p><strong>e.g.</strong> Keycloak functionalities shall be activated, if and only if, defaultless config parameters prefixed by <code class="docutils literal notranslate"><span class="pre">KC_</span></code> are populated.
+Otherwise, User/Group tables shall still be deployed. However, they will not be synced against a keycloak server.</p>
+</section>
+<section id="minimal-demo">
+<h3>Minimal Demo<a class="headerlink" href="#minimal-demo" title="Link to this heading"></a></h3>
+<p>Say you or your organization needs to store <code class="docutils literal notranslate"><span class="pre">Datasets</span></code>, each containing a set of <code class="docutils literal notranslate"><span class="pre">File</span></code> we will go
+over the following minimal example.</p>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-text">demo.py</span><a class="headerlink" href="#id2" title="Link to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">marshmallow</span> <span class="k">as</span> <span class="nn">ma</span>
+<span class="kn">from</span> <span class="nn">marshmallow</span> <span class="kn">import</span> <span class="n">fields</span> <span class="k">as</span> <span class="n">mf</span>
+<span class="kn">import</span> <span class="nn">sqlalchemy</span> <span class="k">as</span> <span class="nn">sa</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">orm</span> <span class="k">as</span> <span class="n">sao</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span>
+<span class="kn">import</span> <span class="nn">uvicorn</span>
+
+<span class="kn">import</span> <span class="nn">biodm</span> <span class="k">as</span> <span class="nn">bd</span>
+<span class="kn">from</span> <span class="nn">biodm.components.controllers</span> <span class="kn">import</span> <span class="n">ResourceController</span><span class="p">,</span> <span class="n">S3Controller</span>
+
+
+<span class="c1"># Tables</span>
+<span class="k">class</span> <span class="nc">Dataset</span><span class="p">(</span><span class="n">bd</span><span class="o">.</span><span class="n">components</span><span class="o">.</span><span class="n">Base</span><span class="p">):</span>
+    <span class="nb">id</span>            <span class="p">:</span> <span class="n">sao</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>          <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">Integer</span><span class="p">,</span>                      <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">name</span>          <span class="p">:</span> <span class="n">sao</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>          <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="mi">50</span><span class="p">),</span>                   <span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">username_owner</span><span class="p">:</span> <span class="n">sao</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>          <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;USER.username&quot;</span><span class="p">),</span>  <span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">owner</span>         <span class="p">:</span> <span class="n">sao</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="s2">&quot;User&quot;</span><span class="p">]</span>       <span class="o">=</span> <span class="n">sao</span><span class="o">.</span><span class="n">relationship</span><span class="p">(</span><span class="n">foreign_keys</span><span class="o">=</span><span class="p">[</span><span class="n">username_owner</span><span class="p">])</span>
+    <span class="n">files</span>         <span class="p">:</span> <span class="n">sao</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="s2">&quot;File&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">sao</span><span class="o">.</span><span class="n">relationship</span><span class="p">(</span><span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;dataset&quot;</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">File</span><span class="p">(</span><span class="n">bd</span><span class="o">.</span><span class="n">components</span><span class="o">.</span><span class="n">S3File</span><span class="p">,</span> <span class="n">bd</span><span class="o">.</span><span class="n">components</span><span class="o">.</span><span class="n">Base</span><span class="p">):</span>
+    <span class="nb">id</span>                         <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">Integer</span><span class="p">,</span>                    <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">id_dataset</span>                 <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;DATASET.id&quot;</span><span class="p">),</span>   <span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">dataset</span><span class="p">:</span> <span class="n">sao</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="s2">&quot;Dataset&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sao</span><span class="o">.</span><span class="n">relationship</span><span class="p">(</span><span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;files&quot;</span><span class="p">,</span> <span class="n">single_parent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">foreign_keys</span><span class="o">=</span><span class="p">[</span><span class="n">id_dataset</span><span class="p">])</span>
+
+<span class="c1"># Schemas</span>
+<span class="k">class</span> <span class="nc">DatasetSchema</span><span class="p">(</span><span class="n">ma</span><span class="o">.</span><span class="n">Schema</span><span class="p">):</span>
+    <span class="nb">id</span>             <span class="o">=</span> <span class="n">mf</span><span class="o">.</span><span class="n">Integer</span><span class="p">(</span>              <span class="n">dump_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">name</span>           <span class="o">=</span> <span class="n">mf</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">username_owner</span> <span class="o">=</span> <span class="n">mf</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">load_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">owner</span>          <span class="o">=</span> <span class="n">mf</span><span class="o">.</span><span class="n">Nested</span><span class="p">(</span><span class="s2">&quot;UserSchema&quot;</span><span class="p">)</span>
+    <span class="n">files</span>          <span class="o">=</span> <span class="n">mf</span><span class="o">.</span><span class="n">List</span><span class="p">(</span><span class="n">mf</span><span class="o">.</span><span class="n">Nested</span><span class="p">(</span><span class="s2">&quot;FileSchema&quot;</span><span class="p">))</span>
+
+<span class="k">class</span> <span class="nc">FileSchema</span><span class="p">(</span><span class="n">ma</span><span class="o">.</span><span class="n">Schema</span><span class="p">):</span>
+    <span class="nb">id</span>             <span class="o">=</span> <span class="n">mf</span><span class="o">.</span><span class="n">Integer</span><span class="p">(</span>                <span class="n">dump_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">filename</span>       <span class="o">=</span> <span class="n">mf</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">extension</span>      <span class="o">=</span> <span class="n">mf</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">url</span>            <span class="o">=</span> <span class="n">mf</span><span class="o">.</span><span class="n">String</span><span class="p">(</span>                 <span class="n">dump_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">ready</span>          <span class="o">=</span> <span class="n">mf</span><span class="o">.</span><span class="n">Bool</span><span class="p">(</span>                   <span class="n">dump_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">id_dataset</span>     <span class="o">=</span> <span class="n">mf</span><span class="o">.</span><span class="n">Integer</span><span class="p">(</span><span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="n">load_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">dataset</span>        <span class="o">=</span> <span class="n">mf</span><span class="o">.</span><span class="n">Nested</span><span class="p">(</span><span class="s2">&quot;DatasetSchema&quot;</span><span class="p">)</span>
+
+<span class="c1"># Controllers</span>
+<span class="k">class</span> <span class="nc">DatasetController</span><span class="p">(</span><span class="n">ResourceController</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">FileController</span><span class="p">(</span><span class="n">S3Controller</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">)</span>
+
+<span class="c1"># Server</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">bd</span><span class="o">.</span><span class="n">Api</span><span class="p">(</span><span class="n">debug</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">controllers</span><span class="o">=</span><span class="p">[</span><span class="n">DatasetController</span><span class="p">,</span> <span class="n">FileController</span><span class="p">],)</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">uvicorn</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">:main&quot;</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">host</span><span class="o">=</span><span class="n">bd</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">SERVER_HOST</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">bd</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">SERVER_PORT</span><span class="p">,</span>
+        <span class="n">loop</span><span class="o">=</span><span class="s2">&quot;uvloop&quot;</span><span class="p">,</span> <span class="n">log_level</span><span class="o">=</span><span class="s2">&quot;debug&quot;</span><span class="p">,</span> <span class="n">access_log</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Notice that File Table declarative Class inherits from <code class="docutils literal notranslate"><span class="pre">S3File</span></code> component and is
+paired with an <code class="docutils literal notranslate"><span class="pre">S3Controller</span></code>. Those two classes are automatically handling extra fields
+that can be seen on <code class="docutils literal notranslate"><span class="pre">FileSchema</span></code> and extra routes.
+For other tables, if you’re only interested about standard functionalities, you should stick with <code class="docutils literal notranslate"><span class="pre">Base</span></code> and <code class="docutils literal notranslate"><span class="pre">ResourceController</span></code>.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For file management this demo requires an <code class="docutils literal notranslate"><span class="pre">s3</span></code> compatible storage service.
+To quickly deploy micro-services dependencies for testing purposes, refer to
+<a class="reference internal" href="getting_started.html#development-environment"><span class="std std-ref">Development environment</span></a>.</p>
+</div>
+<p>The following variables have to be provided.</p>
+<div class="literal-block-wrapper docutils container" id="id3">
+<div class="code-block-caption"><span class="caption-text">.env</span><a class="headerlink" href="#id3" title="Link to this code"></a></div>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">S3_ENDPOINT_URL</span><span class="o">=</span>
+<span class="nv">S3_BUCKET_NAME</span><span class="o">=</span>
+<span class="nv">S3_ACCESS_KEY_ID</span><span class="o">=</span>
+<span class="nv">S3_SECRET_ACCESS_KEY</span><span class="o">=</span>
+</pre></div>
+</div>
+</div>
+<p>Running this script deploys a server:</p>
+<blockquote>
+<div><ul>
+<li><p>Responding on standard RESTful routes (see <a class="reference internal" href="user_manual.html#user-manual"><span class="std std-ref">User Manual</span></a>) for:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>Instance tables</strong>: Dataset, File</p>
+<ul>
+<li><p>Serving pre-signed PUT/GET URLs for direct file upload/download.</p></li>
+</ul>
+</li>
+<li><p><strong>Core tables</strong>: User, Group</p>
+<ul>
+<li><p>Keycloak not being enabled, those tables are managed locally.</p></li>
+</ul>
+</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Internally managing core tables:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>ListGroup, History</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+</section>
+</section>
+<section id="permissions">
+<h2>Permissions<a class="headerlink" href="#permissions" title="Link to this heading"></a></h2>
+<p>In order to protect your data, <code class="docutils literal notranslate"><span class="pre">BioDM</span></code> provides two structures of permissions.</p>
+<p>Those are requiring a keycloak service running and the following variables to
+be provided in a <code class="docutils literal notranslate"><span class="pre">.env</span></code> file at the same level as your <code class="docutils literal notranslate"><span class="pre">demo.py</span></code> script.</p>
+<div class="literal-block-wrapper docutils container" id="id4">
+<div class="code-block-caption"><span class="caption-text">.env</span><a class="headerlink" href="#id4" title="Link to this code"></a></div>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">KC_HOST</span><span class="o">=</span>
+<span class="nv">KC_REALM</span><span class="o">=</span>
+<span class="nv">KC_PUBLIC_KEY</span><span class="o">=</span>
+<span class="nv">KC_ADMIN</span><span class="o">=</span>
+<span class="nv">KC_ADMIN_PASSWORD</span><span class="o">=</span>
+<span class="nv">KC_CLIENT_ID</span><span class="o">=</span>
+<span class="nv">KC_CLIENT_SECRET</span><span class="o">=</span>
+</pre></div>
+</div>
+</div>
+<section id="coarse-static-rule-on-a-controller-endpoint">
+<h3>Coarse: Static rule on a Controller endpoint<a class="headerlink" href="#coarse-static-rule-on-a-controller-endpoint" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">biodm.utils.security</span></code> module contains three decorators that are meant to be used
+on Controller endpoints in order to apply static permissions directly within the codebase.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&#64;token_required()</span></code></p>
+<ul>
+<li><p>Protects the endpoint demanding incomming requests to by signed with a valid <code class="docutils literal notranslate"><span class="pre">Keycloak</span> <span class="pre">JW</span> <span class="pre">Token</span></code></p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&#64;group_required(groups=[gname_1,...</span> <span class="pre">gname_n])</span></code></p>
+<ul>
+<li><p>Like token_required, and assesses that requesting User is part of one of those groups.</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&#64;admin_required()</span></code></p>
+<ul>
+<li><p>group_required special case, requesting User must be part of <code class="docutils literal notranslate"><span class="pre">admin</span></code> group.</p></li>
+</ul>
+</li>
+</ul>
+<p>On our example, this is how you could apply those on <cite>DatasetController</cite>:</p>
+<div class="literal-block-wrapper docutils container" id="id5">
+<div class="code-block-caption"><span class="caption-text">demo.py</span><a class="headerlink" href="#id5" title="Link to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">biodm.utils.security</span> <span class="kn">import</span> <span class="n">group_required</span><span class="p">,</span> <span class="n">admin_required</span>
+
+<span class="k">class</span> <span class="nc">DatasetController</span><span class="p">(</span><span class="n">bdc</span><span class="o">.</span><span class="n">ResourceController</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">create</span> <span class="o">=</span> <span class="n">group_required</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">create</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;my_team&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span> <span class="o">=</span> <span class="n">group_required</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;my_team&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delete</span> <span class="o">=</span> <span class="n">admin_required</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">delete</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Here we restricted the creation and updating of datasets to <code class="docutils literal notranslate"><span class="pre">my_team</span></code>, deletion is <code class="docutils literal notranslate"><span class="pre">admin</span></code>
+priviledge and reading data is left public.</p>
+<p>In case you would also like to document your API endpoints, you may use those decorators in
+combination with <code class="docutils literal notranslate"><span class="pre">&#64;overload_docstrings</span></code>, made to overload docstrings of controller methods:</p>
+<div class="literal-block-wrapper docutils container" id="id6">
+<div class="code-block-caption"><span class="caption-text">demo.py</span><a class="headerlink" href="#id6" title="Link to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">biodm.utils.security</span> <span class="kn">import</span> <span class="n">group_required</span><span class="p">,</span> <span class="n">admin_required</span>
+
+<span class="k">class</span> <span class="nc">DatasetController</span><span class="p">(</span><span class="n">bdc</span><span class="o">.</span><span class="n">ResourceController</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">)</span>
+
+    <span class="nd">@group_required</span><span class="p">([</span><span class="s1">&#39;my_team&#39;</span><span class="p">])</span>
+    <span class="nd">@overload_docstring</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">create</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        responses:</span>
+<span class="sd">          201:</span>
+<span class="sd">            description: Create Dataset.</span>
+<span class="sd">            examples: |</span>
+<span class="sd">              {&quot;name&quot;: &quot;ds_test&quot;, &quot;owner&quot;: {&quot;username&quot;: &quot;my_team_member&quot;}}</span>
+<span class="sd">          204:</span>
+<span class="sd">            description: Empty Payload.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+    <span class="o">...</span>
+</pre></div>
+</div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><code class="docutils literal notranslate"><span class="pre">&#64;overload_docstrings</span></code> returns the parent class method, hence if you use the latter variant,
+be sure to use it first even if you do not wish to document that endpoint.</p>
+</div>
+</section>
+<section id="fine-dynamic-user-owned-permissions">
+<span id="dev-user-permissions"></span><h3>Fine: Dynamic user owned permissions<a class="headerlink" href="#fine-dynamic-user-owned-permissions" title="Link to this heading"></a></h3>
+<p>If your data management platform is intended to receive data from users external to your
+organisation, <code class="docutils literal notranslate"><span class="pre">BioDM</span></code> provide tools to let them in control of permissions.</p>
+<p><code class="docutils literal notranslate"><span class="pre">biodm.components.Permission</span></code> class is designed as an extra SQLAlchemy table argument that let
+you flag composition pattern (i.e. One-to-Many relationships) with the following permissions that
+will be applied recursively for all children of that particular entity:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Read</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Write</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Download</span></code></p></li>
+</ul>
+<p>In our example:</p>
+<div class="literal-block-wrapper docutils container" id="id7">
+<div class="code-block-caption"><span class="caption-text">demo.py</span><a class="headerlink" href="#id7" title="Link to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">biodm.components</span> <span class="kn">import</span> <span class="n">Permission</span>
+
+
+<span class="k">class</span> <span class="nc">Dataset</span><span class="p">(</span><span class="n">bd</span><span class="o">.</span><span class="n">components</span><span class="o">.</span><span class="n">Base</span><span class="p">):</span>
+    <span class="nb">id</span>            <span class="p">:</span> <span class="n">sao</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>          <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">Integer</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="o">...</span>
+    <span class="n">files</span>         <span class="p">:</span> <span class="n">sao</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="s2">&quot;File&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">sao</span><span class="o">.</span><span class="n">relationship</span><span class="p">(</span><span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;dataset&quot;</span><span class="p">)</span>
+
+    <span class="n">__permissions__</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">Permission</span><span class="p">(</span><span class="n">files</span><span class="p">,</span> <span class="n">write</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">read</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The latter enables <code class="docutils literal notranslate"><span class="pre">File</span></code> permissions at the <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> level.</p>
+<p>In other words it lets you define for a top level entity who is allowed to interact
+with a nested collection and its elements.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Those permissions will be taken into account when directly accessing <code class="docutils literal notranslate"><span class="pre">/files</span></code> API routes.</p>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="getting_started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="user_manual.html" class="btn btn-neutral float-right" title="User Manual" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
