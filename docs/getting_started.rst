@@ -114,19 +114,20 @@ Individual configuration
 
 First you need to build the image yourself according to the `documentation <https://www.keycloak.org/server/containers/>`_:
 
-.. code-block::bash
+.. code-block:: bash
 
     cd docker/ && \
-    docker build . -t keycloak:23.0.0_local-certs -f Dockerfile.keycloak-23.0.0_local-certs && \
+    docker build . -t keycloak:22.0.0_local-certs -f Dockerfile.keycloak-22.0.0_local-certs && \
     cd -
-
 
 Keycloak also needs a databse:
 
-.. code-block::bash
+.. code-block:: bash
 
     docker run --name kc-db -e POSTGRES_PASSWORD=pass -d postgres:16-bookworm
     docker exec -u postgres biodm-pg createdb keycloak
+
+
 
 Then you may start keycloak itself:
 
