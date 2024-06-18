@@ -1,7 +1,9 @@
 from typing import Optional, List, TYPE_CHECKING
+from uuid import UUID
 
-from sqlalchemy import Column, String, Integer, ForeignKey, Uuid
-from sqlalchemy.orm import Mapped, relationship
+from sqlalchemy import Column, String, Integer, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.types import Uuid
 
 from biodm.components import Base
 from .asso import asso_user_group
@@ -12,11 +14,13 @@ if TYPE_CHECKING:
 
 class Group(Base):
     """Group table."""
-    id = Column(Uuid, unique=True)
-    name: Mapped[str] = Column(String(100), primary_key=True)
+    # nullable=False is a problem when creating parent entity with just the User.username.
+    # id on creation is ensured by read_or_create method from KCService subclasses.
+    id: Mapped[UUID] = mapped_column(nullable=True)
+    name: Mapped[str] = mapped_column(String(100), primary_key=True)
     # test
-    n_members: Mapped[int] = Column(Integer, nullable=True)
-    name_parent: Mapped[Optional[int]] = Column(ForeignKey("GROUP.name"), nullable=True)
+    n_members: Mapped[int] = mapped_column(nullable=True)
+    name_parent: Mapped[Optional[int]] = mapped_column(ForeignKey("GROUP.name"), nullable=True)
 
     # relationships
     users: Mapped[List["User"]] = relationship(

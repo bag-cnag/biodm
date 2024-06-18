@@ -2,7 +2,7 @@
 from __future__ import annotations
 from functools import partial
 import asyncio
-from typing import TYPE_CHECKING, List, Any, Dict
+from typing import TYPE_CHECKING, List, Set, Any, Dict, Type
 
 from marshmallow.schema import RAISE
 from marshmallow.class_registry import get_class
@@ -50,7 +50,7 @@ def overload_docstring(f): # flake8: noqa: E501  pylint: disable=line-too-long
     :param f: The method we overload the docstrings of
     :type f: Callable
     """
-    async def wrapper(self, *args, **kwargs):
+    async def wrapper(self: Type[ResourceController], *args, **kwargs):
         """callable."""
         if Scope.DEBUG in self.app.scope:
             assert isinstance(self, ResourceController)
@@ -83,10 +83,10 @@ class ResourceController(EntityController):
     def __init__(
         self,
         app: Api,
-        entity: str = None,
-        table: Base = None,
-        schema: Schema = None
-    ):
+        entity: str = "",
+        table: Type[Base] | None = None,
+        schema: Type[Schema] | None = None
+    ) -> None:
         """Constructor."""
         super().__init__(app=app)
         self.resource = entity if entity else self._infer_resource_name()
@@ -113,7 +113,7 @@ class ResourceController(EntityController):
         """Put primary key in queryparam form."""
         return "".join(["{" + f"{k}" + "}_" for k in self.pk])[:-1]
 
-    def _infer_svc(self) -> DatabaseService:
+    def _infer_svc(self) -> Type[DatabaseService]:
         """Set approriate service for given controller.
 
            Upon subclassing Controller, this method should be overloaded to provide
@@ -127,7 +127,7 @@ class ResourceController(EntityController):
             case _:
                 return CompositeEntityService if self.table.relationships() else UnaryEntityService
 
-    def _infer_table(self) -> Base:
+    def _infer_table(self) -> Type[Base]:
         """Try to find matching table in the registry."""
         reg = Base.registry._class_registry.data
         if self.resource in reg:
@@ -138,11 +138,14 @@ class ResourceController(EntityController):
             "provide the declarative_class as 'table' argument when defining a new controller."
         )
 
-    def _infer_schema(self) -> Schema:
+    def _infer_schema(self) -> Type[Schema]:
         """Tries to import from marshmallow class registry."""
         isn = f"{self.resource}Schema"
         try:
-            return get_class(isn)
+            res = get_class(isn)
+            if isinstance(res, list):
+                return res[0]
+            return res
         except RegistryError as e:
             raise ValueError(
                 f"{self.__class__.__name__} could not find {isn} Schema. "
@@ -150,7 +153,7 @@ class ResourceController(EntityController):
                 "provide the schema class as 'schema' argument when defining a new controller"
             ) from e
 
-    def routes(self, child_routes=None, **_) -> List[Mount | Route]:
+    def routes(self, child_routes=None, **_):
         """Sets up standard RESTful endpoints.
         child_routes: from children classes calling super().__init__().
 
@@ -202,11 +205,11 @@ class ResourceController(EntityController):
         :rtype: bytes
         """
         body = await request.body()
-        if body == b'{}':
+        if body in (b'{}', b'[]', b'[{}]'):
             raise PayloadEmptyError
         return body
 
-    def _extract_fields(self, query_params: Dict[str, Any]) -> List[str]:
+    def _extract_fields(self, query_params: Dict[str, Any]) -> Set[str]:
         """Extracts fields from request query parameters.
            Defaults to ``self.schema.dump_fields.keys()``.
 
@@ -217,7 +220,7 @@ class ResourceController(EntityController):
         """
         fields = query_params.pop('fields', None)
         fields = fields.split(',') if fields else None
-        return fields or self.schema.dump_fields.keys()
+        return set(fields or self.schema.dump_fields.keys())
 
     async def create(self, request: Request) -> Response:
         """Creates associated entity.
@@ -300,7 +303,7 @@ class ResourceController(EntityController):
         validated_data = self.validate(await self._extract_body(request))
 
         # Plug in pk into the dict(s).
-        pk_val = dict(zip(self.pk, pk_val))
+        pk_val = dict(zip(self.pk, pk_val)) # type: ignore [assignment]
         for data in to_it(validated_data):
             data.update(pk_val)
 

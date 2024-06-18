@@ -103,11 +103,11 @@ over the following minimal example.
 
     # Controllers
     class DatasetController(ResourceController):
-        def __init__(self, app):
+        def __init__(self, app) -> None:
             super().__init__(app=app)
 
     class FileController(S3Controller):
-        def __init__(self, app):
+        def __init__(self, app) -> None:
             super().__init__(app=app)
 
     # Server
@@ -207,7 +207,7 @@ On our example, this is how you could apply those on `DatasetController`:
     from biodm.utils.security import group_required, admin_required
 
     class DatasetController(bdc.ResourceController):
-        def __init__(self, app):
+        def __init__(self, app) -> None:
             super().__init__(app=app)
             self.create = group_required(self.create, ['my_team'])
             self.update = group_required(self.update, ['my_team'])
@@ -225,7 +225,7 @@ combination with ``@overload_docstrings``, made to overload docstrings of contro
     from biodm.utils.security import group_required, admin_required
 
     class DatasetController(bdc.ResourceController):
-        def __init__(self, app):
+        def __init__(self, app) -> None:
             super().__init__(app=app)
 
         @group_required(['my_team'])

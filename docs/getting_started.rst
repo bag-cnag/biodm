@@ -209,7 +209,7 @@ Then you may use the following:
 
 .. code-block:: bash
 
-    sphinx-apidoc --implicit-namespaces -fo docs/biodm/ src/biodm -H "API Reference"
+    sphinx-apidoc --implicit-namespaces --separate -H "API Reference" -fo docs/biodm/ src/biodm "**/*tests*"
     python3 -m sphinx -b html docs/ docs/build/html
 
 

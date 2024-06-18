@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Dict, Any
 
 from keycloak import KeycloakAdmin
 from keycloak import KeycloakOpenIDConnection
@@ -30,7 +30,7 @@ class KeycloakManager(ApiComponent):
         client_id: str,
         client_secret: str,
         jwt_options: dict
-    ):
+    ) -> None:
         super().__init__(app=app)
         from biodm.utils.security import UserInfo
         # Set for token decoding.
@@ -89,7 +89,7 @@ class KeycloakManager(ApiComponent):
         except Exception as e:
             raise TokenDecodingError("Invalid Token")
 
-    def _user_data_to_payload(self, data: dict):
+    def _user_data_to_payload(self, data: Dict[str, Any]):
         payload = {
             field: data.get(field, "")
             for field in ("username", "email", "firstName", "lastName")
@@ -105,13 +105,13 @@ class KeycloakManager(ApiComponent):
         self.admin.get_user
         return payload
 
-    def _group_data_to_payload(self, data: dict):
+    def _group_data_to_payload(self, data: Dict[str, Any]):
         return {
             field: data.get(field, "")
             for field in ("name", "name_parent")
         }
 
-    async def create_user(self, data: dict, groups: List[str] = None) -> str:
+    async def create_user(self, data: Dict[str, Any], groups: List[str] | None = None) -> str:
         groups = groups or []
         payload = self._user_data_to_payload(data)
         payload.update({
@@ -128,7 +128,7 @@ class KeycloakManager(ApiComponent):
                 f"{payload} -- msg: {e.error_message}"
             ) from e
 
-    async def update_user(self, user_id: str, data: dict):
+    async def update_user(self, user_id: str, data: Dict[str, Any]):
         """Update user."""
         try:
             payload = self._user_data_to_payload(data)
@@ -149,18 +149,20 @@ class KeycloakManager(ApiComponent):
                 f"User(id={user_id}): {e.error_message}."
             ) from e
 
-    async def create_group(self, data: dict) -> str:
+    async def create_group(self, data: Dict[str, Any], parent: str | None = None) -> str:
         """Create group."""
-        # TODO: include parent
         try:
-            return self.admin.create_group({"name": data["name"]})
+            return self.admin.create_group(
+                {"name": data["name"]},
+                parent=parent
+            )
         except KeycloakError as e:
             raise FailedCreate(
                 "Could not create Keycloak Group with data: "
                 f"{data} -- msg: {e.error_message}"
             ) from e
 
-    async def update_group(self, group_id: str, data: dict):
+    async def update_group(self, group_id: str, data: Dict[str, Any]):
         """Update group."""
         try:
             payload = self._group_data_to_payload(data)

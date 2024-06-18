@@ -76,10 +76,13 @@ def partition(
     :rtype: List[_T], List[_T]
     """
     ls_false = []
-    # List comprehension with cond(x) or ls.append() makes linters unhappy but runs twice faster.
+    # List comprehension with cond(x) or ls.append() makes linters unhappy but runs twice as fast.
     return [
         x for x in ls
-        if (excl_na or x) and (cond(x) or ls_false.append(x))
+        if (
+            (excl_na or x) and
+            (cond(x) or ls_false.append(x)) # type: ignore [func-returns-value]
+        )
     ], ls_false
 
 

@@ -1,7 +1,8 @@
 from typing import TYPE_CHECKING, List
+from uuid import UUID
 
 from sqlalchemy import Column, Uuid, String
-from sqlalchemy.orm import Mapped, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from biodm.components.table import Base
 from .asso import asso_user_group
@@ -13,7 +14,9 @@ if TYPE_CHECKING:
 class User(Base):
     """User table -> Not locally storing passwords."""
     # KC ENDPOINT: /auth/admin/realms/{realm-name}/users/{id}
-    id = Column(Uuid, unique=True)
+    # nullable=False is a problem when creating parent entity with just the Group.name.
+    # id on creation is ensured by read_or_create method from KCService subclasses.
+    id: Mapped[UUID] = mapped_column(nullable=True) # unique=True
     username = Column(String(50), nullable=False, primary_key=True)
     email = Column(String(100))
     first_name = Column(String(50))

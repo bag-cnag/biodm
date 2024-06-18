@@ -1,14 +1,12 @@
 from __future__ import annotations
 from contextlib import asynccontextmanager, AsyncExitStack
-from inspect import signature
-from typing import AsyncGenerator, TYPE_CHECKING, Callable
+from typing import AsyncGenerator, TYPE_CHECKING, Callable, Any
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from biodm import Scope, config
 from biodm.component import ApiComponent
-from biodm.components import Base
 from biodm.exceptions import PostgresUnavailableError, DBError
 
 if TYPE_CHECKING:
@@ -18,7 +16,7 @@ if TYPE_CHECKING:
 
 class DatabaseManager(ApiComponent):
     """Manages DB side query execution."""
-    def __init__(self, app: Api):
+    def __init__(self, app: Api) -> None:
         super().__init__(app=app)
         self.database_url: str = self.async_database_url(config.DATABASE_URL)
         try:
@@ -39,9 +37,13 @@ class DatabaseManager(ApiComponent):
         """Adds a matching async driver to a database url."""
         match url.split("://"):
             case ["postgresql", _]:
-                return url.replace("postgresql://", "postgresql+asyncpg://")
+                return url.replace( # type: ignore [unreachable]
+                    "postgresql://", "postgresql+asyncpg://"
+                )
             case ["sqlite", _]:
-                return url.replace("sqlite://", "sqlite+aiosqlite://")
+                return url.replace( # type: ignore [unreachable]
+                    "sqlite://", "sqlite+aiosqlite://"
+                )
             case _:
                 raise DBError(
                     "Only ['postgresql', 'sqlite'] backends are supported at the moment."
@@ -62,13 +64,14 @@ class DatabaseManager(ApiComponent):
 
     async def init_db(self) -> None:
         """Drop all tables and create them."""
+        from biodm.components import Base
         Base.setup_permissions(self.app)
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
 
     @staticmethod
-    def in_session(db_exec: Callable):
+    def in_session(db_exec: Callable) -> Callable:
         """Decorator that ensures db_exec receives a session.
             Session object is either passed as an argument (from nested obj creation) or a new context
             manager is opened. This decorator guarantees exactly 1 session per request.
@@ -79,7 +82,7 @@ class DatabaseManager(ApiComponent):
         - All functions applying this decorator should pass down some `**kwargs`
 
         """
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs) -> Any | str | None:
             """ Produce and passes down a session if needed.
                 Finally after the function returns, serialization is applied if needed.
             """
@@ -87,7 +90,7 @@ class DatabaseManager(ApiComponent):
 
             # conditional context management.
             async with AsyncExitStack() as stack:
-                self: DatabaseService = args[0]
+                self = args[0]
                 session = kwargs.pop('session', None)
                 # Ensure session.
                 session = (
@@ -95,10 +98,11 @@ class DatabaseManager(ApiComponent):
                     else await stack.enter_async_context(self.app.db.session())
                 )
                 # Call and serialize result if requested.
-                db_res = await db_exec(*args, session=session, **kwargs)
-                return await session.run_sync(
-                    lambda _, data: serializer(data), db_res
-                ) if serializer else db_res
+                db_result = await db_exec(*args, session=session, **kwargs)
+                result = await session.run_sync(
+                    lambda _, data: serializer(data), db_result
+                ) if serializer else db_result
+            return result
 
         wrapper.__annotations__ = db_exec.__annotations__
         wrapper.__name__ = db_exec.__name__

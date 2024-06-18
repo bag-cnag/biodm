@@ -4,13 +4,15 @@ import io
 import json
 from abc import abstractmethod
 from enum import Enum
-from typing import Any, List, TYPE_CHECKING, Optional
+import sched
+from typing import Any, List, Dict, Type, TYPE_CHECKING, Optional
 
 from marshmallow.schema import Schema
 from marshmallow.exceptions import ValidationError
 from sqlalchemy.exc import MissingGreenlet
 from starlette.requests import Request
 from starlette.responses import Response
+from starlette.routing import Mount, Route
 
 from biodm import config
 from biodm.component import ApiComponent
@@ -37,7 +39,7 @@ class Controller(ApiComponent):
     endpoints including openapi schema generation for that given set.
     """
     @abstractmethod
-    def routes(self, **kwargs):
+    def routes(self, **kwargs) -> List[Mount | Route]:
         """Controller routes."""
         raise NotImplementedError
 
@@ -55,6 +57,7 @@ class Controller(ApiComponent):
          - status codes: https://restfulapi.net/http-status-codes/
 
         ---
+
         description: Generatate API schema for routes managed by given Controller.
         responses:
           200:
@@ -81,7 +84,7 @@ class EntityController(Controller):
     schema: Schema
 
     @classmethod
-    def validate(cls, data: bytes) -> (Any | list | dict | None):
+    def validate(cls, data: bytes) -> (Any | List[Any] | Dict[str, Any] | None):
         """Check incoming data against class schema and marshall to python dict.
 
         :param data: some request body
@@ -97,7 +100,8 @@ class EntityController(Controller):
                 case _:
                     raise PayloadValidationError("Wrong input JSON.")
 
-            return cls.schema.loads(json_data=data, many=many)
+            json_data = json.loads(data) # Accepts **kwargs in case support needed.
+            return cls.schema.load(json_data, many=many, partial=None, unknown=None)
 
         except ValidationError as e:
             raise PayloadValidationError() from e
@@ -107,7 +111,7 @@ class EntityController(Controller):
     @classmethod
     def serialize(
         cls,
-        data: dict | Base | List[Base],
+        data: Dict[str, Any] | Base | List[Base],
         many: bool,
         only: Optional[List[str]] = None
     ) -> str:
@@ -142,10 +146,10 @@ class EntityController(Controller):
             ) from e
         except RecursionError as e:
             raise SchemaError(
-                "Could not serialize result."
-                f"This error is most likely due to Marshmallow Schema: {cls.schema.__name__}"
-                " not restricting fields on nested attributes. Please populate 'Nested' statements"
-                " with appropriate ('only'|'exclude'|'load_only'|'dump_only') policies."
+                "Could not serialize result. This error is most likely due to Marshmallow Schema: "
+                f"{cls.schema.__class__.__name__} not restricting fields cycles on nested "
+                "attributes. Please populate 'Nested' statements with appropriate "
+                "('only'|'exclude'|'load_only'|'dump_only') policies."
             ) from e
 
     @abstractmethod

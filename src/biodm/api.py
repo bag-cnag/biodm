@@ -1,16 +1,16 @@
 from asyncio import wait_for
 import logging
 import logging.config
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Type
 from types import ModuleType
 
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
+from starlette.routing import Route
 from starlette.schemas import SchemaGenerator
 from starlette.types import ASGIApp
-from starlette.config import Config
 
 from biodm import Scope, config
 from biodm.basics import CORE_CONTROLLERS, K8sController
@@ -76,16 +76,18 @@ class Api(Starlette):
     s3: S3Manager = None
     kc: ApiComponent = None
     k8: K8sManager = None
+    # Controllers
+    controllers: List[Controller] = []
 
     def __init__(
         self,
-        controllers: Optional[List[Controller]],
+        controllers: Optional[List[Type[Controller]]],
         instance: Optional[Dict[str, ModuleType]]=None,
         debug: bool=False,
         test: bool=False,
         *args,
         **kwargs
-    ):
+    ) -> None:
         self.scope = Scope.PROD
         if debug:
             self.scope |= Scope.DEBUG
@@ -112,7 +114,6 @@ class Api(Starlette):
         self.deploy_managers()
 
         ## Controllers.
-        self.controllers = []
         classes = CORE_CONTROLLERS + controllers or []
         classes.append(K8sController)
         routes = self.adopt_controllers(classes)
@@ -141,7 +142,7 @@ class Api(Starlette):
         History.svc = UnaryEntityService(app=self, table=History)
         ListGroup.svc = CompositeEntityService(app=self, table=ListGroup)
 
-        super().__init__(routes=routes, debug=Scope.DEBUG in self.scope, *args, **kwargs)
+        super().__init__(debug, routes, *args, **kwargs)
 
         ## Middlewares
         # self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
@@ -224,7 +225,7 @@ class Api(Starlette):
             self.logger.info(f"K8 manager UP.")
 
 
-    def adopt_controllers(self, controllers: List[Controller]) -> List:
+    def adopt_controllers(self, controllers: List[Type[Controller]]) -> List[Route]:
         """Adopts controllers, and their associated routes."""
         routes = []
         for controller in controllers:

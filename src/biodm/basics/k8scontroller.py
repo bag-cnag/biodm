@@ -3,7 +3,7 @@ from copy import deepcopy
 
 from starlette.routing import Mount, Route
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import Response, PlainTextResponse
 
 from biodm.components.controllers import ResourceController, HttpMethod
 from biodm.exceptions import ManifestError
@@ -16,14 +16,14 @@ class K8sController(ResourceController):
     """Kubernetes Instances Controller.
 
     """
-    def __init__(self, app):
+    def __init__(self, app) -> None:
         super().__init__(app=app, entity="k8sinstance", table=K8sInstance, schema=K8sinstanceSchema)
 
     # @property
     # def prefix(self):
     #     return "/k8s_instances"
 
-    def routes(self, schema=False) -> Mount:
+    def routes(self, schema: bool=False):
         """Routes for k8s instances management
 
         :param schema: when called from schema generation, defaults to False
@@ -41,6 +41,8 @@ class K8sController(ResourceController):
 
         # Mock up an individual route for each available manifest, copying doc.
         r_create = m.routes[0]
+        assert isinstance(r_create, Route) # mypy
+
         mans = self.k8s.manifests
         keys = [k for k in mans.__dict__.keys() if not k.startswith('__')]
 
@@ -62,7 +64,7 @@ class K8sController(ResourceController):
     async def list_instances(self, request: Request) -> Response:
         """ List running K8s Instances.
         """
-        return '{}'
+        return PlainTextResponse('{}')
 
     async def create(self, request: Request) -> Response:
         """Deploys K8s Instance.
@@ -81,6 +83,8 @@ class K8sController(ResourceController):
         raise ManifestError
 
     async def instance_info(self, request: Request) -> Response:
+        """ Instance info.
+
+        ---
         """
-        """
-        return '{}'
+        return PlainTextResponse('{}')

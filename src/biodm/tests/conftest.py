@@ -14,7 +14,7 @@ from biodm.components.controllers import ResourceController
 import biodm.config
 
 ## SQLAlchemy
-asso_a_b = sa.Table(
+asso_aa_bb = sa.Table(
     "ASSO_A_B",
     Base.metadata,
     sa.Column("id_a",            sa.ForeignKey("A.id"),        primary_key=True),
@@ -28,7 +28,7 @@ class A(Base):
     y = sa.Column(sa.Integer, nullable=True)
     id_c = sa.Column(sa.ForeignKey("C.id"))
 
-    bs:    Mapped[List["B"]]  = relationship(secondary=asso_a_b, uselist=True, lazy="select")
+    bs:    Mapped[List["B"]]  = relationship(secondary=asso_aa_bb, uselist=True, lazy="select")
     c:     Mapped["C"] = relationship(foreign_keys=[id_c], backref="ca", lazy="select")
 
 
@@ -67,17 +67,17 @@ class CSchema(ma.Schema):
 
 ## Api componenents.
 class AController(ResourceController):
-    def __init__(self, app):
+    def __init__(self, app) -> None:
         super().__init__(app=app, entity="A", table=A, schema=ASchema)
 
 
 class BController(ResourceController):
-    def __init__(self, app):
+    def __init__(self, app) -> None:
         super().__init__(app=app, entity="B", table=B, schema=BSchema)
 
 
 class CController(ResourceController):
-    def __init__(self, app):
+    def __init__(self, app) -> None:
         super().__init__(app=app, entity="C", table=C, schema=CSchema)
 
 

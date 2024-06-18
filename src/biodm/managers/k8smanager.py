@@ -1,5 +1,5 @@
 import time
-from typing import Tuple, List, Any
+from typing import Tuple, List, Any, Dict
 
 from kubernetes import client
 from biodm.component import ApiComponent
@@ -25,7 +25,15 @@ class K8sManager(ApiComponent):
     _NetworkingV1Api: client.NetworkingApi
     _CustomObjectsApi: client.CustomObjectsApi
 
-    def __init__(self, app, host, cert, token, namespace, manifests=None):
+    def __init__(
+        self,
+        app,
+        host,
+        cert,
+        token,
+        namespace,
+        manifests=None
+    ) -> None:
         super().__init__(app=app)
         self._config = client.Configuration()
         self._client = client.ApiClient(self._config)
@@ -104,21 +112,19 @@ class K8sManager(ApiComponent):
         return ret
 
     @staticmethod
-    def get_name_in_manifest(manifest: dict) -> str:
+    def get_name_in_manifest(manifest: Dict[str, Any]) -> str:
         """Try to find and return metadata.name field from a manifest"""
         metadata = manifest.get("metadata", None)
         kind = manifest.get("kind", "ressource")
         if metadata:
-            name = metadata.get("name", None)
-            if name:
-                return name
+            return metadata.get("name", None)
         raise Exception(f"field metadata.name required in {kind} manifest")
 
-    def create_deployment(self, manifest: dict) -> None:
+    def create_deployment(self, manifest: Dict[str, Any]) -> None:
         """Create a deployment"""
         resp = None
         name = self.get_name_in_manifest(manifest)
-        specs = manifest.get("spec")
+        specs = manifest.get("spec", {})
         nreplicas = specs.get("replicas", 1)
 
         resp = self.AppsV1Api.create_namespaced_deployment(
@@ -175,11 +181,14 @@ class K8sManager(ApiComponent):
             label_selector=label_selector
         )
 
-    def delete_custom_object(self, name: str,
-                             manifest: dict = None,
-                             group='cnag.eu',
-                             version='v1',
-                             plural='suis'):
+    def delete_custom_object(
+        self,
+        name: str,
+        manifest: Dict[str, Any],
+        group='cnag.eu',
+        version='v1',
+        plural='suis'
+    ) -> Any:
         if manifest:
             group, version, plural = self.get_custom_resource_params(manifest)
         return self.CustomObjectsApi.delete_namespaced_custom_object(

@@ -76,11 +76,6 @@ def test_missing_resource(client):
     client.get('/cs/1')
 
 
-@pytest.mark.xfail(raises=exc.FailedDelete)
-def test_missing_resource(client):
-    client.delete('/cs/1')
-
-
 def test_readall_resource(client):
     item1 = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'},{'name': 'bap'},]}
     item2 = {'x': 3, 'y': 4, 'bs': [{'name': 'tit'},{'name': 'tat'},]}

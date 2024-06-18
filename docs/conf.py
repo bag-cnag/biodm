@@ -31,10 +31,10 @@ extensions = [
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'biodm.tests*', '*conftest*']
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3', None),
     'sqlalchemy': ('https://docs.sqlalchemy.org/en/20/', None),
-    'marshmallow': ('https://marshmallow.readthedocs.io/en/stable/', None),
 }
+# 'python': ('https://docs.python.org/3', None),
+# 'marshmallow': ('https://marshmallow.readthedocs.io/en/stable/', None),
 
 
 # -- Options for HTML output -------------------------------------------------
