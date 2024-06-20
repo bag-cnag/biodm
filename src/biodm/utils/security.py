@@ -88,9 +88,9 @@ def login_required(f):
 
     @wraps(f)
     async def wrapper(controller, request, *args, **kwargs):
-        user_info = UserInfo(request)
+        user_info = await UserInfo(request)
         if user_info.info:
-            userid, groups, projects = user_info.info
+            userid, groups, _ = user_info.info
             timestamp = datetime.now().strftime("%I:%M%p on %B %d, %Y")
             controller.app.logger.info(
                 f'{timestamp}\t{userid}\t{",".join(groups)}\t'

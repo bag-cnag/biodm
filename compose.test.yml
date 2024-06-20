@@ -1,0 +1,24 @@
+include:
+  - ./compose.yml
+
+services:
+  api-example:
+    build:
+      context: ./
+      dockerfile: docker/Dockerfile.biodm-test
+      args:
+        - PYTHON__V=3.11
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      s3:
+        condition: service_started
+      api-db:
+        condition: service_started
+    ports:
+      - 8000:8000
+    stdin_open: true
+    tty: true
+    networks:
+      biodm-dev:
+        ipv4_address: 10.10.0.6

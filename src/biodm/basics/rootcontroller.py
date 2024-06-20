@@ -6,7 +6,7 @@ from starlette.responses import PlainTextResponse
 
 from biodm import config
 from biodm.components.controllers import Controller
-from biodm.utils.security import login_required
+from biodm.utils.security import UserInfo, login_required
 from biodm.utils.utils import json_response
 
 
@@ -69,7 +69,7 @@ class RootController(Controller):
 
         """
         auth_url = await self.app.kc.auth_url(redirect_uri=self.handshake())
-        return PlainTextResponse(auth_url + "\n")
+        return PlainTextResponse(auth_url)
 
     async def syn_ack(self, request):
         """Login callback function when the user logs in through the browser.
@@ -89,7 +89,7 @@ class RootController(Controller):
         return PlainTextResponse(token['access_token'] + '\n')
 
     @login_required
-    async def authenticated(self, _, userid, groups, projects):
+    async def authenticated(self, _, user_info: UserInfo):
         """Token verification endpoint.
 
         ---
@@ -101,4 +101,6 @@ class RootController(Controller):
             description: Unauthorized.
 
         """
-        return PlainTextResponse(f"{userid}, {groups}, {projects}\n")
+        assert user_info.info
+        user_id, groups, projects = user_info.info 
+        return PlainTextResponse(f"{user_id}, {groups}, {projects}\n")

@@ -3,8 +3,7 @@ import pytest
 import json
 
 from biodm import exceptions as exc
-from biodm.utils.utils import json_response
-from .conftest import json_bytes
+from biodm.utils.utils import json_bytes
 
 
 def test_resource_schema(client):

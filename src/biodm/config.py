@@ -9,7 +9,7 @@ except FileNotFoundError:
 API_NAME        = config("API_NAME",        cast=str,  default="biodm_instance")
 API_VERSION     = config("API_VERSION",     cast=str,  default="0.1.0")
 SERVER_SCHEME   = config("SERVER_SCHEME",   cast=str,  default="http://")
-SERVER_HOST     = config("SERVER_HOST",     cast=str,  default="127.0.0.1")
+SERVER_HOST     = config("SERVER_HOST",     cast=str,  default="0.0.0.0")
 SERVER_PORT     = config("SERVER_PORT",     cast=int,  default=8000)
 SECRET_KEY      = config("SECRET_KEY",      cast=str,  default="r4nD0m_p455")
 SERVER_TIMEOUT  = config("SERVER_TIMEOUT",  cast=int,  default=30)

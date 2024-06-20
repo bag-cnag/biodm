@@ -1,20 +1,18 @@
-import json
 import pytest
 
 from typing import List
 import marshmallow as ma
 import sqlalchemy as sa
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import relationship
+
+from sqlalchemy.orm import relationship, Mapped
 from starlette.testclient import TestClient
 
 from biodm.api import Api
 from biodm.components import Base
 from biodm.components.controllers import ResourceController
-import biodm.config
 
-## SQLAlchemy
-asso_aa_bb = sa.Table(
+# SQLAlchemy
+asso_a_b = sa.Table(
     "ASSO_A_B",
     Base.metadata,
     sa.Column("id_a",            sa.ForeignKey("A.id"),        primary_key=True),
@@ -28,7 +26,7 @@ class A(Base):
     y = sa.Column(sa.Integer, nullable=True)
     id_c = sa.Column(sa.ForeignKey("C.id"))
 
-    bs:    Mapped[List["B"]]  = relationship(secondary=asso_aa_bb, uselist=True, lazy="select")
+    bs:    Mapped[List["B"]]  = relationship(secondary=asso_a_b, uselist=True, lazy="select")
     c:     Mapped["C"] = relationship(foreign_keys=[id_c], backref="ca", lazy="select")
 
 
@@ -42,7 +40,7 @@ class C(Base):
     data = sa.Column(sa.String, nullable=False)
 
 
-## Schemas
+# Schemas
 class ASchema(ma.Schema):
     id = ma.fields.Integer()
     x = ma.fields.Integer()
@@ -65,7 +63,7 @@ class CSchema(ma.Schema):
     ca = ma.fields.Nested("ASchema")
 
 
-## Api componenents.
+# Api componenents.
 class AController(ResourceController):
     def __init__(self, app) -> None:
         super().__init__(app=app, entity="A", table=A, schema=ASchema)
@@ -84,21 +82,13 @@ class CController(ResourceController):
 app = Api(
     debug=True,
     controllers=[AController, BController, CController],
-    instance={
-        # 'tables': tables,
-        # 'schemas': schemas,
-        # 'manifests': manifests
-    },
+    instance={},
     test=True
 )
 
-@pytest.fixture()
+@pytest.fixture
 def client():
     with TestClient(app=app, backend_options={
         "use_uvloop": True
     }) as c:
         yield c
-
-
-def json_bytes(d):
-    return json.dumps(d).encode('utf-8')

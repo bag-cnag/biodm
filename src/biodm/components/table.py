@@ -40,12 +40,13 @@ class Base(DeclarativeBase, AsyncAttrs):
     """
     svc: ClassVar[DatabaseService]
     ctrl: ClassVar[ResourceController] = None
+    raw_permissions: ClassVar[Dict[str, Tuple[Type[Self], Tuple[Permission]]]] = {}
     permissions: ClassVar[Dict[Any, Any]] = {}
 
     def __init_subclass__(cls, **kw: Any) -> None:
         """Populates permission dict in a first pass."""
         if hasattr(cls, "__permissions__"):
-            Base.permissions[cls.__name__] = (cls, cls.__permissions__)
+            Base.raw_permissions[cls.__name__] = (cls, cls.__permissions__)
         return super().__init_subclass__(**kw)
 
     @staticmethod
@@ -214,7 +215,7 @@ class Base(DeclarativeBase, AsyncAttrs):
         i.e. You cannot flag an o2m with the same target in two different parent classes.
         """
         lut = {}
-        for table, permissions in Base.permissions.values():
+        for table, permissions in Base.raw_permissions.values():
             for perm in permissions:
                 if perm.field.direction is not ONETOMANY:
                     raise ImplementionError(

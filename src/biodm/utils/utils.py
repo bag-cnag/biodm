@@ -1,5 +1,6 @@
 """Utils."""
 import datetime as dt
+import json
 from functools import reduce
 import operator
 from os import path, utime
@@ -34,12 +35,17 @@ def utcnow() -> dt.datetime:
 
 
 def json_response(data: str, status_code: int) -> Response:
-    """Formats a Response object."""
+    """Formats a Response object and set application/json header."""
     return Response(
         data + "\n",
         status_code=status_code,
         media_type="application/json"
     )
+
+
+def json_bytes(d: Dict[Any, Any]) -> bytes:
+    """Encodes python Dict as utf-8 bytes."""
+    return json.dumps(d).encode('utf-8')
 
 
 def touch(fname: str):

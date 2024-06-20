@@ -2,14 +2,21 @@
 ARG IMG=quay.io/keycloak/keycloak:22.0
 FROM ${IMG} as builder
 
+# Fetch env from args
+ARG _KC_DB=postgres
+ARG _KC_DB_USERNAME
+ARG _KC_DB_PASSWORD
+ARG _KC_HOSTNAME
+ARG _KC_DB_URL
+
 # Enable health and metrics support
 ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
 
 # Configure a database vendor
-ENV KC_DB=postgres
-
+ENV KC_DB=$_KC_DB
 WORKDIR /opt/keycloak
+
 # for demonstration purposes only, please make sure to use proper certificates in production instead
 RUN keytool -genkeypair -storepass password -storetype PKCS12 -keyalg RSA -keysize 2048 -dname "CN=server" -alias server -ext "SAN:c=DNS:localhost,IP:127.0.0.1" -keystore conf/server.keystore
 RUN /opt/keycloak/bin/kc.sh build
@@ -17,11 +24,33 @@ RUN /opt/keycloak/bin/kc.sh build
 FROM ${IMG}
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
 
-# change these values to point to a running postgres instance
-ENV KC_DB=postgres
-ENV KC_DB_URL=jdbc:postgresql://10.10.0.5:5432/keycloak
-ENV KC_DB_USERNAME=postgres
-ENV KC_DB_PASSWORD=pass
-ENV KC_HOSTNAME=keycloak.local
+# -------------------------------------------------------------------------------------------------
+# Healthcheck script that works without curl/wget or any other tool than base shell installed.
+# Courtesy of: https://github.com/dart-lang/dart-docker/issues/58
+WORKDIR /
+USER root
+RUN printf '#!/bin/bash\nexec 3<>/dev/tcp/127.0.0.1/8080\n\n\
+            echo -e "GET /health HTTP/1.1\nhost: 127.0.0.1:8080\n">&3\n\
+            \ntimeout 1 cat <&3 | grep status | grep UP || exit 1' >> health.sh && \
+            chmod 777 health.sh
+# -------------------------------------------------------------------------------------------------
 
+USER keycloak
+WORKDIR /opt/keycloak
+
+# Refresh args
+ARG _KC_DB
+ARG _KC_DB_USERNAME
+ARG _KC_DB_PASSWORD
+ARG _KC_HOSTNAME
+ARG _KC_DB_URL
+
+# Declare env to docker
+ENV KC_DB=$_KC_DB
+ENV KC_DB_USERNAME=$_KC_DB_USERNAME
+ENV KC_DB_PASSWORD=$_KC_DB_PASSWORD
+ENV KC_HOSTNAME=$_KC_HOSTNAME
+ENV KC_DB_URL=$_KC_DB_URL
+
+ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
 CMD ["start-dev"]

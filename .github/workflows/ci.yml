@@ -35,10 +35,18 @@ jobs:
         sudo apt install -y --upgrade sqlite3
         pip install -r src/requirements/test.txt
         pip install .
-    - name: Run tests
+    - name: Run unit tests
       run: |
-        cd src/biodm/tests/
+        cd src/biodm/tests/unit/
         pytest
         cd -
+    - name: Run integration tests
+      run: |
+        docker compose -f compose.test.yml build
+        docker compose -f compose.test.yml up -d
+        cd src/tests/integration/
+        pytest
+        cd -
+        docker -f compose.test.yml down
     - name: Analysing the code with pylint
       run: pylint -d W0221 $(git ls-files 'src/biodm/*.py') --exit-zero

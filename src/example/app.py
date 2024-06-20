@@ -1,10 +1,20 @@
 #!/usr/bin/env python
+import os
+import sys
+from typing import Literal
+# from pathlib import Path
 import uvicorn
 
 from biodm import config
 from biodm.api import Api
 
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from entities import controllers
+
+# sys.path.append(Path(__file__).parent)
+# import controllers
+# from . import entities
 # from example import manifests
 
 
@@ -23,9 +33,9 @@ def main():
 if __name__ == "__main__":
     try:
         import uvloop as _
-        loop="uvloop"
+        loop = "uvloop"
     except ImportError:
-        loop="auto"
+        loop = "auto"
 
     uvicorn.run(
         f"{__name__}:main",

@@ -72,17 +72,24 @@ Development environment
 Quick dependency setup
 ~~~~~~~~~~~~~~~~~~~~~~
 
-**pre-requisites**:
-    * Build local `Keycloak`_ image with your local certificates.
+To start all service dependnencies at once and skip individual configuration you may use
+the provided ``compose.yml``. It can also build for you an appropriate keycloak image with your local
+certificates in order to serve ``https://`` requests.
 
-To start all service dependnencies at once and skip individual configuration you may use the provided `compose.yml`.
+.. code-block:: bash
+
+    docker compose build
+
+Then
 
 .. code-block:: bash
 
     docker compose up -d
 
-Default configuration parameters are using the following hostnames that you
-may add to your host table for convenience.
+Default configuration parameters are set on fixed IPs declared in this file.
+
+**optional - strongly recommended for keycloak -:** for testing convenience you
+may add those lines to your host table.
 
 .. code-block:: bash
 
@@ -92,6 +99,11 @@ may add to your host table for convenience.
     10.10.0.3       keycloak.local
     10.10.0.4       s3bucket.local
     EOF
+
+
+It might be a pre-requisite for keycloak as it is quite strict with security protocols.
+Definitely something to try if you cannot reach admin UI or your app is unable to fetch any data.
+
 
 **post-requisites** - in doubt see `Individual configuration`_ below:
 
@@ -117,14 +129,20 @@ First you need to build the image yourself according to the `documentation <http
 .. code-block:: bash
 
     cd docker/ && \
-    docker build . -t keycloak:22.0.0_local-certs -f Dockerfile.keycloak-22.0.0_local-certs && \
+    docker build . -t keycloak:22.0_local-certs \
+                   -f Dockerfile.keycloak-22.0_local-certs \
+                   --build-arg _KC_DB=postgres \
+                   --build-arg _KC_DB_USERNAME=postgres \
+                   --build-arg _KC_DB_PASSWORD=pass \
+                   --build-arg=_KC_HOSTNAME=keycloak.local \
+                   --build-arg _KC_DB_URL=jdbc:postgresql://10.10.0.5:5432/keycloak && \
     cd -
 
 Keycloak also needs a databse:
 
 .. code-block:: bash
 
-    docker run --name kc-db -e POSTGRES_PASSWORD=pass -d postgres:16-bookworm
+    docker run --name kc-db -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=keycloak -d postgres:16-bookworm
     docker exec -u postgres biodm-pg createdb keycloak
 
 
