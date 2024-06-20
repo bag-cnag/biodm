@@ -42,8 +42,7 @@ jobs:
         cd -
     - name: Run integration tests
       run: |
-        docker compose -f compose.test.yml build
-        docker compose -f compose.test.yml up -d
+        docker compose -f compose.test.yml up -d --build --wait
         cd src/tests/integration/
         pytest
         cd -
