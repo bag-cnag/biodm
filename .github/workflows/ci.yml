@@ -37,7 +37,7 @@ jobs:
         pip install .
     - name: Run unit tests
       run: |
-        cd src/biodm/tests/unit/
+        cd src/tests/unit
         pytest
         cd -
     - name: Run integration tests
