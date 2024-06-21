@@ -1,5 +1,3 @@
-from biodm.components.controllers import overload_docstring
-
 def test_live_endpoint(client):
     """"""
     response = client.get('/live')

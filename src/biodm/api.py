@@ -72,10 +72,10 @@ class Api(Starlette):
     """
     logger = logging.getLogger(__name__)
     # Managers
-    db: DatabaseManager = None
-    s3: S3Manager = None
-    kc: ApiComponent = None
-    k8: K8sManager = None
+    db: DatabaseManager
+    s3: S3Manager
+    kc: ApiComponent
+    k8: K8sManager
     # Controllers
     controllers: List[Controller] = []
 
@@ -97,9 +97,10 @@ class Api(Starlette):
         ## Instance Info.
         instance = instance or {}
 
-        m = instance.get('manifests')
-        if m:
-            config.K8_MANIFESTS = m
+        # TODO: debug
+        # m = instance.get('manifests')
+        # if m:
+        #     config.K8_MANIFESTS = m
 
         ## Logger.
         logging.basicConfig(
@@ -114,7 +115,7 @@ class Api(Starlette):
         self.deploy_managers()
 
         ## Controllers.
-        classes = CORE_CONTROLLERS + controllers or []
+        classes = CORE_CONTROLLERS + (controllers or [])
         classes.append(K8sController)
         routes = self.adopt_controllers(classes)
 
@@ -146,12 +147,14 @@ class Api(Starlette):
 
         ## Middlewares
         # self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
+        assert config.SERVER_HOST
+
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
             allow_origins=(
                 [config.SERVER_HOST, "*"] + (
                     [config.KC_HOST]
-                    if hasattr(config, "KC_HOST")
+                    if hasattr(config, "KC_HOST") and config.KC_HOST
                     else []
                 )
             ),
@@ -195,7 +198,7 @@ class Api(Starlette):
         self.db = DatabaseManager(app=self)
         # others
         kc = self._parse_config("kc")
-        if all((param in kc 
+        if all((param in kc and bool(kc[param])
                 for param in ('host',
                               'realm',
                               'public_key',
@@ -208,7 +211,7 @@ class Api(Starlette):
             self.logger.info(f"KC manager UP.")
 
         s3 = self._parse_config("s3")
-        if all((param in s3 
+        if all((param in s3 and bool(s3[param])
                 for param in ('endpoint_url',
                               'bucket_name',
                               'access_key_id',
@@ -217,17 +220,16 @@ class Api(Starlette):
             self.logger.info(f"S3 manager UP.")
 
         k8 = self._parse_config("k8")
-        if all((param in k8 
+        if all((param in k8 and bool(k8[param])
                 for param in ('host',
                               'cert',
                               'token'))):
             self.k8 = K8sManager(app=self, **k8)
             self.logger.info(f"K8 manager UP.")
 
-
     def adopt_controllers(self, controllers: List[Type[Controller]]) -> List[Route]:
         """Adopts controllers, and their associated routes."""
-        routes = []
+        routes: List[Route] = []
         for controller in controllers:
             # Instanciate.
             c = controller(app=self)

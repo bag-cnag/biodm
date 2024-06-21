@@ -34,6 +34,8 @@ services:
         - _KC_HOSTNAME=keycloak.local
         - _KC_DB_URL=jdbc:postgresql://10.10.0.5:5432/keycloak
     container_name: keycloak
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import
     environment:
       - DB_VENDOR=postgres
       - DB_ADDR=10.10.0.5:5432
@@ -47,6 +49,7 @@ services:
       - KEYCLOAK_HTTP_ENABLED=true
       - KEYCLOAK_HOSTNAME_STRICT_HTTPS=false
       - KC_HEALTH_ENABLED=true
+    command: ["start-dev", "--import-realm"]
     depends_on:
       - kc-db
     links:

@@ -1,6 +1,6 @@
 """Database service: Translates requests data into SQLA statements and execute."""
 from operator import or_
-from typing import Callable, List, Sequence, Any, Tuple, Dict, overload, Literal, Set
+from typing import Callable, List, Sequence, Any, Tuple, Dict, overload, Literal, Set, Type
 
 from sqlalchemy import insert, select, delete, or_
 from sqlalchemy.dialects import postgresql, sqlite
@@ -41,6 +41,8 @@ class DatabaseService(ApiService):
 
     def _get_permissions(self, verb: str) -> List[Permission] | None:
         """Retrieve entries indexed with self.table containing given verb in permissions."""
+        assert hasattr(self, 'table')
+
         if self.table in Base.permissions:
             return [
                 perm
@@ -91,17 +93,17 @@ class DatabaseService(ApiService):
 class UnaryEntityService(DatabaseService):
     """Generic Service class for non-composite entities.
     """
-    def __init__(self, app, table: Base, *args, **kwargs) -> None:
+    def __init__(self, app, table: Type[Base], *args, **kwargs) -> None:
         # Entity info.
         self.table = table
         self.pk = set(table.col(name) for name in table.pk())
         # Take a snapshot at declaration time, convenient to isolate runtime permissions.
         self.relationships = table.relationships()
         # Enable entity - service - table linkage so everything is conveniently available.
-        table.svc = self
-        table.__table__.decl_class = table
+        setattr(table, 'svc', self)
+        setattr(table.__table__, 'decl_class', table)
 
-        super().__init__(app=app, *args, **kwargs)
+        super().__init__(app=app)
 
     def __repr__(self) -> str:
         """ServiceName(TableName)."""

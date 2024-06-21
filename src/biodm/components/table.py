@@ -38,8 +38,8 @@ class Base(DeclarativeBase, AsyncAttrs):
     :param __permissions: Stores rules for user defined permissions on hierarchical entities
     :type __permissions: Dict
     """
-    svc: ClassVar[DatabaseService]
-    ctrl: ClassVar[ResourceController] = None
+    svc: ClassVar[Type[DatabaseService]]
+    ctrl: ClassVar[Type[ResourceController]]
     raw_permissions: ClassVar[Dict[str, Tuple[Type[Self], Tuple[Permission]]]] = {}
     permissions: ClassVar[Dict[Any, Any]] = {}
 

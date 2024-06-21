@@ -2,12 +2,13 @@ import requests
 import json
 import pytest
 from bs4 import BeautifulSoup
-
-from biodm.utils.utils import json_bytes
-
+from typing import Dict, Any
 
 token: str = ""
 
+def json_bytes(d: Dict[Any, Any]) -> bytes:
+    """Encodes python Dict as utf-8 bytes."""
+    return json.dumps(d).encode('utf-8')
 
 def keycloak_login(url, username, password):
     # Get and Parse form with bs
@@ -33,7 +34,7 @@ def keycloak_login(url, username, password):
 def test_create_user(srv_endpoint):
     """"""
     user = {"username": "u_test", "password": "1234"}
-    response = requests.post(f'{srv_endpoint}users', data=json_bytes(user))
+    response = requests.post(f'{srv_endpoint}/users', data=json_bytes(user))
     json_response = json.loads(response.text)
 
     assert response.status_code == 201
@@ -43,7 +44,7 @@ def test_create_user(srv_endpoint):
 def test_create_group(srv_endpoint):
     """"""
     group = {"name": "g_test"}
-    response = requests.post(f'{srv_endpoint}groups', data=json_bytes(group))
+    response = requests.post(f'{srv_endpoint}/groups', data=json_bytes(group))
     json_response = json.loads(response.text)
 
     assert response.status_code == 201
@@ -55,11 +56,11 @@ def test_login_user_on_keycloak_and_get_token(srv_endpoint):
     global token
     # Create User
     user = {"username": "u_test", "password": "1234"}
-    _ = requests.post(f'{srv_endpoint}users', data=json_bytes(user))
+    _ = requests.post(f'{srv_endpoint}/users', data=json_bytes(user))
 
     # Get login page
-    login_response = requests.get(f'{srv_endpoint}login')
-    response = keycloak_login(login_response.text, user['username'], user['password'])
+    login_url = requests.get(f'{srv_endpoint}/login')
+    response = keycloak_login(login_url.text, user['username'], user['password'])
     token = response.text.rstrip('\n')
 
     assert response.status_code == 200
@@ -70,7 +71,7 @@ def test_login_user_on_keycloak_and_get_token(srv_endpoint):
 @pytest.mark.dependency(name="test_login_user_on_keycloak_and_get_token")
 def test_authenticated_endpoint(srv_endpoint):
     headers = {'Authorization': f'Bearer {token}'}
-    response = requests.get(f'{srv_endpoint}authenticated', headers=headers)
+    response = requests.get(f'{srv_endpoint}/authenticated', headers=headers)
 
     assert "u_test" in response.text
     assert "['no_groups']" in response.text

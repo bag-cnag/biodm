@@ -40,12 +40,11 @@ jobs:
         cd src/tests/unit
         pytest
         cd -
-    - name: Run integration tests
+    - name: Run integration tests - keycloak -
       run: |
-        docker compose -f compose.test.yml up -d --build --wait
-        cd src/tests/integration/
-        pytest
-        cd -
-        docker -f compose.test.yml down
+        docker compose -f compose.test.yml run --build test-keycloak-run
+    # - name: Run integration tests - s3 -
+    #   run: |
+    #     docker compose -f compose.test.yml run --build test-keycloak-run
     - name: Analysing the code with pylint
       run: pylint -d W0221 $(git ls-files 'src/biodm/*.py') --exit-zero
