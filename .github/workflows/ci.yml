@@ -24,11 +24,16 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ steps.pip-cache.outputs.dir }}
-        id: cache
         key: ${{ runner.os }}-pip-${{ hashFiles('src/requirements/**.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-          ${{ runner.os }}-
+    - name: Cache Docker layers
+      uses: actions/cache@v4
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
     - name: Setup dependencies
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
@@ -43,9 +48,13 @@ jobs:
     - name: Analysing the code with pylint
       run: |
         pylint -d W0221 $(git ls-files 'src/biodm/*.py') --exit-zero
+    - name: Build and cache test images
+      uses: whoan/docker-build-with-cache-action@v5
+      with:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        registry: ghcr.io
+        compose_file: compose.test.yml
     - name: Run integration tests - keycloak -
       run: |
         docker compose -f compose.test.yml run --build test-keycloak-run
-    # - name: Run integration tests - s3 -
-    #   run: |
-    #     docker compose -f compose.test.yml run --build test-keycloak-run
