@@ -1,10 +1,10 @@
 import pytest
 
-from typing import List
+from typing import List, Optional
 import marshmallow as ma
 import sqlalchemy as sa
 
-from sqlalchemy.orm import relationship, Mapped
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 from starlette.testclient import TestClient
 
 from biodm.api import Api
@@ -24,7 +24,7 @@ class A(Base):
     id = sa.Column(sa.Integer, primary_key=True)
     x = sa.Column(sa.Integer, nullable=True)
     y = sa.Column(sa.Integer, nullable=True)
-    id_c = sa.Column(sa.ForeignKey("C.id"))
+    id_c: Mapped[Optional[int]] = mapped_column(sa.Integer, sa.ForeignKey("C.id"))
 
     bs:    Mapped[List["B"]]  = relationship(secondary=asso_a_b, uselist=True, lazy="select")
     c:     Mapped["C"] = relationship(foreign_keys=[id_c], backref="ca", lazy="select")

@@ -5,7 +5,7 @@ from typing import Callable, List, Sequence, Any, Tuple, Dict, overload, Literal
 from sqlalchemy import insert, select, delete, or_
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import load_only, selectinload, ONETOMANY, MANYTOONE
+from sqlalchemy.orm import load_only, selectinload, ONETOMANY, MANYTOONE, aliased
 from sqlalchemy.sql import Insert, Delete, Select
 
 from biodm import config
@@ -379,12 +379,28 @@ class UnaryEntityService(DatabaseService):
 
         for n in nested:
             relationship, attr = self.relationships[n], getattr(self.table, n)
+            target = relationship.target.decl_class
+
             if relationship.direction in (MANYTOONE, ONETOMANY):
-                stmt = stmt.join_from(
-                    self.table,
-                    attr,
-                    isouter=True
-                )
+                if target == self.table:
+                    alias = aliased(target)
+                    stmt = stmt.join_from(
+                        self.table,
+                        alias,
+                        onclause=unevalled_all([
+                            getattr(self.table, pair[0].name) == getattr(alias, pair[1].name)
+                            for pair in relationship.local_remote_pairs
+                        ]),
+                        isouter=True
+                    )
+                else:
+                    stmt = stmt.join_from(
+                        self.table,
+                        attr,
+                        isouter=True
+                    )
+                # if target == self.table:
+                #     target = aliased(self.table)
                 stmt = (
                     relationship
                     .target
@@ -473,18 +489,18 @@ class UnaryEntityService(DatabaseService):
                 )
 
             stmt = stmt.where(
-                unevalled_or(
+                unevalled_or([
                     col.like(str(w).replace("*", "%"))
                     for w in wildcards
-                )
+                ])
             ) if wildcards else stmt
 
             # Regular equality conditions.
             stmt = stmt.where(
-                unevalled_or(
+                unevalled_or([
                     col == ctype(v)
                     for v in values
-                )
+                ])
             ) if values else stmt
 
             # if exclude:

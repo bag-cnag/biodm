@@ -11,9 +11,3 @@ def test_api_schema(client):
     assert response.status_code == 200
     assert "biodm_test" in response.text
     assert "0.1.0"      in response.text
-
-
-# def test_login_endpoint(client_args):
-#     with TestClient(**client_args) as client:
-#         response = client.get('/login')
-#         assert response.status_code == 200

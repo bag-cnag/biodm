@@ -13,6 +13,11 @@ services:
         condition: service_started
       keycloak:
         condition: service_healthy
+    healthcheck:
+      test: python3 -c "import requests; exit(requests.get('http://test-keycloak-env:8000/live').text != 'live\n');"
+      interval: 5s
+      timeout: 5s
+      retries: 5
     environment:
       - API_NAME=biodm_test_keycloak
       - DATABASE_URL=postgresql://postgres:pass@api-db:5432/biodm
@@ -37,7 +42,7 @@ services:
       dockerfile: docker/Dockerfile.biodm-test-runner
       args:
         - PYTHON__V=3.11
-        - TEST_DIR=keycloak
+        - TEST_DIR=kc
     depends_on:
     - test-keycloak-env
     environment:

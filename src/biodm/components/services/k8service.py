@@ -14,11 +14,11 @@ class K8Service(CompositeEntityService):
 
     async def create(
         self,
-        data: Dict[str, Any] | List[Dict[str, Any]],
+        data: List[Dict[str, Any]] | Dict[str, Any],
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs
-    ) -> Base | List[Base] | str:
+    ) -> Base | List[Base] | InsertStmt | List[InsertStmt]:
         """Submits manifest to kubernetes cluster before inserting into DB."""
         # K8s
         if not stmt_only:

@@ -4,7 +4,7 @@ import json
 from functools import reduce
 import operator
 from os import path, utime
-from typing import Any, List, Callable, Tuple, TypeVar, Dict
+from typing import Any, List, Callable, Tuple, TypeVar, Dict, Iterator
 
 from starlette.responses import Response
 
@@ -92,12 +92,12 @@ def partition(
     ], ls_false
 
 
-def unevalled_all(ls: List[Any]):
+def unevalled_all(ls: Iterator[Any]):
     """Build (ls[0] and ls[1] ... ls[n]) but does not evaluate like all() does."""
     return reduce(operator.and_, ls)
 
 
-def unevalled_or(ls: List[Any]):
+def unevalled_or(ls: Iterator[Any]):
     """Build (ls[0] or ls[1] ... ls[n]) but does not evaluate like or() does."""
     return reduce(operator.or_, ls)
 
