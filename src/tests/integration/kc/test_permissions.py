@@ -135,7 +135,7 @@ def test_create_dataset_no_write_perm(srv_endpoint, utils):
         headers=headers
     )
 
-    assert response.status_code == 500
+    assert response.status_code == 511
 
 
 @pytest.mark.dependency(name="test_create_dataset")
