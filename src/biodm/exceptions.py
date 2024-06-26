@@ -1,15 +1,15 @@
 class RequestError(RuntimeError):
-    detail = None
-    orig = None
+    detail: str
+    orig: Exception
 
-    def __init__(self, detail: str, orig: Exception)  -> None:
+    def __init__(self, detail: str, orig: Exception = Exception())  -> None:
         self.detail = detail
         self.orig = orig
 
 
 class DBError(RuntimeError):
     """Raised when DB related errors are catched."""
-    sa_error = None
+    sa_error: Exception
 
 
 class ImplementionError(RuntimeError):

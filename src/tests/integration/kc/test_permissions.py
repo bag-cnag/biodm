@@ -1,3 +1,4 @@
+import json
 import pytest
 import requests
 from uuid import uuid4
@@ -109,6 +110,7 @@ def test_create_data_and_login(srv_endpoint, utils):
 
 @pytest.mark.dependency(name="test_create_data_and_login")
 def test_create_dataset(srv_endpoint, utils):
+    """User 1, write perm on Project 1."""
     global token_user1
 
     headers = {'Authorization': f'Bearer {token_user1}'}
@@ -123,6 +125,7 @@ def test_create_dataset(srv_endpoint, utils):
 
 @pytest.mark.dependency(name="test_create_data_and_login")
 def test_create_dataset_no_write_perm(srv_endpoint, utils):
+    """User 2, no write perm on Project 1."""
     global token_user2
 
     headers = {'Authorization': f'Bearer {token_user2}'}
@@ -133,3 +136,31 @@ def test_create_dataset_no_write_perm(srv_endpoint, utils):
     )
 
     assert response.status_code == 500
+
+
+@pytest.mark.dependency(name="test_create_dataset")
+def test_read_dataset_no_read_perm(srv_endpoint):
+    """User 2 should not see inserted dataset from Project 1."""
+    global token_user1, token_user2
+
+    headers1 = {'Authorization': f'Bearer {token_user1}'}
+    headers2 = {'Authorization': f'Bearer {token_user2}'}
+    
+    response1 = requests.get(
+        f'{srv_endpoint}/datasets',
+        headers=headers1
+    )
+    json_response1 = json.loads(response1.text)
+    response2 = requests.get(
+        f'{srv_endpoint}/datasets',
+        headers=headers2
+    )
+    json_response2 = json.loads(response2.text)
+
+
+    assert response1.status_code == 200
+    assert response2.status_code == 200
+    assert len(json_response1) == 1
+    assert str(json_response1[0]['name']) == str(dataset1['name'])
+    assert str(json_response1[0]['id_project']) == str(dataset1['id_project'])
+    assert json_response2 == []

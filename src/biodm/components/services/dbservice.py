@@ -39,9 +39,13 @@ class DatabaseService(ApiService):
             case _:
                 return insert
 
-    def _get_permissions(self, verb: str) -> List[Permission] | None:
+    def _get_permissions(self, verb: str) -> List[Dict[Any, Any]] | None:
         """Retrieve entries indexed with self.table containing given verb in permissions."""
         assert hasattr(self, 'table')
+
+        # Effectively disable permissions if Keycloak is disabled.
+        if not hasattr(self.app, 'kc'):
+            return None
 
         if self.table in Base.permissions:
             return [
@@ -103,7 +107,7 @@ class UnaryEntityService(DatabaseService):
         setattr(table, 'svc', self)
         setattr(table.__table__, 'decl_class', table)
 
-        super().__init__(app=app)
+        super().__init__(app, *args, **kwargs)
 
     def __repr__(self) -> str:
         """ServiceName(TableName)."""
@@ -133,7 +137,7 @@ class UnaryEntityService(DatabaseService):
             return
 
         if not user_info.info:
-            raise UnauthorizedError("No Write access.")
+            raise UnauthorizedError("No Write access.", orig=Exception())
 
         _, groups, _ = user_info.info
         for permission in perms:
@@ -170,7 +174,7 @@ class UnaryEntityService(DatabaseService):
                     continue
 
                 if not allowed or not set(groups) & set(g.name for g in allowed.groups):
-                    raise UnauthorizedError("No Write access.")
+                    raise UnauthorizedError("No Write access.", orig=Exception())
 
     @overload
     async def create(

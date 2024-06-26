@@ -7,7 +7,8 @@ COPY ./src/requirements /biodm/src/requirements
 WORKDIR /biodm
 
 
-RUN pip3 install -r src/requirements/dev.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip3 install -r src/requirements/dev.txt
 
 
 COPY ./pyproject.toml /biodm/pyproject.toml

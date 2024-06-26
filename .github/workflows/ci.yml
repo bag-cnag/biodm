@@ -61,3 +61,8 @@ jobs:
       run: |
         docker compose -f compose.test.yml run --build test-keycloak-run
         docker compose -f compose.test.yml down
+
+    - name: Run integration tests - s3 -
+      run: |
+        docker compose -f compose.test.yml run --build test-s3-run
+        docker compose -f compose.test.yml down

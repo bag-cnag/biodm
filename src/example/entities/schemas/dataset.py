@@ -47,7 +47,7 @@ class DatasetSchema(Schema):
         elif project_id and not id_pr:
             ret["id_project"] = project_id
         elif not id_pr:
-            raise ValidationError("Need one of username_user_contact or contact fields.")
+            raise ValidationError("Need one of id_project or project fields.")
 
         # name_group = data.get('name_owner_group')
         # group_name = data.get('owner_group', {}).get('name')

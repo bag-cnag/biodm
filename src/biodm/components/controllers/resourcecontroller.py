@@ -153,16 +153,16 @@ class ResourceController(EntityController):
                 "provide the schema class as 'schema' argument when defining a new controller"
             ) from e
 
-    def routes(self, child_routes=None, **_):
+    def routes(self, **_) -> List[Mount | Route]:
         """Sets up standard RESTful endpoints.
         child_routes: from children classes calling super().__init__().
 
         Relevant doc:
         - https://restfulapi.net/http-methods/
         """
-        child_routes = child_routes or []
+        # child_routes = child_routes or []
         # flake8: noqa: E501  pylint: disable=line-too-long
-        return [
+        return  [
             Route(f"{self.prefix}",                   self.create,         methods=[HttpMethod.POST.value]),
             Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET.value]),
             Mount(self.prefix, routes=[
@@ -172,7 +172,7 @@ class ResourceController(EntityController):
                 Route(f'/{self.qp_id}/{{attribute}}', self.read,           methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE.value]),
                 Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT.value]),
-            ] + child_routes)
+            ])
         ]
 
     def _extract_pk_val(self, request: Request) -> List[Any]:

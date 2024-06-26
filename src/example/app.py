@@ -33,9 +33,9 @@ def main():
 if __name__ == "__main__":
     try:
         import uvloop as _
-        loop = "uvloop"
+        loop: Literal['uvloop'] = "uvloop"
     except ImportError:
-        loop = "auto"
+        loop: Literal['auto'] = "auto"
 
     uvicorn.run(
         f"{__name__}:main",
