@@ -4,7 +4,7 @@ from biodm.components.controllers import ResourceController, overload_docstring
 # from .entities.tables import Dataset
 # from .entities.schemas import DatasetSchema
 # class D4ta5setController(ResourceController):
-#     def __init__(self):
+#     def __init__(self) -> None:
 #         super().__init__(
 #               entity="Dataset"
 #               table=Dataset,

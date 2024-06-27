@@ -1,4 +1,0 @@
--r common.txt
-git+https://github.com/bag-cnag/biodm
-uvicorn==0.29.0
-uvloop==0.19.0

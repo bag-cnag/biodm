@@ -7,38 +7,62 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.11", "3.12"]
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
+
     - name: Get pip cache dir
       id: pip-cache
       run: |
         echo "::set-output name=dir::$(pip cache dir)"
+
     - name: Cache Dependencies for Python
       uses: actions/cache@v4
       with:
         path: ${{ steps.pip-cache.outputs.dir }}
-        id: cache
         key: ${{ runner.os }}-pip-${{ hashFiles('src/requirements/**.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-          ${{ runner.os }}-
+
     - name: Setup dependencies
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
         sudo apt install -y --upgrade sqlite3
-        pip install -r src/requirements/test.txt
+        pip install -r src/requirements/dev.txt
         pip install .
-    - name: Run tests
+
+    - name: Run unit tests
       run: |
-        cd src/biodm/tests/
+        cd src/tests/unit
         pytest
         cd -
+
     - name: Analysing the code with pylint
-      run: pylint -d W0221 $(git ls-files 'src/biodm/*.py') --exit-zero
+      run: |
+        pylint -d W0221 $(git ls-files 'src/biodm/*.py') --exit-zero
+
+    # TODO: Debug
+    # - name: Build and cache integration test images
+    #   uses: whoan/docker-build-with-cache-action@v5
+    #   with:
+    #     username: ${{ github.actor }}
+    #     password: ${{ secrets.GITHUB_TOKEN }}
+    #     registry: ghcr.io/bag-cnag
+    #     compose_file: compose.test.yml
+
+    - name: Run integration tests - keycloak -
+      run: |
+        docker compose -f compose.test.yml run --build test-keycloak-run
+        docker compose -f compose.test.yml down
+
+    - name: Run integration tests - s3 -
+      run: |
+        docker compose -f compose.test.yml run --build test-s3-run
+        docker compose -f compose.test.yml down

@@ -1,9 +1,10 @@
 """Utils."""
 import datetime as dt
+import json
 from functools import reduce
 import operator
 from os import path, utime
-from typing import Any, List, Callable, Tuple, TypeVar, Dict
+from typing import Any, List, Callable, Tuple, TypeVar, Dict, Iterator
 
 from starlette.responses import Response
 
@@ -34,12 +35,17 @@ def utcnow() -> dt.datetime:
 
 
 def json_response(data: str, status_code: int) -> Response:
-    """Formats a Response object."""
+    """Formats a Response object and set application/json header."""
     return Response(
         data + "\n",
         status_code=status_code,
         media_type="application/json"
     )
+
+
+def json_bytes(d: Dict[Any, Any]) -> bytes:
+    """Encodes python Dict as utf-8 bytes."""
+    return json.dumps(d).encode('utf-8')
 
 
 def touch(fname: str):
@@ -76,19 +82,22 @@ def partition(
     :rtype: List[_T], List[_T]
     """
     ls_false = []
-    # List comprehension with cond(x) or ls.append() makes linters unhappy but runs twice faster.
+    # List comprehension with cond(x) or ls.append() makes linters unhappy but runs twice as fast.
     return [
         x for x in ls
-        if (excl_na or x) and (cond(x) or ls_false.append(x))
+        if (
+            (excl_na or x) and
+            (cond(x) or ls_false.append(x)) # type: ignore [func-returns-value]
+        )
     ], ls_false
 
 
-def unevalled_all(ls: List[Any]):
+def unevalled_all(ls: Iterator[Any]):
     """Build (ls[0] and ls[1] ... ls[n]) but does not evaluate like all() does."""
     return reduce(operator.and_, ls)
 
 
-def unevalled_or(ls: List[Any]):
+def unevalled_or(ls: Iterator[Any]):
     """Build (ls[0] or ls[1] ... ls[n]) but does not evaluate like or() does."""
     return reduce(operator.or_, ls)
 

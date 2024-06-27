@@ -72,17 +72,18 @@ Development environment
 Quick dependency setup
 ~~~~~~~~~~~~~~~~~~~~~~
 
-**pre-requisites**:
-    * Build local `Keycloak`_ image with your local certificates.
-
-To start all service dependnencies at once and skip individual configuration you may use the provided `compose.yml`.
+To start all service dependnencies at once and skip individual configuration you may use
+the provided ``compose.yml``. Passing the flag --build it will also build for you an appropriate
+keycloak image with your local certificates in order to serve ``https://`` requests.
 
 .. code-block:: bash
 
-    docker compose up -d
+    docker compose up --build -d
 
-Default configuration parameters are using the following hostnames that you
-may add to your host table for convenience.
+Default configuration parameters are set on fixed IPs declared in this ``compose.yml`` file.
+
+**optional - strongly recommended for keycloak -:** for testing convenience you
+may add those lines to your host table.
 
 .. code-block:: bash
 
@@ -93,11 +94,15 @@ may add to your host table for convenience.
     10.10.0.4       s3bucket.local
     EOF
 
-**post-requisites** - in doubt see `Individual configuration`_ below:
 
-    * Create Keycloak realm and client
-    * Emit Minio access key
-    * Populate config with generated credentials
+It might be a pre-requisite for keycloak as it is quite strict with security protocols.
+Definitely something to try if you cannot reach admin UI or your app is unable to fetch any data.
+
+
+**Optional:** - To personalize defaults, see `Individual configuration`_ below.
+- Keycloak comes with a default ``3TR`` realm and appropriate client that has user/group rights.
+- MinIO launches with ``admin`` credentials, that are used as ACCESS_KEY.
+
 
 Individual configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -117,14 +122,20 @@ First you need to build the image yourself according to the `documentation <http
 .. code-block:: bash
 
     cd docker/ && \
-    docker build . -t keycloak:22.0.0_local-certs -f Dockerfile.keycloak-22.0.0_local-certs && \
+    docker build . -t keycloak:22.0_local-certs \
+                   -f Dockerfile.keycloak-22.0_local-certs \
+                   --build-arg _KC_DB=postgres \
+                   --build-arg _KC_DB_USERNAME=postgres \
+                   --build-arg _KC_DB_PASSWORD=pass \
+                   --build-arg=_KC_HOSTNAME=keycloak.local \
+                   --build-arg _KC_DB_URL=jdbc:postgresql://10.10.0.5:5432/keycloak && \
     cd -
 
 Keycloak also needs a databse:
 
 .. code-block:: bash
 
-    docker run --name kc-db -e POSTGRES_PASSWORD=pass -d postgres:16-bookworm
+    docker run --name kc-db -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=keycloak -d postgres:16-bookworm
     docker exec -u postgres biodm-pg createdb keycloak
 
 
@@ -209,12 +220,18 @@ Then you may use the following:
 
 .. code-block:: bash
 
-    sphinx-apidoc --implicit-namespaces -fo docs/biodm/ src/biodm -H "API Reference"
+    sphinx-apidoc --implicit-namespaces --separate -H "API Reference" -fo docs/biodm/ src/biodm "**/*tests*"
     python3 -m sphinx -b html docs/ docs/build/html
 
 
 Tests
 -----
+
+Unit
+~~~~
+
+Unit tests are leveraging an in-memory sqlite database and not testing any feature requiring
+deployement of an external service.
 
 * pre-requisite:
 
@@ -225,7 +242,7 @@ Tests
 
 * run tests
 
-Just like example have to be run with its directory.
+Just like example, tests have to be run within their directory.
 
 .. code-block:: bash
 
@@ -240,3 +257,55 @@ Just like example have to be run with its directory.
     cd src/biodm/tests/
     pytest --cov-report term --cov=../
     cd -
+
+* run in a VSCode debugpy session
+
+To run a unit test in a debugging session, you may create the following ``.vscode/launch.json``
+file at the root of this repository. The ``run and debug`` tab should now ofer an extra option.
+If you installed sources in editable mode, that allows you to set breakpoints within BioDM codebase. 
+
+.. code-block:: json
+    :caption: launch.json
+
+    {
+        "version": "0.2.0",
+        "configurations": [
+            {
+                "name": "BioDM PyTest",
+                "type": "debugpy",
+                "request": "launch",
+                "cwd": "${workspaceFolder}/src/tests/unit",
+                "subProcess": true,
+                "module": "pytest",
+                "python": "/path/to/myvenv/bin/python3",
+                "args": [
+                    "-k", "test_basics"
+                ],
+                "justMyCode": false,
+            },
+        ]
+    }
+
+
+Integration
+~~~~~~~~~~~
+
+Integration tests are leveraging ``docker compose`` and the development environment to simulate
+external services allowing for end to end testing. It is effectively testing the app from
+outside, hence it is not possible to go over BioDM sources with the debugger on such tests.
+
+Integration are split in silos according to their external service dependency:
+
+* Keycloak
+
+.. code-block:: bash
+
+    docker compose -f compose.test.yml run --build test-keycloak-run
+    docker compose -f compose.test.yml down
+
+* S3
+
+.. code-block:: bash
+
+    docker compose -f compose.test.yml run --build test-s3-run
+    docker compose -f compose.test.yml down

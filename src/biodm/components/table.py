@@ -6,7 +6,7 @@
 from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, List, Dict
+from typing import TYPE_CHECKING, Any, List, Dict, Tuple, Type, Set, ClassVar, Type, Self
 
 import marshmallow as ma
 from sqlalchemy import (
@@ -14,7 +14,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import DeclarativeBase, relationship, Relationship, backref, ONETOMANY
+from sqlalchemy.orm import (
+    DeclarativeBase, relationship, Relationship, backref, ONETOMANY, mapped_column, MappedColumn
+)
 
 from biodm.exceptions import ImplementionError
 from biodm.utils.utils import utcnow
@@ -23,6 +25,7 @@ if TYPE_CHECKING:
     from biodm import Api
     from biodm.components.services import DatabaseService
     from biodm.components.controllers import ResourceController
+    from sqlalchemy.orm import Relationship
 
 
 class Base(DeclarativeBase, AsyncAttrs):
@@ -35,18 +38,19 @@ class Base(DeclarativeBase, AsyncAttrs):
     :param __permissions: Stores rules for user defined permissions on hierarchical entities
     :type __permissions: Dict
     """
-    svc: DatabaseService
-    ctrl: ResourceController = None
-    __permissions: Dict = {}
+    svc: ClassVar[Type[DatabaseService]]
+    ctrl: ClassVar[Type[ResourceController]]
+    raw_permissions: ClassVar[Dict[str, Tuple[Type[Self], Tuple[Permission]]]] = {}
+    permissions: ClassVar[Dict[Any, Any]] = {}
 
     def __init_subclass__(cls, **kw: Any) -> None:
         """Populates permission dict in a first pass."""
         if hasattr(cls, "__permissions__"):
-            cls._Base__permissions[cls.__name__] = (cls, cls.__permissions__)
+            Base.raw_permissions[cls.__name__] = (cls, cls.__permissions__)
         return super().__init_subclass__(**kw)
 
     @staticmethod
-    def _gen_perm_table(app: Api, table: Base, field: Column, verbs: List[str]):
+    def _gen_perm_table(app: Api, table: Type[Base], field: Column, verbs: List[str]):
         """Declare new associative table for a given permission:
         This Associative table uses a one-to-one relationship pattern to backref a field
         perm_{field} that holds permissions informations __without touching at Parent table
@@ -85,7 +89,7 @@ class Base(DeclarativeBase, AsyncAttrs):
         new_asso_name = f"ASSO_PERM_{table.__name__.upper()}_{field.key.upper()}"
         rel_name = f"perm_{field.key.lower()}"
 
-        columns = {
+        columns: Dict[str, Column[Any] | MappedColumn[Any] | Relationship | Tuple[Any]] = {
             f"{pk}_{table.__name__.lower()}": Column(primary_key=True)
             for pk in table.pk()
         }
@@ -113,7 +117,7 @@ class Base(DeclarativeBase, AsyncAttrs):
             ),
         )
         for verb in verbs:
-            c = Column(ForeignKey("LISTGROUP.id"))
+            c = mapped_column(ForeignKey("LISTGROUP.id"))
             columns.update(
                 {
                     f"id_{verb}": c,
@@ -128,8 +132,7 @@ class Base(DeclarativeBase, AsyncAttrs):
         )
 
         # Setup svc.
-        NewAsso.svc = CompositeEntityService(app=app, table=NewAsso)
-
+        setattr(NewAsso, 'svc', CompositeEntityService(app=app, table=NewAsso))
         return rel_name, NewAsso
 
     @staticmethod
@@ -169,7 +172,7 @@ class Base(DeclarativeBase, AsyncAttrs):
     @classmethod
     def _propagate_perm(
         cls,
-        lut: Dict[str, List[Dict[str, Any]]],
+        lut: Dict[Base, List[Dict[str, Any]]],
         origin: Base,
         target: Base,
         entry: Dict[str, Any]
@@ -190,7 +193,7 @@ class Base(DeclarativeBase, AsyncAttrs):
         lut[target] = lut.get(target, [])
         lut[target].append(entry)
 
-        target_perms = cls._Base__permissions.get(target.__name__, ('', []))[1]
+        target_perms = Base.permissions.get(target.__name__, ('', []))[1]
         for perm in target_perms:
             cls._propagate_perm(lut, target, perm.field.target.decl_class, deepcopy(entry))
 
@@ -212,7 +215,7 @@ class Base(DeclarativeBase, AsyncAttrs):
         i.e. You cannot flag an o2m with the same target in two different parent classes.
         """
         lut = {}
-        for table, permissions in cls._Base__permissions.values():
+        for table, permissions in Base.raw_permissions.values():
             for perm in permissions:
                 if perm.field.direction is not ONETOMANY:
                     raise ImplementionError(
@@ -241,10 +244,10 @@ class Base(DeclarativeBase, AsyncAttrs):
                     target=perm.field.target.decl_class,
                     entry=entry
                 )
-        cls._Base__permissions = lut
+        Base.permissions = lut
 
     @declared_attr
-    def __tablename__(cls) -> str:
+    def __tablename__(cls):
         """Generate tablename."""
         return cls.__name__.upper()
 
@@ -311,12 +314,12 @@ class Permission:
     download: bool=False
 
     @classmethod
-    def fields(cls):
+    def fields(cls) -> Set[str]:
         return set(cls.__dataclass_fields__.keys() - 'fields')
 
-    def enabled_verbs(self):
-        return [
+    def enabled_verbs(self) -> Set[str]:
+        return set(
             verb
             for verb, enabled in self.__dict__.items()
             if enabled and verb != 'field'
-        ]
+        )

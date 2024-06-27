@@ -24,8 +24,8 @@ class S3Manager(ApiComponent):
         url_expiration,
         pending_expiration,
         region_name,
-        file_size_limit,
-    ):
+        file_size_limit
+    ) -> None:
         super().__init__(app=app)
         self.endpoint_url = endpoint_url
         self.bucket_name = bucket_name

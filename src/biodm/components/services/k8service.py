@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Any
 
 from biodm.components import Base
 from biodm.utils.security import UserInfo
@@ -12,7 +12,13 @@ class K8Service(CompositeEntityService):
     def k8s(self):
         return self.app.k8s
 
-    async def create(self, data, stmt_only: bool = False, user_info: UserInfo = None, **kwargs) -> Base | List[Base]:
+    async def create(
+        self,
+        data: List[Dict[str, Any]] | Dict[str, Any],
+        stmt_only: bool = False,
+        user_info: UserInfo | None = None,
+        **kwargs
+    ) -> Base | List[Base] | InsertStmt | List[InsertStmt]:
         """Submits manifest to kubernetes cluster before inserting into DB."""
         # K8s
         if not stmt_only:

@@ -1,15 +1,15 @@
 class RequestError(RuntimeError):
-    detail = None
-    orig = None
+    detail: str
+    orig: Exception
 
-    def __init__(self, detail, orig=None):
+    def __init__(self, detail: str, orig: Exception = Exception())  -> None:
         self.detail = detail
         self.orig = orig
 
 
 class DBError(RuntimeError):
     """Raised when DB related errors are catched."""
-    sa_error = None
+    sa_error: Exception
 
 
 class ImplementionError(RuntimeError):
@@ -53,8 +53,8 @@ class TokenDecodingError(RequestError):
 ## Routing
 class InvalidCollectionMethod(RequestError):
     """Raised when a unit method is accesed as a collection."""
-    def __init__(self, *_):
-        super().__init__(detail="Method not allowed on a collection.")
+    def __init__(self, detail: str, orig: Exception) -> None:
+        super().__init__(detail=detail + "Method not allowed on a collection.", orig=orig)
 
 
 class PartialIndex(RequestError):

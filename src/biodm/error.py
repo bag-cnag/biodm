@@ -15,7 +15,7 @@ from .exceptions import (
 
 class Error:
     """Error class."""
-    def __init__(self, status, detail=None):
+    def __init__(self, status, detail=None) -> None:
         self.status = status
         self.detail = detail
         self.reason = HTTPStatus(self.status).phrase

@@ -1,24 +1,27 @@
 """Security convenience functions."""
 from datetime import datetime
-from functools import wraps, lru_cache
-from typing import List, Tuple, TYPE_CHECKING
+from functools import wraps
+from typing import List, Tuple
 
 from starlette.requests import Request
 
 from biodm.exceptions import UnauthorizedError
-from biodm.tables import User
 from .utils import aobject
-if TYPE_CHECKING:
-    from biodm.managers.kcmanager import KeycloakManager
 
 
 class UserInfo(aobject):
-    """Hold user info for a given request."""
-    from biodm.managers.kcmanager import KeycloakManager
-    kc: KeycloakManager
-    _info: Tuple[str, List, List] = None
+    """Hold user info for a given request.
 
-    async def __init__(self, request: Request) -> None:
+    If the request contains an authentication header, self.info shall return User Info, else None
+    """
+    # from biodm.managers.kcmanager import KeycloakManager
+    # from biodm.tables import User
+    from biodm.managers import KeycloakManager
+
+    kc: KeycloakManager
+    _info: Tuple[str, List, List] | None = None
+
+    async def __init__(self, request: Request) -> None: # type: ignore [misc]
         self.token = self.auth_header(request)
         if self.token:
             self._info = await self.decode_token(self.token)
@@ -40,6 +43,8 @@ class UserInfo(aobject):
         token: str
     ) -> Tuple[str, List, List]:
         """ Decode token."""
+        from biodm.tables import User
+
         def parse_items(token, name, default=""):
             n = token.get(name, [])
             return [s.replace("/", "") for s in n] if n else [default]
@@ -83,9 +88,9 @@ def login_required(f):
 
     @wraps(f)
     async def wrapper(controller, request, *args, **kwargs):
-        user_info = UserInfo(request)
+        user_info = await UserInfo(request)
         if user_info.info:
-            userid, groups, projects = user_info.info
+            userid, groups, _ = user_info.info
             timestamp = datetime.now().strftime("%I:%M%p on %B %d, %Y")
             controller.app.logger.info(
                 f'{timestamp}\t{userid}\t{",".join(groups)}\t'

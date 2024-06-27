@@ -1,4 +1,4 @@
-from marshmallow import Schema
+from marshmallow import Schema, pre_load
 from marshmallow.fields import String, List, Nested
 
 

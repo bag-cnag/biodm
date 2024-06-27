@@ -45,7 +45,12 @@ exclude_also = [
 ]
 
 [tool.mypy]
-exclude = ["bak"]
+exclude = ["bak", "src/biodm/tests", "setup.py"]
+warn_unreachable = true
+explicit_package_bases = true
+ignore_missing_imports = true
+show_error_codes = true
+disable_error_code = ["method-assign"]
 
 [tool.flake8]
 max-line-length = 99

@@ -1,17 +1,14 @@
 """Database service: Translates requests data into SQLA statements and execute."""
-import asyncio
-from copy import deepcopy
-from dataclasses import dataclass
-from multiprocessing import Value
 from operator import or_
-from typing import List, Any, Tuple, Dict, TypeVar, overload
+from typing import Callable, List, Sequence, Any, Tuple, Dict, overload, Literal, Set, Type
 
 from sqlalchemy import insert, select, delete, or_
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import load_only, selectinload, ONETOMANY, MANYTOONE
+from sqlalchemy.orm import load_only, selectinload, ONETOMANY, MANYTOONE, aliased
 from sqlalchemy.sql import Insert, Delete, Select
 
+from biodm import config
 from biodm.component import ApiService
 from biodm.components import Base, Permission
 from biodm.exceptions import FailedRead, FailedDelete, ImplementionError, UnauthorizedError
@@ -20,6 +17,7 @@ from biodm.scope import Scope
 from biodm.tables import ListGroup, Group
 from biodm.tables.asso import asso_list_group
 from biodm.utils.security import UserInfo
+from biodm.utils.sqla import CompositeInsert, InsertStmt
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
 
@@ -31,22 +29,28 @@ class DatabaseService(ApiService):
         Holds atomic database statement execution functions.
     """
     @property
-    def _backend_specific_insert(self):
+    def _backend_specific_insert(self) -> Callable:
         """Returns an insert statement builder according to DB backend."""
         match self.app.db.engine.dialect:
             case postgresql.asyncpg.dialect():
                 return postgresql.insert
-            case sqlite.dialect():
+            case sqlite.aiosqlite.dialect():
                 return sqlite.insert
             case _:
                 return insert
 
-    def _get_permissions(self, verb: str) -> List[Dict] | None:
+    def _get_permissions(self, verb: str) -> List[Dict[Any, Any]] | None:
         """Retrieve entries indexed with self.table containing given verb in permissions."""
-        if self.table in Base._Base__permissions:
+        assert hasattr(self, 'table')
+
+        # Effectively disable permissions if Keycloak is disabled.
+        if not hasattr(self.app, 'kc'):
+            return None
+
+        if self.table in Base.permissions:
             return [
                 perm
-                for perm in Base._Base__permissions[self.table]
+                for perm in Base.permissions[self.table]
                 if verb in perm['verbs']
             ]
         return None
@@ -58,7 +62,7 @@ class DatabaseService(ApiService):
         return item
 
     @DatabaseManager.in_session
-    async def _insert_many(self, stmt: Insert, session: AsyncSession) -> List[Base]:
+    async def _insert_many(self, stmt: Insert, session: AsyncSession) -> Sequence[Base]:
         """INSERT many objects into the DB database, check token write permission before commit."""
         items = (await session.scalars(stmt)).all()
         return items
@@ -72,7 +76,7 @@ class DatabaseService(ApiService):
         raise FailedRead("Select returned no result.")
 
     @DatabaseManager.in_session
-    async def _select_many(self, stmt: Select, session: AsyncSession) -> List[Base]:
+    async def _select_many(self, stmt: Select, session: AsyncSession) -> Sequence[Base]:
         """SELECT many from database."""
         items = ((
                 await session.execute(stmt)
@@ -93,47 +97,47 @@ class DatabaseService(ApiService):
 class UnaryEntityService(DatabaseService):
     """Generic Service class for non-composite entities.
     """
-    def __init__(self, app, table: Base, *args, **kwargs):
+    def __init__(self, app, table: Type[Base], *args, **kwargs) -> None:
         # Entity info.
         self.table = table
         self.pk = set(table.col(name) for name in table.pk())
         # Take a snapshot at declaration time, convenient to isolate runtime permissions.
         self.relationships = table.relationships()
         # Enable entity - service - table linkage so everything is conveniently available.
-        table.svc = self
-        table.__table__.decl_class = table
+        setattr(table, 'svc', self)
+        setattr(table.__table__, 'decl_class', table)
 
-        super().__init__(app=app, *args, **kwargs)
+        super().__init__(app, *args, **kwargs)
 
     def __repr__(self) -> str:
         """ServiceName(TableName)."""
         return f"{self.__class__.__name__}({self.table.__name__})"
 
     @DatabaseManager.in_session
-    async def _check_write_permissions(
+    async def _check_permissions(
         self,
-        user_info: UserInfo,
+        verb: str,
+        user_info: UserInfo | None,
         pending: Dict[str, Any] | List[Dict[str, Any]],
         session: AsyncSession,
     ) -> None:
-        """Check write permission for insertion request.
+        """Check permissions given verb and associated input data.
 
         :param user_info: User Info, if = None -> Internal request.
-        :type user_info: UserInfo
+        :type user_info: UserInfo | None
         :param pending: pending insertion data
         :type pending: Dict[str, Any] | List[Dict[str, Any]]
         :param session: SQLA session
         :type session: AsyncSession
         :raises UnauthorizedError: Insufficient permissions detected.
         """
-        verb = "write"
         perms = self._get_permissions(verb)
 
         if not perms or not user_info:
             return
 
         if not user_info.info:
-            raise UnauthorizedError("No Write access.")
+            raise UnauthorizedError("No Write access.", orig=Exception())
 
         _, groups, _ = user_info.info
         for permission in perms:
@@ -170,21 +174,40 @@ class UnaryEntityService(DatabaseService):
                     continue
 
                 if not allowed or not set(groups) & set(g.name for g in allowed.groups):
-                    raise UnauthorizedError("No Write access.")
+                    raise UnauthorizedError("No Write access.", orig=Exception())
+
+    @overload
+    async def create(
+        self,
+        data: Dict[str, Any] | List[Dict[str, Any]],
+        stmt_only: Literal[True],
+        user_info: UserInfo | None,
+        **kwargs
+    ) -> InsertStmt: ...
+
+    @overload
+    async def create(
+        self,
+        data: Dict[str, Any] | List[Dict[str, Any]],
+        stmt_only: Literal[False],
+        user_info: UserInfo | None,
+        **kwargs
+    ) -> Base | List[Base]: ...
 
     async def create(
         self,
         data: Dict[str, Any] | List[Dict[str, Any]],
         stmt_only: bool = False,
-        user_info: UserInfo = None,
+        user_info: UserInfo | None = None,
         **kwargs
-    ) -> Base | List[Base] | str:
+    ) -> InsertStmt | Base | List[Base]:
         """CREATE one or many rows. data: schema validation result.
 
         - Does UPSERTS behind the hood, hence this method is also called on UPDATE
         - Perform write permission check according to input data
         """
-        await self._check_write_permissions(user_info, data)
+        await self._check_permissions("write", user_info, data)
+
         stmt = self._backend_specific_insert(self.table)
 
         if isinstance(data, list):
@@ -228,7 +251,7 @@ class UnaryEntityService(DatabaseService):
 
     def _parse_int_operators(self, attr) -> Tuple[str, str]:
         """"""
-        input_op = attr.pop()
+        input_op: str = attr.pop()
         match input_op.strip(')').split('('):
             case [("gt" | "ge" | "lt" | "le") as op, arg]:
                 return (op, arg)
@@ -258,7 +281,7 @@ class UnaryEntityService(DatabaseService):
 
     def _apply_read_permissions(
         self,
-        user_info: UserInfo,
+        user_info: UserInfo | None,
         stmt: Select
     ):
         """Apply read permissions.
@@ -270,7 +293,7 @@ class UnaryEntityService(DatabaseService):
         - https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria
 
         :param user_info: User Info, if = None -> Internal request
-        :type user_info: UserInfo
+        :type user_info: UserInfo | None
         :param stmt: Select statement in construction
         :type stmt: Select
         :raises UnauthorizedError: Upon access error detected
@@ -295,12 +318,12 @@ class UnaryEntityService(DatabaseService):
             link, chain = permission['from'][-1], permission['from'][:-1]
             entity = permission['table'].entity.prop
 
-            inner = select(link)
+            sub = select(link)
             for jtable in chain:
-                inner = inner.join(jtable)
+                sub = sub.join(jtable)
 
             inner = (
-                inner
+                sub
                 .join(
                     permission['table'],
                     onclause=unevalled_all([
@@ -331,13 +354,13 @@ class UnaryEntityService(DatabaseService):
         self,
         stmt: Select,
         fields: List[str],
-        user_info: UserInfo,
+        user_info: UserInfo | None,
     ) -> Select:
         """Set load_only options of a select(table) statement given a list of fields.
             Also apply permissions.
 
         :param user_info: requesting user info
-        :type user_info: UserInfo
+        :type user_info: UserInfo | None
         :param stmt: select statement under construction
         :type stmt: Select
         :param fields: attribute fields
@@ -360,12 +383,28 @@ class UnaryEntityService(DatabaseService):
 
         for n in nested:
             relationship, attr = self.relationships[n], getattr(self.table, n)
+            target = relationship.target.decl_class
+
             if relationship.direction in (MANYTOONE, ONETOMANY):
-                stmt = stmt.join_from(
-                    self.table,
-                    attr,
-                    isouter=True
-                )
+                if target == self.table:
+                    alias = aliased(target)
+                    stmt = stmt.join_from(
+                        self.table,
+                        alias,
+                        onclause=unevalled_all([
+                            getattr(self.table, pair[0].name) == getattr(alias, pair[1].name)
+                            for pair in relationship.local_remote_pairs
+                        ]),
+                        isouter=True
+                    )
+                else:
+                    stmt = stmt.join_from(
+                        self.table,
+                        attr,
+                        isouter=True
+                    )
+                # if target == self.table:
+                #     target = aliased(self.table)
                 stmt = (
                     relationship
                     .target
@@ -385,7 +424,7 @@ class UnaryEntityService(DatabaseService):
         self,
         pk_val: List[Any],
         fields: List[str],
-        user_info: UserInfo = None,
+        user_info: UserInfo | None = None,
         **kwargs
     ) -> Base:
         """READ: fetch one ORM mapped object from value(s) of its primary key.
@@ -406,14 +445,14 @@ class UnaryEntityService(DatabaseService):
         self,
         fields: List[str],
         params: Dict[str, str],
-        user_info: UserInfo = None,
+        user_info: UserInfo | None = None,
         **kwargs
     ) -> List[Base]:
         """READ rows filted on query parameters."""
         # Get special parameters
         # fields = params.pop('fields')
-        offset = params.pop('start', None)
-        limit = params.pop('end', None)
+        offset = int(params.pop('start', 0))
+        limit = int(params.pop('end', config.LIMIT))
         reverse = params.pop('reverse', None)
         # TODO: apply limit to nested lists as well.
 
@@ -442,8 +481,8 @@ class UnaryEntityService(DatabaseService):
                         " only allowed for numerical fields."
                     )
                 op, val = operator
-                op = getattr(col, f"__{op}__")
-                stmt = stmt.where(op(ctype(val)))
+                op_fct: Callable = getattr(col, f"__{op}__")
+                stmt = stmt.where(op_fct(ctype(val)))
                 continue
 
             # Filters
@@ -454,18 +493,18 @@ class UnaryEntityService(DatabaseService):
                 )
 
             stmt = stmt.where(
-                unevalled_or(
+                unevalled_or([
                     col.like(str(w).replace("*", "%"))
                     for w in wildcards
-                )
+                ])
             ) if wildcards else stmt
 
             # Regular equality conditions.
             stmt = stmt.where(
-                unevalled_or(
+                unevalled_or([
                     col == ctype(v)
                     for v in values
-                )
+                ])
             ) if values else stmt
 
             # if exclude:
@@ -473,7 +512,7 @@ class UnaryEntityService(DatabaseService):
         stmt = stmt.offset(offset).limit(limit)
         return await self._select_many(stmt, **kwargs)
 
-    async def delete(self, pk_val, user_info: UserInfo = None, **kwargs) -> None:
+    async def delete(self, pk_val, user_info: UserInfo | None = None, **kwargs) -> None:
         """DELETE."""
         stmt = delete(self.table).where(self.gen_cond(pk_val))
         await self._delete(stmt, **kwargs)
@@ -481,24 +520,8 @@ class UnaryEntityService(DatabaseService):
 
 class CompositeEntityService(UnaryEntityService):
     """Special case for Composite Entities (i.e. containing nested entities attributes)."""
-    @dataclass
-    class CompositeInsert:
-        """Class to hold composite entities statements before insertion.
-
-        :param item: Parent item insert statement
-        :type item: Insert
-        :param nested: Nested items insert statement indexed by attribute name
-        :type nested: Dict[str, Insert | CompositeInsert | List[Insert] | List[CompositeInsert]]
-        :param delayed: Nested list of items insert statements indexed by attribute name
-        :type delayed: Dict[str, Insert | CompositeInsert | List[Insert] | List[CompositeInsert]]
-        """
-        CompositeInsert = TypeVar('CompositeInsert')
-        item: Insert
-        nested: Dict[str, Insert | CompositeInsert | List[Insert] | List[CompositeInsert]]
-        delayed: Dict[str, Insert | CompositeInsert | List[Insert] | List[CompositeInsert]]
-
     @property
-    def runtime_relationships(self):
+    def runtime_relationships(self) -> Set[str]:
         """Evaluate relationships at runtime by computing the difference with
           self.relatioships set a instanciation time.
         """
@@ -564,7 +587,7 @@ class CompositeEntityService(UnaryEntityService):
 
                 # Patch statements before inserting.
                 for one in to_it(delay):
-                    if isinstance(one, self.CompositeInsert):
+                    if isinstance(one, CompositeInsert):
                         one.item = one.item.values(**mapping)
                     else:
                         one = one.values(**mapping)
@@ -587,7 +610,7 @@ class CompositeEntityService(UnaryEntityService):
                         getattr(item, key).extend(delay)
                     else:
                         getattr(item, key).update(delay)
-                case self.CompositeInsert():
+                case CompositeInsert():
                     sub = await target_svc._insert_composite(delay, **kwargs)
                     setattr(item, key, sub)
 
@@ -596,7 +619,7 @@ class CompositeEntityService(UnaryEntityService):
 
     async def _insert(
         self,
-        stmt: Insert | CompositeInsert,
+        stmt: InsertStmt,
         **kwargs
     ) -> Base:
         """Redirect in case of composite insert."""
@@ -612,33 +635,18 @@ class CompositeEntityService(UnaryEntityService):
         """Redirect in case of composite insert."""
         if isinstance(stmt, Insert):
             return await super()._insert_many(stmt, **kwargs)
-        items = [
+        return [
             await self._insert_composite(composite, **kwargs)
             for composite in stmt
         ]
-        return items
-        # return await asyncio.gather(*[
-        #         self._insert_composite(composite, **kwargs)
-        #         for composite in stmt
-        #     ], return_exceptions=True
-        # )
-
-    @overload
-    async def _create_one(
-        self,
-        data,
-        stmt_only: True,
-        user_info: UserInfo = None,
-        **kwargs
-    ) -> CompositeInsert: ...
 
     async def _create_one(
         self,
         data: Dict[str, Any],
         stmt_only: bool = False,
-        user_info: UserInfo = None,
+        user_info: UserInfo | None = None,
         **kwargs,
-    ) -> Base:
+    ) -> Base | CompositeInsert:
         """CREATE, accounting for nested entitites. Parses nested dictionaries in a
         class based recursive tree building fashion.
         Each service is responsible for building statements to insert in its associated table.
@@ -653,10 +661,10 @@ class CompositeEntityService(UnaryEntityService):
 
             perm_delayed = {}
             for verb in Permission.fields() & set(sub.keys()):
-                perm_delayed[verb] = await ListGroup.svc.create(sub.get(verb), stmt_only=True)
+                perm_delayed[str(verb)] = await ListGroup.svc.create(sub.get(verb), stmt_only=True)
 
             stmt_perm = stmt_perm.returning(rel.target.decl_class)
-            delayed[key] = self.CompositeInsert(item=stmt_perm, nested={}, delayed=perm_delayed)
+            delayed[str(key)] = CompositeInsert(item=stmt_perm, nested={}, delayed=perm_delayed)
 
         # Remaining table relationships.
         for key in self.relationships.keys() & data.keys():
@@ -682,7 +690,7 @@ class CompositeEntityService(UnaryEntityService):
         stmt = await super().create(data, stmt_only=True, user_info=user_info)
 
         # Pack & return.
-        composite = self.CompositeInsert(item=stmt, nested=nested, delayed=delayed)
+        composite = CompositeInsert(item=stmt, nested=nested, delayed=delayed)
         return composite if stmt_only else await self._insert_composite(composite, **kwargs)
 
     @DatabaseManager.in_session
@@ -692,24 +700,42 @@ class CompositeEntityService(UnaryEntityService):
         **kwargs,
     ) -> List[Base] | List[CompositeInsert]:
         """Unpack and share kwargs for list creation."""
-        # asyncio.gather + sqlalchemy interesting issue:
-        # https://github.com/sqlalchemy/sqlalchemy/discussions/9312
-        # TODO: use TaskGroup ?
-        # return await asyncio.gather(*[
-        #         self._create_one(one, **kwargs)
-        #         for one in data
-        #     ], return_exceptions=True
-        # )
         return [
             await self._create_one(one, **kwargs)
             for one in data
         ]
 
+    # async def create(
+    #     self,
+    #     data: Dict[str, Any] | List[Dict[str, Any]],
+    #     stmt_only: bool = False,
+    #     user_info: UserInfo | None = None,
+    #     **kwargs
+    # ) -> Base | List[Base] | CompositeInsert | List[CompositeInsert] | str:
+    # @overload
+    # async def create(
+    #     self,
+    #     data: List[Dict[str, Any]] | Dict[str, Any],
+    #     stmt_only: Literal[True],
+    #     user_info: UserInfo | None,
+    # ) -> InsertStmt | List[InsertStmt]: ...
+
+    # @overload
+    # async def create(
+    #     self,
+    #     data: List[Dict[str, Any]] | Dict[str, Any],
+    #     stmt_only: Literal[False],
+    #     user_info: UserInfo | None,
+    # ) -> Base | List[Base]: ...
+
     async def create(
         self,
         data: List[Dict[str, Any]] | Dict[str, Any],
+        stmt_only: bool = False,
+        user_info: UserInfo | None = None,
         **kwargs
-    ) -> Base | List[Base] | CompositeInsert | List[CompositeInsert]:
+    ) -> Base | List[Base] | InsertStmt | List[InsertStmt]:
         """CREATE, Handle list and single case."""
+        kwargs.update({"stmt_only": stmt_only, "user_info": user_info})
         f = self._create_many if isinstance(data, list) else self._create_one
         return await f(data, **kwargs)

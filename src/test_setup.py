@@ -1,4 +1,5 @@
-"""
+"""Ensures that python modules can be imported.
+
 - https://stackoverflow.com/a/47188103/6847689
 """
 import os

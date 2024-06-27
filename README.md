@@ -29,7 +29,6 @@ BioDM is a fast, modular, stateless and asynchronous REST API framework with the
   - OpenAPI schema generation
 
 ## Quickstart
-
 ### Install
 ```bash
 pip3 install git+https://github.com/bag-cnag/biodm
@@ -42,13 +41,21 @@ pip3 install uvicorn,uvloop
 ```
 OR
 ```bash
-pip3 install -r src/requirements/prod.txt
+pip3 install -r src/requirements/dev.txt
 ```
 
 Then you may run our `example` after populating  `src/example/.env` with your desired configuration:
 ```bash
 cd src/example/
 python3 src/example/app.py
+```
+
+Alternatively, if your goal is simply to run `example` and nothing else
+you may use the following commands:
+
+```bash
+docker compose -f compose.test.yml build
+docker compose -f compose.test.yml up
 ```
 
 ## About
