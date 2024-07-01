@@ -56,7 +56,6 @@ def test_create_file(srv_endpoint, utils):
 @pytest.mark.dependency(name="test_create_file")
 def test_file_upload():
     postv4 = json.loads(upload_form.replace("'", "\"")) 
-
     with open(file_path, 'rb') as f:
         files = {'file': (file_name, f)}
         response = requests.post(
