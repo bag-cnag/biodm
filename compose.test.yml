@@ -17,7 +17,7 @@ services:
       test: python3 -c "import requests; exit(requests.get('http://test-keycloak-env:8000/live').text != 'live\n');"
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
     environment:
       - API_NAME=biodm_test_keycloak
       - DATABASE_URL=postgresql://postgres:pass@api-db:5432/biodm
@@ -44,7 +44,8 @@ services:
         - PYTHON__V=3.11
         - TEST_DIR=kc
     depends_on:
-    - test-keycloak-env
+      test-keycloak-env:
+        condition: service_healthy
     environment:
     - API_ENDPOINT=http://test-keycloak-env:8000
     networks:
@@ -65,7 +66,7 @@ services:
       test: python3 -c "import requests; exit(requests.get('http://test-s3-env:8000/live').text != 'live\n');"
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
     environment:
       - API_NAME=biodm_test_s3
       - DATABASE_URL=postgresql://postgres:pass@api-db:5432/biodm
@@ -89,7 +90,8 @@ services:
         - PYTHON__V=3.11
         - TEST_DIR=s3
     depends_on:
-    - test-s3-env
+      test-s3-env:
+        condition: service_healthy
     environment:
     - API_ENDPOINT=http://test-s3-env:8000
     networks:

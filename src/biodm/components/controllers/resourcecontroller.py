@@ -94,7 +94,7 @@ class ResourceController(EntityController):
         self.table.ctrl = self
 
         self.pk = set(self.table.pk())
-        self.svc: DatabaseService = self._infer_svc()(app=self.app, table=self.table)
+        self.svc: UnaryEntityService = self._infer_svc()(app=self.app, table=self.table)
         self.__class__.schema = (schema if schema else self._infer_schema())(unknown=RAISE)
 
         # self._setup_permissions()
@@ -121,9 +121,9 @@ class ResourceController(EntityController):
         """
         match self.resource.lower():
             case "user":
-                return KCUserService
+                return KCUserService if hasattr(self.app, "kc") else CompositeEntityService
             case "group":
-                return KCGroupService
+                return KCGroupService if hasattr(self.app, "kc") else CompositeEntityService
             case _:
                 return CompositeEntityService if self.table.relationships() else UnaryEntityService
 
@@ -188,11 +188,20 @@ class ResourceController(EntityController):
         pk_val = [request.path_params.get(k) for k in self.pk]
         if not pk_val:
             raise InvalidCollectionMethod()
+
+
         if len(pk_val) != len(self.pk):
             raise PartialIndex(
                 "Request is missing some resource index values in the path. "
                 "Index elements have to be provided in definition order, separated by '_'"
             )
+
+        try:
+            # Try to generate a where condition that will cast values into their python type.
+            _ = self.svc.gen_cond(pk_val)
+        except ValueError as e:
+            raise ValueError("Parameter type not matching key.") from e
+
         return pk_val
 
     async def _extract_body(self, request: Request) -> bytes:
@@ -220,7 +229,11 @@ class ResourceController(EntityController):
         """
         fields = query_params.pop('fields', None)
         fields = fields.split(',') if fields else None
-        return set(fields or self.schema.dump_fields.keys())
+        if fields:
+            fields = set(fields) | self.pk
+        else:
+            fields = self.schema.dump_fields.keys()
+        return fields | self.pk
 
     async def create(self, request: Request) -> Response:
         """Creates associated entity.

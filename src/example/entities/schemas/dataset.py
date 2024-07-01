@@ -17,7 +17,7 @@ class DatasetSchema(Schema):
     username_user_contact = String(required=True)
     id_project = Integer(required=True)
 
-    # owner_group = Nested('GroupSchema') # , only=('name', 'n_members',)
+    # owner_group = Nested('GroupSchema') # , only=('path', 'n_members',)
     contact = Nested('UserSchema') # , only=('username', )
     project = Nested('ProjectSchema', exclude=('datasets', ))
     tags = List(Nested('TagSchema'))
@@ -50,7 +50,7 @@ class DatasetSchema(Schema):
             raise ValidationError("Need one of id_project or project fields.")
 
         # name_group = data.get('name_owner_group')
-        # group_name = data.get('owner_group', {}).get('name')
+        # group_name = data.get('owner_group', {}).get('name') # TODO: path
         # if name_group and group_name:
         #     assert(name_group == group_name)
         # elif group_name and not name_group:

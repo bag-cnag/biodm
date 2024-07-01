@@ -1,11 +1,10 @@
 """Controller base class."""
 from __future__ import annotations
-import io
 import json
 from abc import abstractmethod
 from enum import Enum
-import sched
-from typing import Any, List, Dict, Type, TYPE_CHECKING, Optional
+from io import BytesIO
+from typing import Any, List, Dict, TYPE_CHECKING, Optional
 
 from marshmallow.schema import Schema
 from marshmallow.exceptions import ValidationError
@@ -84,14 +83,19 @@ class EntityController(Controller):
     schema: Schema
 
     @classmethod
-    def validate(cls, data: bytes) -> (Any | List[Any] | Dict[str, Any] | None):
+    def validate(
+        cls,
+        data: bytes
+    ) -> List[Dict[str, Any]] | Dict[str, Any]:
         """Check incoming data against class schema and marshall to python dict.
 
         :param data: some request body
         :type data: bytes
+        :return: Marshalled python dict and plurality flag.
+        :rtype: Tuple[(Any | List[Any] | Dict[str, Any] | None), bool]
         """
         try:
-            match io.BytesIO(data).read(1):
+            match BytesIO(data).read(1):
                 # Check first byte to know if we're parsing a list or a dict.
                 case b'{':
                     many = False
@@ -102,9 +106,8 @@ class EntityController(Controller):
 
             json_data = json.loads(data) # Accepts **kwargs in case support needed.
             return cls.schema.load(json_data, many=many, partial=None, unknown=None)
-
         except ValidationError as e:
-            raise PayloadValidationError() from e
+            raise PayloadValidationError(cls.__name__) from e
         except json.JSONDecodeError as e:
             raise PayloadJSONDecodingError() from e
 

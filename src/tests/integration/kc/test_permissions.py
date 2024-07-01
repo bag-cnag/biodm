@@ -25,17 +25,17 @@ user3 = {
 }
 
 group1 = {
-    "name":f"g_{session_id}_1",
+    "path":f"g_{session_id}_1",
     "users":[user1],
 }
 
 group2 = {
-    "name":f"g_{session_id}_2",
+    "path":f"g_{session_id}_2",
     "users":[user2],
 }
 
 group3 = {
-    "name":f"g_{session_id}_3",
+    "path":f"g_{session_id}_3",
     "users":[user3],
 }
 
@@ -44,14 +44,14 @@ project1 = {
     "perm_datasets": {
         "read": {
             "groups": [
-                {"name": group1['name']},
-                {"name": group3['name']},
+                {"path": group1['path']},
+                {"path": group3['path']},
             ]
         },
         "write": {
             "groups": [
-                {"name": group1['name']},
-                {"name": group3['name']},
+                {"path": group1['path']},
+                {"path": group3['path']},
             ]
         },
     }
@@ -62,12 +62,12 @@ project2 = {
     "perm_datasets": {
         "read": {
             "groups": [
-                {"name": group2['name']}
+                {"path": group2['path']}
             ]
         },
         "write": {
             "groups": [
-                {"name": group2['name']}
+                {"path": group2['path']}
             ]
         }
     }
@@ -83,12 +83,12 @@ dataset1 = {
     "perm_files": {
         "write": {
             "groups": [
-                {"name": group3['name']},
+                {"path": group3['path']},
             ]
         },
         "read": {
             "groups": [
-                {"name": group3['name']},
+                {"path": group3['path']},
             ]
         }
     }

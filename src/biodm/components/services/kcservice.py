@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from typing import Any, Dict, List, Literal
+from pathlib import Path
 
 from biodm.components import Base
 from biodm.managers import KeycloakManager
@@ -17,30 +18,37 @@ class KCService(CompositeEntityService):
         return self.app.kc
 
     @abstractmethod
-    async def read_or_create(self, *args, **kwargs) -> str:
+    async def read_or_create(self, data: Dict[str, Any], **kwargs) -> None:
         """Try to read from DB, create on keycloak side if not present.
-           Return id: UUID in string form."""
+           Populate 'id' - Keycloak UUID in string form - in data."""
         raise NotImplementedError
 
 
 class KCGroupService(KCService):
-    async def read_or_create(self, data: Dict[str, Any]) -> str:
+    async def read_or_create(self, data: Dict[str, Any], **_) -> None:
         """READ group from keycloak, create if not found.
 
         :param data: Group data
         :type data: Dict[str, Any]
-        :return: Group id
-        :rtype: str
         """
+        path = Path("/" + data['path'].replace("__", "/"))
+
+
+        group = await self.kc.get_group_by_path(str(path))
+        if group:
+            data["id"] = group["id"]
+            return
+
+
         parent_id = None
-        parent_name = data.get('name_parent', None)
-        group = await self.kc.get_group_by_path(data["name"])
+        if not path.parent.parts == ('/',):
+            parent = await self.kc.get_group_by_path(str(path.parent))
+            # TODO: better exception
+            if not parent:
+                raise ValueError("Input path does not match any parent group.")
+            parent_id = parent['id']
 
-        if parent_name:
-            parent_id = await self.read_or_create({"name": parent_name})
-            await self.kc.update_group(group['id'], {"parent": parent_id})
-
-        return group["id"] if group else await self.kc.create_group(data, parent_id)
+        data['id'] = await self.kc.create_group(path.name, parent_id)
 
     async def create(
         self,
@@ -56,12 +64,10 @@ class KCGroupService(KCService):
         if not stmt_only:
             for group in to_it(data):
                 # Group first.
-                group['id'] = await self.read_or_create(group)
+                await self.read_or_create(group)
                 # Then Users.
                 for user in group.get("users", []):
-                    user['id'] = await User.svc.read_or_create(
-                        user, [group["name"]], [group["id"]],
-                    )
+                    await User.svc.read_or_create(user, [group["path"]], [group["id"]],)
         # DB
         return await super().create(data, stmt_only=stmt_only, **kwargs)
 
@@ -78,7 +84,7 @@ class KCUserService(KCService):
         data: Dict[str, Any],
         groups: List[str] | None = None,
         group_ids: List[str] | None = None,
-    ) -> str:
+    ) -> None:
         """READ entry from Database, CREATE it if not found.
 
         :param data: Entry object representation
@@ -95,12 +101,11 @@ class KCUserService(KCService):
             group_ids = group_ids or []
             for gid in group_ids:
                 await self.kc.group_user_add(user['id'], gid)
-            id = user['id']
+            data['id'] = user['id']
         else:
-            id = await self.kc.create_user(data, groups)
+            data['id'] = await self.kc.create_user(data, groups)
         # Important to remove password as it is not stored locally, SQLA would throw error.
         data.pop('password')
-        return id
 
     async def create(
         self,
@@ -115,13 +120,13 @@ class KCUserService(KCService):
         if not stmt_only:
             for user in to_it(data):
                 # Groups first.
-                group_names, group_ids = [], []
+                group_paths, group_ids = [], []
                 for group in user.get("groups", []):
-                    group['id'] = await Group.svc.read_or_create(group)
-                    group_names.append(group['name'])
+                    await Group.svc.read_or_create(group)
+                    group_paths.append(group['path'])
                     group_ids.append(group['id'])
                 # Then User.
-                user['id'] = await self.read_or_create(user, group_names, group_ids)
+                await self.read_or_create(user, group_paths, group_ids)
 
         return await super().create(data, stmt_only=stmt_only, **kwargs)
 

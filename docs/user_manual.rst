@@ -109,6 +109,20 @@ or all
     curl -X DELETE\
          ${SERVER_ENDPOINT}/my_resources/{id}
 
+Groups
+~~~~~~
+
+Group key is its ``path`` according to top level groups. Since ``/`` is a reserved route character
+it is replaced by double underscore: ``__`` (with no prefix).
+
+**E.g**. ``parent__child__grandchild``
+
+.. warning::
+
+    Group hierarchical structure is handled with explicit SQL statement that are backend dependent.
+    Hence group management is not supported when using ``SQLite`` backend. For testing, you may
+    limit yourself to top level groups, which in principle should not trigger errors.
+
 Filtering
 ~~~~~~~~~
 
@@ -213,3 +227,12 @@ hence a JSON representation of a dataset with its permissions looks like this:
             }
         }
     }
+
+
+.. note::
+
+    - Passing a top level group will allow all descending children group for that verb/resource tuple.
+
+    - Permissions are taken into account if and only if keyclaok functionalities are enabled.
+
+      - Without keycloak, no token exchange -> No way of getting back protected data.

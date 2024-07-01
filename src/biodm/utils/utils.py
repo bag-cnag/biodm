@@ -15,7 +15,8 @@ _U = TypeVar("_U")
 
 class aobject(object):
     """Inheriting this class allows you to define an async __init__.
-    So you can create objects by doing something like `await MyClass(params)`.
+    Syntax sugar allowing you to create objects like this `await MyClass(params)`.
+
 
     Courtesy of: https://stackoverflow.com/a/45364670/6847689
     """
@@ -34,10 +35,10 @@ def utcnow() -> dt.datetime:
         return dt.datetime.utcnow()
 
 
-def json_response(data: str, status_code: int) -> Response:
+def json_response(data: Any, status_code: int) -> Response:
     """Formats a Response object and set application/json header."""
     return Response(
-        data + "\n",
+        str(data) + "\n",
         status_code=status_code,
         media_type="application/json"
     )

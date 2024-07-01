@@ -5,8 +5,10 @@ from typing import Callable, List, Sequence, Any, Tuple, Dict, overload, Literal
 from sqlalchemy import insert, select, delete, or_
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import load_only, selectinload, ONETOMANY, MANYTOONE, aliased
 from sqlalchemy.sql import Insert, Delete, Select
+from sqlalchemy.sql.selectable import Alias
 
 from biodm import config
 from biodm.component import ApiService
@@ -173,7 +175,15 @@ class UnaryEntityService(DatabaseService):
                 if allowed and not allowed.groups:
                     continue
 
-                if not allowed or not set(groups) & set(g.name for g in allowed.groups):
+                def check() -> bool:
+                    """Path matching."""
+                    for allowedgroup in set(g.path for g in allowed.groups):
+                        for usergroup in set(groups):
+                            if allowedgroup in usergroup:
+                                return True
+                    return False
+
+                if not allowed or not check():
                     raise UnauthorizedError("No Write access.", orig=Exception())
 
     @overload
@@ -339,7 +349,10 @@ class UnaryEntityService(DatabaseService):
                 .join(Group)
                 .where(
                     or_(
-                        Group.name.in_(groups),
+                        or_(*[
+                            Group.path.like(upper_level + '%')
+                            for upper_level in groups
+                        ]),
                         ListGroup.id.not_in(
                             select(asso_list_group.c.id_listgroup)
                         )
@@ -369,6 +382,14 @@ class UnaryEntityService(DatabaseService):
         :rtype: Select
         """
         nested, fields = partition(fields, lambda x: x in self.relationships)
+        _, fields = partition(
+            fields,
+            lambda x: isinstance(
+                getattr(getattr(self.table, x, {}), 'descriptor', None),
+                hybrid_property
+            )
+        )
+        # TODO: manage hybrid properties ?
         stmt = self._apply_read_permissions(user_info, stmt)
 
         # Fields
@@ -383,7 +404,12 @@ class UnaryEntityService(DatabaseService):
 
         for n in nested:
             relationship, attr = self.relationships[n], getattr(self.table, n)
-            target = relationship.target.decl_class
+            target = relationship.target
+
+            if isinstance(target, Alias):
+                target = self.table
+            else:
+                target = target.decl_class
 
             if relationship.direction in (MANYTOONE, ONETOMANY):
                 if target == self.table:
@@ -403,12 +429,8 @@ class UnaryEntityService(DatabaseService):
                         attr,
                         isouter=True
                     )
-                # if target == self.table:
-                #     target = aliased(self.table)
                 stmt = (
-                    relationship
-                    .target
-                    .decl_class
+                    target
                     .svc
                     ._apply_read_permissions(user_info, stmt)
                 )
@@ -590,6 +612,7 @@ class CompositeEntityService(UnaryEntityService):
                     if isinstance(one, CompositeInsert):
                         one.item = one.item.values(**mapping)
                     else:
+                        assert isinstance(one, Insert)
                         one = one.values(**mapping)
 
             # Insert delayed and populate back into item.
@@ -730,12 +753,9 @@ class CompositeEntityService(UnaryEntityService):
 
     async def create(
         self,
-        data: List[Dict[str, Any]] | Dict[str, Any],
-        stmt_only: bool = False,
-        user_info: UserInfo | None = None,
+        data: Dict[str, Any] | List[Dict[str, Any]],
         **kwargs
     ) -> Base | List[Base] | InsertStmt | List[InsertStmt]:
         """CREATE, Handle list and single case."""
-        kwargs.update({"stmt_only": stmt_only, "user_info": user_info})
         f = self._create_many if isinstance(data, list) else self._create_one
         return await f(data, **kwargs)

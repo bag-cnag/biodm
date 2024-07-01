@@ -19,7 +19,7 @@ class Dataset(Base):
 
     ## For sqlite
     # # TODO: test, document that composite pk are not well supported for sqlite.
-    # id = Column(Integer, server_default='1')
+    # id = Column(Integer, server_default='1', primary_key=True)
     # version:     Mapped[int] = Column(SmallInteger, server_default='1')
     # # TODO: check sqlalchemy versionned entity flag.
     # data fields

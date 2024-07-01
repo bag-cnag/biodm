@@ -117,7 +117,7 @@ class KeycloakManager(ApiComponent):
         payload.update({
             "enabled": True,
             "requiredActions": [],
-            "groups": [g["name"] for g in data.get("groups", [])] + groups,
+            "groups": [g["path"] for g in data.get("groups", [])] + groups,
             "emailVerified": False,
         })
         try:
@@ -149,17 +149,17 @@ class KeycloakManager(ApiComponent):
                 f"User(id={user_id}): {e.error_message}."
             ) from e
 
-    async def create_group(self, data: Dict[str, Any], parent: str | None = None) -> str:
+    async def create_group(self, name: str, parent: str | None = None) -> str:
         """Create group."""
         try:
             return self.admin.create_group(
-                {"name": data["name"]},
+                {"name": name},
                 parent=parent
             )
         except KeycloakError as e:
             raise FailedCreate(
                 "Could not create Keycloak Group with data: "
-                f"{data} -- msg: {e.error_message}"
+                f"name={name}, parent={parent} -- msg: {e.error_message}"
             ) from e
 
     async def update_group(self, group_id: str, data: Dict[str, Any]):
@@ -195,6 +195,20 @@ class KeycloakManager(ApiComponent):
 
     async def get_user_groups(self, user_id: str):
         return self.admin.get_user_groups(user_id)
+
+    async def get_group(self, id: str):
+        return self.admin.get_group(id)
+
+    async def get_group_by_name(self, name: str):
+        try:
+            # query = {"name": name, "exact": True}
+            query = {"name": f'^{name}$', "exact": "true"}
+            groups = self.admin.get_groups(query=query)
+            if len(groups) == 1:
+                return groups[0]
+            return None
+        except KeycloakGetError:
+            return None
 
     async def get_group_by_path(self, path: str):
         try:
