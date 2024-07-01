@@ -1,7 +1,6 @@
 """Controller class for Tables acting as a Resource."""
 from __future__ import annotations
 from functools import partial
-import asyncio
 from typing import TYPE_CHECKING, List, Set, Any, Dict, Type
 
 from marshmallow.schema import RAISE
