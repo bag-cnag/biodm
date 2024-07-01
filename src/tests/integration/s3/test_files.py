@@ -66,8 +66,8 @@ def test_file_upload():
             verify=True,
             allow_redirects=True
         )
-    assert response.status_code == 201
     assert "Uploaded." in response.text
+    assert response.status_code == 201
 
 
 @pytest.mark.dependency(name="test_file_upload")
