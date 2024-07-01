@@ -1,12 +1,15 @@
 ARG PYTHON__V
+ARG PIP_CACHE_DIR=/root/.cache/pip
+
 FROM python:${PYTHON__V}-slim-bookworm AS base
 
+ARG PIP_CACHE_DIR
 
 COPY ./src/requirements /biodm/src/requirements
 WORKDIR /biodm
 
 
-RUN --mount=type=cache,target=/root/.cache/pip \
+RUN --mount=type=cache,target=${PIP_CACHE_DIR} \
     pip3 install -r src/requirements/dev.txt
 
 

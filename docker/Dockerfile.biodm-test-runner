@@ -1,13 +1,15 @@
 ARG PYTHON__V
+ARG PIP_CACHE_DIR=/root/.cache/pip
 ARG TEST_DIR
 ARG TEST_DIR_PATH=./src/tests/integration/${TEST_DIR}
 
 FROM python:${PYTHON__V}-slim-bookworm AS base
 
 ARG TEST_DIR_PATH
+ARG PIP_CACHE_DIR
 
 COPY ./src/requirements /requirements
-RUN --mount=type=cache,target=/root/.cache/pip \
+RUN --mount=type=cache,target=${PIP_CACHE_DIR} \
     pip3 install -r /requirements/tests.txt
 
 COPY ${TEST_DIR_PATH} /tests
