@@ -1,7 +1,7 @@
 from typing import List, Set # Optional, 
 
 from sqlalchemy import Column, Identity, Integer, SmallInteger, ForeignKey, String, PrimaryKeyConstraint, UniqueConstraint
-from sqlalchemy.orm import Mapped, relationship
+from sqlalchemy.orm import Mapped, relationship, mapped_column
 
 from biodm.components.table import Base, Permission
 from biodm.tables import Group, User
@@ -14,13 +14,13 @@ from .project import Project
 class Dataset(Base):
     # pk
     ## For PostgresSQL
-    id:          Mapped[int] = Column(Integer, autoincrement=True)
-    version:     Mapped[int] = Column(SmallInteger, server_default='1')
+    # id:          Mapped[int] = mapped_column(autoincrement=True)
+    # version:     Mapped[int] = mapped_column(server_default='1')
 
     ## For sqlite
     # # TODO: test, document that composite pk are not well supported for sqlite.
-    # id = Column(Integer, server_default='1', primary_key=True)
-    # version:     Mapped[int] = Column(SmallInteger, server_default='1')
+    id = Column(Integer, server_default='1', primary_key=True)
+    version = Column(SmallInteger, server_default='1')
     # # TODO: check sqlalchemy versionned entity flag.
     # data fields
     name:        Mapped[str] = Column(String(50), nullable=False)

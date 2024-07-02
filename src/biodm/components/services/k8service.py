@@ -2,6 +2,7 @@ from typing import List, Dict, Any
 
 from biodm.components import Base
 from biodm.utils.security import UserInfo
+from biodm.utils.sqla import InsertStmt
 from .dbservice import CompositeEntityService
 
 

@@ -29,7 +29,6 @@ class S3Controller(ResourceController):
         file_routes = [
             Route(f'{self.prefix}/download/{self.qp_id}',    self.download,         methods=[HttpMethod.GET.value]),
             Route(f'{self.prefix}/up_success/{self.qp_id}',  self.upload_success,   methods=[HttpMethod.GET.value]),
-            Route(f'{self.prefix}/dl_success/{self.qp_id}',  self.download_success, methods=[HttpMethod.POST.value]),
         ]
         self.route_upload_callback = Path(self.prefix, file_routes[1].path)
 
@@ -46,15 +45,11 @@ class S3Controller(ResourceController):
             )
         )
 
-    async def download_success(self, request: Request):
-        """Used as a callback in s3 presigned download urls for statistics."""
-        # TODO: Implement
-        pass
-
     async def upload_success(self, request: Request):
         """ Used as a callback in the s3 presigned upload urls that are emitted.
             Uppon receival, update entity status in the DB."""
-        assert isinstance(self.svc, S3Service)
+        assert isinstance(self.svc, S3Service) # mypy.
 
         await self.svc.upload_success(pk_val=self._extract_pk_val(request))
+
         return json_response("Uploaded.", status_code=201)

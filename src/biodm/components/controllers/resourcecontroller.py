@@ -128,8 +128,10 @@ class ResourceController(EntityController):
 
     def _infer_table(self) -> Type[Base]:
         """Try to find matching table in the registry."""
+        assert hasattr(Base.registry._class_registry, 'data')
         reg = Base.registry._class_registry.data
-        if self.resource in reg:
+
+        if self.resource in reg: # Weakref.
             return reg[self.resource]()
         raise ValueError(
             f"{self.__class__.__name__} could not find {self.resource} Table."
@@ -232,7 +234,7 @@ class ResourceController(EntityController):
             fields = set(fields) | self.pk
         else:
             fields = self.schema.dump_fields.keys()
-        return fields | self.pk
+        return fields
 
     async def create(self, request: Request) -> Response:
         """Creates associated entity.
@@ -259,9 +261,7 @@ class ResourceController(EntityController):
                 data=validated_data,
                 stmt_only=False,
                 user_info=await UserInfo(request),
-                serializer=partial(
-                    self.serialize, **{"many": isinstance(validated_data, list)}
-                ),
+                serializer=partial(self.serialize, many=isinstance(validated_data, list)),
             ),
             status_code=201,
         )

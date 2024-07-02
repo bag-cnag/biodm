@@ -2,6 +2,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager, AsyncExitStack
 from typing import AsyncGenerator, TYPE_CHECKING, Callable, Any
 
+from sqlalchemy import event
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
@@ -24,6 +25,10 @@ class DatabaseManager(ApiComponent):
                 self.database_url,
                 echo=Scope.DEBUG in app.scope,
             )
+
+            if "sqlite" in self.database_url:
+                event.listens_for(self.engine.sync_engine, "connect")(self.sqlite_declare_strrev)
+
             self.async_session = async_sessionmaker(
                 self.engine,
                 class_=AsyncSession,
@@ -69,6 +74,11 @@ class DatabaseManager(ApiComponent):
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
+
+    @staticmethod
+    def sqlite_declare_strrev(conn, _):
+        """Custom string revese function for SQLite backend."""
+        conn.create_function("strrev", 1, lambda s: s[::-1])
 
     @staticmethod
     def in_session(db_exec: Callable) -> Callable:

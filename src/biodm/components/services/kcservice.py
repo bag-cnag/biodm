@@ -126,7 +126,7 @@ class KCUserService(KCService):
                     group_paths.append(group['path'])
                     group_ids.append(group['id'])
                 # Then User.
-                await self.read_or_create(user, group_paths, group_ids)
+                await self.read_or_create(user, groups=group_paths, group_ids=group_ids)
 
         return await super().create(data, stmt_only=stmt_only, **kwargs)
 

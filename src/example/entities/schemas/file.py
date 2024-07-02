@@ -8,6 +8,7 @@ class FileSchema(Schema):
     extension = String(required=True)
     upload_form = String(required=False, dump_only=True)
     ready = Bool(required=False, dump_only=True)
+    dl_count = Integer(required=False, dump_only=True)
     id_dataset = Integer(required=True)
     version_dataset = Integer(required=True)
     # dataset = Nested('DatasetSchema', required=True) # , load_only=True

@@ -1,9 +1,9 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, List, Dict, Any
 
-from keycloak import KeycloakAdmin
-from keycloak import KeycloakOpenIDConnection
-from keycloak import KeycloakOpenID
+from keycloak.keycloak_admin import KeycloakAdmin
+from keycloak.openid_connection import KeycloakOpenIDConnection
+from keycloak.keycloak_openid import KeycloakOpenID
 from keycloak.exceptions import KeycloakError, KeycloakDeleteError, KeycloakGetError
 
 from biodm.component import ApiComponent

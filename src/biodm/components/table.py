@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, List, Dict, Tuple, Type, Set, ClassVar, T
 
 import marshmallow as ma
 from sqlalchemy import (
-    BOOLEAN, ForeignKeyConstraint, inspect, Column, String, TIMESTAMP, ForeignKey,
+    BOOLEAN, ForeignKeyConstraint, Integer, inspect, Column, String, TIMESTAMP, ForeignKey,
 )
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
@@ -35,8 +35,10 @@ class Base(DeclarativeBase, AsyncAttrs):
     :type svc: DatabaseService
     :param ctrl: Enable entity - controller linkage -> Resources tables only
     :type ctrl: ResourceController
-    :param __permissions: Stores rules for user defined permissions on hierarchical entities
-    :type __permissions: Dict
+    :param raw_permissions: Stores rules for user defined permissions on hierarchical entities
+    :type raw_permissions: Dict
+    :param permissions: Stores processed permissions with hierarchical linkage.
+    :type permissions: Dict
     """
     svc: ClassVar[Type[DatabaseService]]
     ctrl: ClassVar[Type[ResourceController]]
@@ -289,6 +291,7 @@ class S3File:
     extension = Column(String(10), nullable=False)
     ready = Column(BOOLEAN, nullable=False, server_default='0')
     upload_form = Column(String(2000)) # , nullable=False
+    dl_count = Column(Integer, nullable=False, server_default='0')
 
     # @declared_attr
     # def id_user_uploader(_):

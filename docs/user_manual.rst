@@ -6,7 +6,9 @@ User Manual
 
 This section describes how your Users may communicate with the API once it is deployed.
 
-The examples are demonstrating using curl, but they are free to use any HTTP library out there.
+The examples are demonstrating using ``curl``, but they are free to use any HTTP library out there.
+
+Integration tests located at ``src/tests/integration`` are also providing plenty of resources. 
 
 Base routes
 -----------
@@ -68,7 +70,7 @@ For each entity being managed by a ``ResourceController``, the following routes 
     * As per REST standard, each entity is accessible under a resource prefix which is the name of the entity in plural form.
     * URLs end **without** trailing slashes
     * In the case of a multi-indexed entity (**i.e.** composite primary key), ``{id}`` 
-      refers to primary key elements separated by underscore symbol ``_``. 
+      refers to primary key elements separated by underscore symbol ``_``.
 
 * POST
 
@@ -119,9 +121,9 @@ it is replaced by double underscore: ``__`` (with no prefix).
 
 .. warning::
 
-    Group hierarchical structure is handled with explicit SQL statement that are backend dependent.
-    Hence group management is not supported when using ``SQLite`` backend. For testing, you may
-    limit yourself to top level groups, which in principle should not trigger errors.
+    The special group path ``no_groups`` is reserved as it is used to
+    generate failing conditions.
+
 
 Filtering
 ~~~~~~~~~
