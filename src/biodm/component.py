@@ -17,7 +17,7 @@ class ApiComponent(metaclass=ABCMeta):
     :type app: class:`biodm.Api`
     """
     app: Api
-    logger: logging.Logger # type: ignore [name-defined]
+    logger: logging.Logger
 
     def __init__(self, app: Api) -> None:
         self.__class__.app = app
@@ -32,7 +32,7 @@ class ApiService(ApiComponent, metaclass=ABCMeta):
         data: Dict[str, Any] | List[Dict[str, Any]],
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
-        **kwargs
+        **kwargs: Dict[str, Any]
     ) -> InsertStmt | List[InsertStmt] | Base | List[Base]:
         raise NotImplementedError
 
@@ -42,7 +42,7 @@ class ApiService(ApiComponent, metaclass=ABCMeta):
         pk_val: List[Any],
         fields: List[str],
         user_info: UserInfo | None = None,
-        **kwargs
+        **kwargs: Dict[str, Any]
     ) -> Base:
         raise NotImplementedError
 
@@ -52,7 +52,7 @@ class ApiService(ApiComponent, metaclass=ABCMeta):
         fields: List[str],
         params: Dict[str, str],
         user_info: UserInfo | None = None,
-        **kwargs
+        **kwargs: Dict[str, Any]
     ) -> List[Base]:
         raise NotImplementedError
 
@@ -61,6 +61,6 @@ class ApiService(ApiComponent, metaclass=ABCMeta):
         self,
         pk_val: List[Any],
         user_info: UserInfo | None = None,
-        **kwargs
+        **kwargs: Dict[str, Any]
     ) -> None:
         raise NotImplementedError

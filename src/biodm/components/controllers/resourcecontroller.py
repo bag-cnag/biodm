@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, List, Set, Any, Dict, Type
 from marshmallow.schema import RAISE
 from marshmallow.class_registry import get_class
 from marshmallow.exceptions import RegistryError
-from starlette.routing import Mount, Route
+from starlette.routing import Mount, Route, BaseRoute
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -154,7 +154,7 @@ class ResourceController(EntityController):
                 "provide the schema class as 'schema' argument when defining a new controller"
             ) from e
 
-    def routes(self, **_) -> List[Mount | Route]:
+    def routes(self, **_) -> List[Mount | Route] | List[Mount] | List[BaseRoute]:
         """Sets up standard RESTful endpoints.
         child_routes: from children classes calling super().__init__().
 

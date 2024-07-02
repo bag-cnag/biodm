@@ -24,7 +24,7 @@ class A(Base):
     id = sa.Column(sa.Integer, primary_key=True)
     x = sa.Column(sa.Integer, nullable=True)
     y = sa.Column(sa.Integer, nullable=True)
-    id_c: Mapped[Optional[int]] = mapped_column(sa.Integer, sa.ForeignKey("C.id"))
+    id_c: Mapped[Optional[int]] = mapped_column(sa.Integer, sa.ForeignKey("C.id"), nullable=True)
 
     bs:    Mapped[List["B"]]  = relationship(secondary=asso_a_b, uselist=True, lazy="select")
     c:     Mapped["C"] = relationship(foreign_keys=[id_c], backref="ca", lazy="select")

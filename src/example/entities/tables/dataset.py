@@ -23,7 +23,7 @@ class Dataset(Base):
     version = Column(SmallInteger, server_default='1')
     # # TODO: check sqlalchemy versionned entity flag.
     # data fields
-    name:        Mapped[str] = Column(String(50), nullable=False)
+    name:        Mapped[str] = mapped_column(String(50), nullable=False)
     # # description: Mapped[str] = Column(TEXT,       nullable=True)
     # # created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=)datetime.datetime.utcnow
     # # updated_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=)
@@ -47,8 +47,8 @@ class Dataset(Base):
     # # supplementary_metadata = Column(JSONB, nullable=True)
 
     # # Foreign keys
-    username_user_contact: Mapped[int] = Column(ForeignKey("USER.username"),    nullable=False)
-    id_project:      Mapped[int]       = Column(ForeignKey("PROJECT.id"),       nullable=False)
+    username_user_contact: Mapped[int] = mapped_column(ForeignKey("USER.username"),    nullable=False)
+    id_project:      Mapped[int]       = mapped_column(ForeignKey("PROJECT.id"),       nullable=False)
 
     # # relationships
     # policy - cascade="save-update, merge" ?

@@ -11,7 +11,7 @@ from marshmallow.exceptions import ValidationError
 from sqlalchemy.exc import MissingGreenlet
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.routing import Mount, Route
+from starlette.routing import Mount, Route, BaseRoute
 
 from biodm import config
 from biodm.component import ApiComponent
@@ -38,7 +38,7 @@ class Controller(ApiComponent):
     endpoints including openapi schema generation for that given set.
     """
     @abstractmethod
-    def routes(self, **kwargs) -> List[Mount | Route]:
+    def routes(self, **kwargs) -> List[Mount | Route] | List[Mount] |  List[BaseRoute]:
         """Controller routes."""
         raise NotImplementedError
 

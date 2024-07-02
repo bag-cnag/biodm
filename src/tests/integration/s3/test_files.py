@@ -72,9 +72,11 @@ def test_file_upload():
 @pytest.mark.dependency(name="test_file_upload")
 def test_file_readiness(srv_endpoint):
     file = requests.get(f"{srv_endpoint}/files/1")
-    json_file = json.loads(file.text)
 
     assert file.status_code == 200
+
+    json_file = json.loads(file.text)
+
     assert json_file['ready'] == True
     assert json_file['upload_form'] == ""
 
@@ -91,3 +93,13 @@ def test_file_download(srv_endpoint, tmp_path):
         f.write(file.content)
 
     assert filecmp.cmp(tmp_file, file_path)
+
+
+@pytest.mark.dependency(name="test_file_download")
+def test_file_dl_count(srv_endpoint):
+    file = requests.get(f"{srv_endpoint}/files/1?fields=dl_count")
+
+    assert file.status_code == 200
+
+    json_file = json.loads(file.text)
+    assert json_file['dl_count'] == 1

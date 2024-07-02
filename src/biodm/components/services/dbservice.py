@@ -170,7 +170,7 @@ class UnaryEntityService(DatabaseService):
                     stmt = stmt.join(jtable)
 
                 stmt = stmt.options(selectinload(ListGroup.groups))
-                allowed = await session.scalar(stmt)
+                allowed: ListGroup = await session.scalar(stmt)
 
                 if allowed and not allowed.groups:
                     continue
@@ -728,34 +728,14 @@ class CompositeEntityService(UnaryEntityService):
             for one in data
         ]
 
-    # async def create(
-    #     self,
-    #     data: Dict[str, Any] | List[Dict[str, Any]],
-    #     stmt_only: bool = False,
-    #     user_info: UserInfo | None = None,
-    #     **kwargs
-    # ) -> Base | List[Base] | CompositeInsert | List[CompositeInsert] | str:
-    # @overload
-    # async def create(
-    #     self,
-    #     data: List[Dict[str, Any]] | Dict[str, Any],
-    #     stmt_only: Literal[True],
-    #     user_info: UserInfo | None,
-    # ) -> InsertStmt | List[InsertStmt]: ...
-
-    # @overload
-    # async def create(
-    #     self,
-    #     data: List[Dict[str, Any]] | Dict[str, Any],
-    #     stmt_only: Literal[False],
-    #     user_info: UserInfo | None,
-    # ) -> Base | List[Base]: ...
-
     async def create(
         self,
-        data: Dict[str, Any] | List[Dict[str, Any]],
+        data: List[Dict[str, Any]] | Dict[str, Any],
+        stmt_only: bool = False,
+        user_info: UserInfo | None = None,
         **kwargs
     ) -> Base | List[Base] | InsertStmt | List[InsertStmt]:
         """CREATE, Handle list and single case."""
+        kwargs.update({"stmt_only": stmt_only, "user_info": user_info})
         f = self._create_many if isinstance(data, list) else self._create_one
         return await f(data, **kwargs)

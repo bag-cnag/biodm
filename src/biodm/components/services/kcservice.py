@@ -18,14 +18,14 @@ class KCService(CompositeEntityService):
         return self.app.kc
 
     @abstractmethod
-    async def read_or_create(self, data: Dict[str, Any], **kwargs) -> None:
+    async def read_or_create(self, data: Dict[str, Any], /) -> None:
         """Try to read from DB, create on keycloak side if not present.
            Populate 'id' - Keycloak UUID in string form - in data."""
         raise NotImplementedError
 
 
 class KCGroupService(KCService):
-    async def read_or_create(self, data: Dict[str, Any], **_) -> None:
+    async def read_or_create(self, data: Dict[str, Any]) -> None:
         """READ group from keycloak, create if not found.
 
         :param data: Group data

@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List, Type
 
-from starlette.routing import Route, Mount
+from starlette.routing import Route, Mount, BaseRoute
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
@@ -24,7 +24,7 @@ class S3Controller(ResourceController):
             )
         return S3Service
 
-    def routes(self, **_) -> List[Mount | Route]:
+    def routes(self, **_) -> List[Mount | Route] | List[Mount] | List[BaseRoute]:
         """Add an endpoint for successful file uploads and direct download."""
         file_routes = [
             Route(f'{self.prefix}/download/{self.qp_id}',    self.download,         methods=[HttpMethod.GET.value]),
