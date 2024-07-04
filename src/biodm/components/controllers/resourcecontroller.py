@@ -9,6 +9,7 @@ from marshmallow.exceptions import RegistryError
 from starlette.routing import Mount, Route, BaseRoute
 from starlette.requests import Request
 from starlette.responses import Response
+from yaml import serialize
 
 from biodm import Scope
 from biodm.components.services import (
@@ -18,7 +19,6 @@ from biodm.components.services import (
     KCGroupService,
     KCUserService
 )
-from biodm.components.table import Permission
 from biodm.exceptions import (
     InvalidCollectionMethod, PayloadEmptyError, UnauthorizedError, PartialIndex
 )
@@ -96,8 +96,6 @@ class ResourceController(EntityController):
         self.svc: UnaryEntityService = self._infer_svc()(app=self.app, table=self.table)
         self.__class__.schema = (schema if schema else self._infer_schema())(unknown=RAISE)
 
-        # self._setup_permissions()
-
     def _infer_resource_name(self) -> str:
         """Infer entity name from controller name."""
         return self.__class__.__name__.split('Controller', maxsplit=1)[0]
@@ -163,7 +161,7 @@ class ResourceController(EntityController):
         """
         # child_routes = child_routes or []
         # flake8: noqa: E501  pylint: disable=line-too-long
-        return  [
+        ls = [
             Route(f"{self.prefix}",                   self.create,         methods=[HttpMethod.POST.value]),
             Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET.value]),
             Mount(self.prefix, routes=[
@@ -173,8 +171,11 @@ class ResourceController(EntityController):
                 Route(f'/{self.qp_id}/{{attribute}}', self.read,           methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE.value]),
                 Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT.value]),
-            ])
+            ] + ([
+                Route(f"/{self.qp_id}/release",       self.release,        methods=[HttpMethod.POST.value]),
+            ] if self.table.is_versioned() else []))
         ]
+        return ls
 
     def _extract_pk_val(self, request: Request) -> List[Any]:
         """Extracts id from request.
@@ -219,7 +220,11 @@ class ResourceController(EntityController):
             raise PayloadEmptyError
         return body
 
-    def _extract_fields(self, query_params: Dict[str, Any]) -> Set[str]:
+    def _extract_fields(
+        self,
+        query_params: Dict[str, Any],
+        no_depth: bool = False
+    ) -> Set[str]:
         """Extracts fields from request query parameters.
            Defaults to ``self.schema.dump_fields.keys()``.
 
@@ -232,6 +237,11 @@ class ResourceController(EntityController):
         fields = fields.split(',') if fields else None
         if fields:
             fields = set(fields) | self.pk
+        elif no_depth:
+            fields = [
+                k for k,v in self.schema.dump_fields.items()
+                if not (hasattr(v, 'nested') or hasattr(v, 'inner'))
+            ]
         else:
             fields = self.schema.dump_fields.keys()
         return fields
@@ -291,6 +301,7 @@ class ResourceController(EntityController):
               description: Not Found
         """
         fields = self._extract_fields(dict(request.query_params))
+        # TODO: handle nested attribute
         return json_response(
             data=await self.svc.read(
                 pk_val=self._extract_pk_val(request),
@@ -317,6 +328,7 @@ class ResourceController(EntityController):
         # Plug in pk into the dict(s).
         pk_val = dict(zip(self.pk, pk_val)) # type: ignore [assignment]
         for data in to_it(validated_data):
+            # TODO: check if to_it is necessary ? Shouldn't be a list.
             data.update(pk_val)
 
         return json_response(
@@ -370,3 +382,32 @@ class ResourceController(EntityController):
             ),
             status_code=200,
         )
+
+    async def release(self, request: Request):
+        """Releases new version for versioned entities.
+
+        ---
+        description: Parses a querystring on the route /ressources/search?{querystring}
+        """
+        # TODO: flag to make previous versions readonly
+        # TODO: make it possible to create/update with the id only -> defaults to lastversion.
+        assert self.table.is_versioned()
+
+        # Allow empty body.
+        validated_data = self.validate(await request.body() or b'{}')
+
+        assert not isinstance(validated_data, list)
+        assert not any([pk in validated_data.keys() for pk in self.pk])
+
+        fields = self._extract_fields(dict(request.query_params), no_depth=True)
+
+        new_version = await self.svc.release(
+            pk_val=self._extract_pk_val(request),
+            fields=fields,
+            update=validated_data,
+            user_info=await UserInfo(request),
+        )
+        # Delay serialization
+        serialized = self.serialize(new_version, many=False, only=fields)
+
+        return json_response(serialized, status_code=200)

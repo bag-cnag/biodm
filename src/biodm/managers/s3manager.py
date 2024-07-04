@@ -98,7 +98,6 @@ class S3Manager(ApiComponent):
         :return: Presigned URL as string.
         """
         try:
-            # TODO: see if a callback is possible.
             return self.s3_client.generate_presigned_url(
                 'get_object',
                 Params={

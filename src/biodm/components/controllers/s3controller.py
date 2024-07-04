@@ -27,8 +27,8 @@ class S3Controller(ResourceController):
     def routes(self, **_) -> List[Mount | Route] | List[Mount] | List[BaseRoute]:
         """Add an endpoint for successful file uploads and direct download."""
         file_routes = [
-            Route(f'{self.prefix}/download/{self.qp_id}',    self.download,         methods=[HttpMethod.GET.value]),
-            Route(f'{self.prefix}/up_success/{self.qp_id}',  self.upload_success,   methods=[HttpMethod.GET.value]),
+            Route(f'{self.prefix}/{self.qp_id}/download',    self.download,         methods=[HttpMethod.GET.value]),
+            Route(f'{self.prefix}/{self.qp_id}/up_success',  self.upload_success,   methods=[HttpMethod.GET.value]),
         ]
         self.route_upload_callback = Path(self.prefix, file_routes[1].path)
 

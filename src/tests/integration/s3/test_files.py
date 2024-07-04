@@ -83,7 +83,7 @@ def test_file_readiness(srv_endpoint):
 
 @pytest.mark.dependency(name="test_file_upload")
 def test_file_download(srv_endpoint, tmp_path):
-    file = requests.get(f"{srv_endpoint}/files/download/1", allow_redirects=True, stream=True)
+    file = requests.get(f"{srv_endpoint}/files/1/download", allow_redirects=True, stream=True)
 
     assert file.status_code == 200
 

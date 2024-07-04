@@ -2,17 +2,17 @@
 from operator import or_
 from typing import Callable, List, Sequence, Any, Tuple, Dict, overload, Literal, Set, Type
 
-from sqlalchemy import insert, select, delete, or_
+from sqlalchemy import insert, select, delete, or_, func
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import load_only, selectinload, ONETOMANY, MANYTOONE, aliased
+from sqlalchemy.orm import load_only, selectinload, ONETOMANY, MANYTOONE, aliased, make_transient
 from sqlalchemy.sql import Insert, Delete, Select
 from sqlalchemy.sql.selectable import Alias
 
 from biodm import config
 from biodm.component import ApiService
-from biodm.components import Base, Permission
+from biodm.components import Base, Permission, Versioned
 from biodm.exceptions import FailedRead, FailedDelete, ImplementionError, UnauthorizedError
 from biodm.managers import DatabaseManager
 from biodm.scope import Scope
@@ -139,9 +139,12 @@ class UnaryEntityService(DatabaseService):
             return
 
         if not user_info.info:
-            raise UnauthorizedError("No Write access.", orig=Exception())
+            groups = ['no_groups']
+        else:
+            _, groups, _ = user_info.info
+            # raise UnauthorizedError(f"No {verb} access.", orig=Exception())
+            # _, groups, _ = user_info.info
 
-        _, groups, _ = user_info.info
         for permission in perms:
             for one in to_it(pending):
                 link = permission['from'][-1]
@@ -172,7 +175,8 @@ class UnaryEntityService(DatabaseService):
                 stmt = stmt.options(selectinload(ListGroup.groups))
                 allowed: ListGroup = await session.scalar(stmt)
 
-                if allowed and not allowed.groups:
+                if not allowed or not allowed.groups:
+                    # Empty perm list: public.
                     continue
 
                 def check() -> bool:
@@ -183,8 +187,27 @@ class UnaryEntityService(DatabaseService):
                                 return True
                     return False
 
-                if not allowed or not check():
-                    raise UnauthorizedError("No Write access.", orig=Exception())
+                if not check():
+                    raise UnauthorizedError(f"No {verb} access.", orig=Exception())
+
+    @DatabaseManager.in_session
+    async def populate_ids_sqlite(
+        self,
+        data: Dict[str, Any] | List[Dict[str, Any]],
+        session: AsyncSession
+    ):
+        """Handle SQLite autoincrement for composite primary key.
+            Which is a handy feature for a versioned entity. So we fetch the current max id in a
+            separate request and prepopulate the dicts. This is not the most performant, but sqlite
+            support is for testing purposes mostly.
+        """
+        # 1. get max id
+        max_id = await session.scalar(func.max(self.table.id))
+        id = (max_id or 0) + 1
+        # 2. loop
+        for one in to_it(data):
+            one['id'] = id
+            id = id + 1
 
     @overload
     async def create(
@@ -217,6 +240,10 @@ class UnaryEntityService(DatabaseService):
         - Perform write permission check according to input data
         """
         await self._check_permissions("write", user_info, data)
+
+        if 'sqlite' in config.DATABASE_URL and self.table.is_versioned():
+            # SQLite will not autoincrement id in case of a composite primary key.
+            await self.populate_ids_sqlite(data)
 
         stmt = self._backend_specific_insert(self.table)
 
@@ -539,6 +566,34 @@ class UnaryEntityService(DatabaseService):
         stmt = delete(self.table).where(self.gen_cond(pk_val))
         await self._delete(stmt, **kwargs)
 
+    @DatabaseManager.in_session
+    async def release(
+        self,
+        pk_val: List[Any],
+        fields: List[str],
+        update: Dict[str, Any],
+        user_info: UserInfo | None = None,
+        session: AsyncSession = None,
+    ) -> str:
+        await self._check_permissions(
+            "write",
+            user_info, {k: v for k, v in zip(self.pk, pk_val)},
+            session=session
+        )
+
+        item = await self.read(pk_val, fields, session=session)
+        # Put item in a `flexible` state where we may edit pk.
+        make_transient(item)
+        item.version += 1
+
+        # Apply update.
+        for key, val in update.items():
+            setattr(item, key, val)
+
+        # new pk -> new row.
+        session.add(item)
+
+        return item
 
 class CompositeEntityService(UnaryEntityService):
     """Special case for Composite Entities (i.e. containing nested entities attributes)."""

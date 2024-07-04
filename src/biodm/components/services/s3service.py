@@ -17,6 +17,10 @@ class S3Service(UnaryEntityService):
     def s3(self) -> S3Manager:
         return self.app.s3
 
+    @classmethod
+    def callback(cls, id):
+        return f"{cls.app.server_endpoint}files/{id}/up_success"
+
     @DatabaseManager.in_session
     async def _insert(self, stmt: Insert, session: AsyncSession) -> (Any | None):
         """INSERT special case for file: populate url after getting entity id."""
@@ -24,7 +28,7 @@ class S3Service(UnaryEntityService):
 
         item.upload_form = str(self.s3.create_presigned_post(
             object_name=f"{item.filename}.{item.extension}",
-            callback=f"{self.app.server_endpoint}files/up_success/{item.id}"
+            callback=self.callback(item.id)
         ))
 
         return item
@@ -37,7 +41,7 @@ class S3Service(UnaryEntityService):
         for item in items:
             item.upload_form = str(self.s3.create_presigned_post(
                 object_name=f"{item.filename}.{item.extension}",
-                callback=f"{self.app.server_endpoint}files/up_success/{item.id}"
+                callback=self.callback(item.id)
             ))
 
         return items

@@ -1,9 +1,9 @@
 from typing import List, Set # Optional, 
 
-from sqlalchemy import Column, Identity, Integer, SmallInteger, ForeignKey, String, PrimaryKeyConstraint, UniqueConstraint
+from sqlalchemy import BIGINT, text, func, Column, Identity, Integer, Sequence, SmallInteger, ForeignKey, String, PrimaryKeyConstraint, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 
-from biodm.components.table import Base, Permission
+from biodm.components.table import Base, Permission, Versioned
 from biodm.tables import Group, User
 from .asso import asso_dataset_tag
 from .file import File
@@ -11,20 +11,10 @@ from .tag import Tag
 from .project import Project
 
 
-class Dataset(Base):
-    # pk
-    ## For PostgresSQL
-    # id:          Mapped[int] = mapped_column(autoincrement=True)
-    # version:     Mapped[int] = mapped_column(server_default='1')
-
-    ## For sqlite
-    # # TODO: test, document that composite pk are not well supported for sqlite.
-    id = Column(Integer, server_default='1', primary_key=True)
-    version = Column(SmallInteger, server_default='1')
-    # # TODO: check sqlalchemy versionned entity flag.
+class Dataset(Versioned, Base):
     # data fields
     name:        Mapped[str] = mapped_column(String(50), nullable=False)
-    # # description: Mapped[str] = Column(TEXT,       nullable=True)
+    description: Mapped[str] = Column(Text,       nullable=True)
     # # created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=)datetime.datetime.utcnow
     # # updated_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=)
     # # licence_s3_path = Column(String(100),         nullable=True)
@@ -67,11 +57,8 @@ class Dataset(Base):
     #     PrimaryKeyConstraint('id', 'version', name='pk_dataset'),
     # )
 
+    # Special parameters.
     __permissions__ = (
         # Flag many-to-entity (composition pattern) with permissions. 
         Permission(files, read=True, write=True),
-    )
-
-    __table_args__ = (
-        PrimaryKeyConstraint(id, version),
     )

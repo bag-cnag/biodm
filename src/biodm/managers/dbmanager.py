@@ -59,6 +59,7 @@ class DatabaseManager(ApiComponent):
         """Opens and yields a new AsyncSession."""
         try:
             async with self.async_session() as session:
+                # versioned_session(session)
                 yield session
                 await session.commit()
         except Exception as e:
