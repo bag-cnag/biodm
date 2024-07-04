@@ -14,13 +14,12 @@ class UserInfo(aobject):
 
     If the request contains an authentication header, self.info shall return User Info, else None
     """
-    # from biodm.managers.kcmanager import KeycloakManager
-    # from biodm.tables import User
     from biodm.managers import KeycloakManager
 
     kc: KeycloakManager
     _info: Tuple[str, List, List] | None = None
 
+    # aobject syntax sugar not known by typecheckers.
     async def __init__(self, request: Request) -> None: # type: ignore [misc]
         self.token = self.auth_header(request)
         if self.token:
@@ -55,7 +54,7 @@ class UserInfo(aobject):
         userid = decoded.get("preferred_username")
         keycloak_id = (await User.svc.read(pk_val=[userid], fields=['id'])).id
         groups = [
-            group['name']
+            group['path'].replace("/", "__")[2:]
             for group in await self.kc.get_user_groups(keycloak_id)
         ] or ['no_groups']
         projects = parse_items(decoded, "group_projects", "no_projects")

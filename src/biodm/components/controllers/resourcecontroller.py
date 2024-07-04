@@ -1,15 +1,15 @@
 """Controller class for Tables acting as a Resource."""
 from __future__ import annotations
 from functools import partial
-import asyncio
 from typing import TYPE_CHECKING, List, Set, Any, Dict, Type
 
 from marshmallow.schema import RAISE
 from marshmallow.class_registry import get_class
 from marshmallow.exceptions import RegistryError
-from starlette.routing import Mount, Route
+from starlette.routing import Mount, Route, BaseRoute
 from starlette.requests import Request
 from starlette.responses import Response
+from yaml import serialize
 
 from biodm import Scope
 from biodm.components.services import (
@@ -19,7 +19,6 @@ from biodm.components.services import (
     KCGroupService,
     KCUserService
 )
-from biodm.components.table import Permission
 from biodm.exceptions import (
     InvalidCollectionMethod, PayloadEmptyError, UnauthorizedError, PartialIndex
 )
@@ -94,10 +93,8 @@ class ResourceController(EntityController):
         self.table.ctrl = self
 
         self.pk = set(self.table.pk())
-        self.svc: DatabaseService = self._infer_svc()(app=self.app, table=self.table)
+        self.svc: UnaryEntityService = self._infer_svc()(app=self.app, table=self.table)
         self.__class__.schema = (schema if schema else self._infer_schema())(unknown=RAISE)
-
-        # self._setup_permissions()
 
     def _infer_resource_name(self) -> str:
         """Infer entity name from controller name."""
@@ -121,16 +118,18 @@ class ResourceController(EntityController):
         """
         match self.resource.lower():
             case "user":
-                return KCUserService
+                return KCUserService if hasattr(self.app, "kc") else CompositeEntityService
             case "group":
-                return KCGroupService
+                return KCGroupService if hasattr(self.app, "kc") else CompositeEntityService
             case _:
                 return CompositeEntityService if self.table.relationships() else UnaryEntityService
 
     def _infer_table(self) -> Type[Base]:
         """Try to find matching table in the registry."""
+        assert hasattr(Base.registry._class_registry, 'data')
         reg = Base.registry._class_registry.data
-        if self.resource in reg:
+
+        if self.resource in reg: # Weakref.
             return reg[self.resource]()
         raise ValueError(
             f"{self.__class__.__name__} could not find {self.resource} Table."
@@ -153,7 +152,7 @@ class ResourceController(EntityController):
                 "provide the schema class as 'schema' argument when defining a new controller"
             ) from e
 
-    def routes(self, **_) -> List[Mount | Route]:
+    def routes(self, **_) -> List[Mount | Route] | List[Mount] | List[BaseRoute]:
         """Sets up standard RESTful endpoints.
         child_routes: from children classes calling super().__init__().
 
@@ -162,7 +161,7 @@ class ResourceController(EntityController):
         """
         # child_routes = child_routes or []
         # flake8: noqa: E501  pylint: disable=line-too-long
-        return  [
+        ls = [
             Route(f"{self.prefix}",                   self.create,         methods=[HttpMethod.POST.value]),
             Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET.value]),
             Mount(self.prefix, routes=[
@@ -172,8 +171,11 @@ class ResourceController(EntityController):
                 Route(f'/{self.qp_id}/{{attribute}}', self.read,           methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE.value]),
                 Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT.value]),
-            ])
+            ] + ([
+                Route(f"/{self.qp_id}/release",       self.release,        methods=[HttpMethod.POST.value]),
+            ] if self.table.is_versioned() else []))
         ]
+        return ls
 
     def _extract_pk_val(self, request: Request) -> List[Any]:
         """Extracts id from request.
@@ -188,11 +190,20 @@ class ResourceController(EntityController):
         pk_val = [request.path_params.get(k) for k in self.pk]
         if not pk_val:
             raise InvalidCollectionMethod()
+
+
         if len(pk_val) != len(self.pk):
             raise PartialIndex(
                 "Request is missing some resource index values in the path. "
                 "Index elements have to be provided in definition order, separated by '_'"
             )
+
+        try:
+            # Try to generate a where condition that will cast values into their python type.
+            _ = self.svc.gen_cond(pk_val)
+        except ValueError as e:
+            raise ValueError("Parameter type not matching key.") from e
+
         return pk_val
 
     async def _extract_body(self, request: Request) -> bytes:
@@ -209,7 +220,11 @@ class ResourceController(EntityController):
             raise PayloadEmptyError
         return body
 
-    def _extract_fields(self, query_params: Dict[str, Any]) -> Set[str]:
+    def _extract_fields(
+        self,
+        query_params: Dict[str, Any],
+        no_depth: bool = False
+    ) -> Set[str]:
         """Extracts fields from request query parameters.
            Defaults to ``self.schema.dump_fields.keys()``.
 
@@ -220,7 +235,16 @@ class ResourceController(EntityController):
         """
         fields = query_params.pop('fields', None)
         fields = fields.split(',') if fields else None
-        return set(fields or self.schema.dump_fields.keys())
+        if fields:
+            fields = set(fields) | self.pk
+        elif no_depth:
+            fields = [
+                k for k,v in self.schema.dump_fields.items()
+                if not (hasattr(v, 'nested') or hasattr(v, 'inner'))
+            ]
+        else:
+            fields = self.schema.dump_fields.keys()
+        return fields
 
     async def create(self, request: Request) -> Response:
         """Creates associated entity.
@@ -247,9 +271,7 @@ class ResourceController(EntityController):
                 data=validated_data,
                 stmt_only=False,
                 user_info=await UserInfo(request),
-                serializer=partial(
-                    self.serialize, **{"many": isinstance(validated_data, list)}
-                ),
+                serializer=partial(self.serialize, many=isinstance(validated_data, list)),
             ),
             status_code=201,
         )
@@ -279,6 +301,7 @@ class ResourceController(EntityController):
               description: Not Found
         """
         fields = self._extract_fields(dict(request.query_params))
+        # TODO: handle nested attribute
         return json_response(
             data=await self.svc.read(
                 pk_val=self._extract_pk_val(request),
@@ -305,6 +328,7 @@ class ResourceController(EntityController):
         # Plug in pk into the dict(s).
         pk_val = dict(zip(self.pk, pk_val)) # type: ignore [assignment]
         for data in to_it(validated_data):
+            # TODO: check if to_it is necessary ? Shouldn't be a list.
             data.update(pk_val)
 
         return json_response(
@@ -358,3 +382,32 @@ class ResourceController(EntityController):
             ),
             status_code=200,
         )
+
+    async def release(self, request: Request):
+        """Releases new version for versioned entities.
+
+        ---
+        description: Parses a querystring on the route /ressources/search?{querystring}
+        """
+        # TODO: flag to make previous versions readonly
+        # TODO: make it possible to create/update with the id only -> defaults to lastversion.
+        assert self.table.is_versioned()
+
+        # Allow empty body.
+        validated_data = self.validate(await request.body() or b'{}')
+
+        assert not isinstance(validated_data, list)
+        assert not any([pk in validated_data.keys() for pk in self.pk])
+
+        fields = self._extract_fields(dict(request.query_params), no_depth=True)
+
+        new_version = await self.svc.release(
+            pk_val=self._extract_pk_val(request),
+            fields=fields,
+            update=validated_data,
+            user_info=await UserInfo(request),
+        )
+        # Delay serialization
+        serialized = self.serialize(new_version, many=False, only=fields)
+
+        return json_response(serialized, status_code=200)

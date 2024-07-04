@@ -31,11 +31,12 @@ def main():
 
 
 if __name__ == "__main__":
+    loop: Literal['uvloop', 'auto']
     try:
         import uvloop as _
-        loop: Literal['uvloop'] = "uvloop"
+        loop = "uvloop"
     except ImportError:
-        loop: Literal['auto'] = "auto"
+        loop = "auto"
 
     uvicorn.run(
         f"{__name__}:main",

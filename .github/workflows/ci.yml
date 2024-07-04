@@ -57,12 +57,17 @@ jobs:
     #     registry: ghcr.io/bag-cnag
     #     compose_file: compose.test.yml
 
+    - name: Build integration tests containers
+      run: |
+        docker compose -f compose.test.yml build \
+        --build-arg PIP_CACHE_DIR=${{ steps.pip-cache.outputs.dir }}
+
     - name: Run integration tests - keycloak -
       run: |
-        docker compose -f compose.test.yml run --build test-keycloak-run
-        docker compose -f compose.test.yml down
+        docker compose -f compose.test.yml run test-keycloak-run
+        docker compose -f compose.test.yml down --remove-orphans
 
     - name: Run integration tests - s3 -
       run: |
-        docker compose -f compose.test.yml run --build test-s3-run
-        docker compose -f compose.test.yml down
+        docker compose -f compose.test.yml run test-s3-run
+        docker compose -f compose.test.yml down --remove-orphans

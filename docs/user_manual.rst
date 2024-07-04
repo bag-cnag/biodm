@@ -6,7 +6,9 @@ User Manual
 
 This section describes how your Users may communicate with the API once it is deployed.
 
-The examples are demonstrating using curl, but they are free to use any HTTP library out there.
+The examples are demonstrating using ``curl``, but they are free to use any HTTP library out there.
+
+Integration tests located at ``src/tests/integration`` are also providing plenty of resources. 
 
 Base routes
 -----------
@@ -68,7 +70,7 @@ For each entity being managed by a ``ResourceController``, the following routes 
     * As per REST standard, each entity is accessible under a resource prefix which is the name of the entity in plural form.
     * URLs end **without** trailing slashes
     * In the case of a multi-indexed entity (**i.e.** composite primary key), ``{id}`` 
-      refers to primary key elements separated by underscore symbol ``_``. 
+      refers to primary key elements separated by underscore symbol ``_``.
 
 * POST
 
@@ -108,6 +110,49 @@ or all
 
     curl -X DELETE\
          ${SERVER_ENDPOINT}/my_resources/{id}
+
+Groups
+~~~~~~
+
+Group key is its ``path`` according to top level groups. Since ``/`` is a reserved route character
+it is replaced by double underscore: ``__`` (with no prefix).
+
+**E.g**. ``parent__child__grandchild``
+
+.. warning::
+
+    The special group path ``no_groups`` is reserved as it is used to
+    generate failing conditions.
+
+
+Versioning
+~~~~~~~~~~~
+
+When a table is inheriting from ``Versioned`` e.g ``Dataset`` in our demo, associated controller
+exposes an extra route: ``POST /my_versioned_resources/{id}_{version}/release``.
+
+
+This triggers creation of a new row with a version increment.
+
+**E.g.**
+
+.. code-block:: bash
+
+    curl -X POST ${SERVER_ENDPOINT}/my_file_resources/{id}_{version}/release
+
+OR to pass in an update for the new version.
+
+.. code-block:: bash
+
+    curl -d '{"name": "new_name"}' ${SERVER_ENDPOINT}/my_file_resources/{id}_{version}/release
+
+.. note::
+
+    At the moment nested collections will remain to ancestries.
+    Moreover, you still need to pass explicitely the version.
+    In a future version of ``BioDM`` it is planned that all actions involving a
+    versioned entity default to latest version and that previous versions stay readonly.
+    To fetch the whole chain you may use filter on the shared id.
 
 Filtering
 ~~~~~~~~~
@@ -174,7 +219,7 @@ To download a file use the following endpoint.
 
 .. code-block:: bash
 
-    curl ${SERVER_ENDPOINT}/my_file_resources/download/{id}
+    curl ${SERVER_ENDPOINT}/my_file_resources/{id}/download
 
 That will return a url to directly download the file via GET request.
 
@@ -213,3 +258,12 @@ hence a JSON representation of a dataset with its permissions looks like this:
             }
         }
     }
+
+
+.. note::
+
+    - Passing a top level group will allow all descending children group for that verb/resource tuple.
+
+    - Permissions are taken into account if and only if keyclaok functionalities are enabled.
+
+      - Without keycloak, no token exchange -> No way of getting back protected data.

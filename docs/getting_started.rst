@@ -50,13 +50,6 @@ The one provided at ``src/example/.env`` is set on development environment value
     cd src/example/
     python3 app.py
 
-.. warning::
-
-    As of current sqlite version ``libsqlite3-0/stable,now 3.40.1-2 amd64`` composite primary keys such
-    as the one ``example`` uses to showcase datasets versionning are not supported.
-    That means you will not be able to run example with an ``sqlite`` database.
-    SQLAlchemy has some primitives for versionned tables, that may solve the issue in a future version.
-
 .. _development-environment:
 
 Development environment

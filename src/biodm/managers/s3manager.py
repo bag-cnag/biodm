@@ -91,16 +91,13 @@ class S3Manager(ApiComponent):
             # TODO: better error
             raise e
 
-    def create_presigned_download_url(self, object_name, callback=None):
+    def create_presigned_download_url(self, object_name):
         """Generate a presigned URL to share an S3 object
 
-        :param bucket_name: string
         :param object_name: string
-        :param expiration: Time in seconds for the presigned URL to remain valid
-        :return: Presigned URL as string. If error, returns None.
+        :return: Presigned URL as string.
         """
         try:
-            # TODO: see if a callback is possible.
             return self.s3_client.generate_presigned_url(
                 'get_object',
                 Params={

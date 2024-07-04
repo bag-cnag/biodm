@@ -1,13 +1,14 @@
 from asyncio import wait_for
 import logging
 import logging.config
-from typing import List, Optional, Dict, Any, Type
+from typing import Callable, List, Optional, Dict, Any, Type
 from types import ModuleType
 
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import HTMLResponse
+from starlette.responses import Response, HTMLResponse
+from starlette.requests import Request
 from starlette.routing import Route
 from starlette.schemas import SchemaGenerator
 from starlette.types import ASGIApp
@@ -32,7 +33,7 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
         self.timeout = timeout
         super().__init__(app, self.dispatch)
 
-    async def dispatch(self, request, call_next):
+    async def dispatch(self, request: Request, call_next: Callable) -> Any:
         try:
             return await wait_for(call_next(request), timeout=self.timeout)
         except TimeoutError:
@@ -45,7 +46,7 @@ class HistoryMiddleware(BaseHTTPMiddleware):
         self.server_host = server_host
         super().__init__(app, self.dispatch)
 
-    async def dispatch(self, request, call_next):
+    async def dispatch(self, request: Request, call_next: Callable) -> Any:
         user_info = UserInfo(request)
         if user_info.info:
             body = await request.body()
@@ -56,8 +57,7 @@ class HistoryMiddleware(BaseHTTPMiddleware):
                 'method': request.method,
                 'content': str(body) if body else ""
             }
-            await History.svc.create(entry, stmt_only=False)
-        # return (await call_next)(request)
+            await History.svc.create(entry)
         return await call_next(request)
 
 
@@ -175,7 +175,7 @@ class Api(Starlette):
         # self.add_exception_handler(Exception, on_error)
 
     @property
-    def server_endpoint(self):
+    def server_endpoint(self) -> str:
         return f"{config.SERVER_SCHEME}{config.SERVER_HOST}:{config.SERVER_PORT}/"
 
     def _parse_config(self, prefix: str) -> Dict[str, Any]:
@@ -191,7 +191,7 @@ class Api(Starlette):
             if k.lower().startswith(f"{prefix}_")
         }
 
-    def deploy_managers(self):
+    def deploy_managers(self) -> None:
         """Conditionally deploy managers. Each manager connects to an external service.
         Appart from the DB, managers are optional, with respect to config population.
         """

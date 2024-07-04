@@ -1,7 +1,6 @@
-import json
 from http import HTTPStatus
 
-from starlette.responses import Response
+from biodm.utils.utils import json_response
 
 from .exceptions import (
     RequestError,
@@ -26,13 +25,7 @@ class Error:
 
     @property
     def response(self):
-        return Response(
-            content=json.dumps(
-                self.__dict__,
-                indent=2
-            ), status_code=self.status
-        )
-
+        return json_response(data=self.__dict__, status_code=self.status)
 
 async def onerror(_, exc):
     """Error event handler.
@@ -55,5 +48,5 @@ async def onerror(_, exc):
             case UnauthorizedError():
                 status = 511
             case _:
-                pass
+                status = 500
     return Error(status, detail).response

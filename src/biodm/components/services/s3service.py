@@ -1,14 +1,10 @@
-from pathlib import Path
-from typing import List, Any, Type
+from typing import List, Any, Sequence
 
-from boto3 import client
-from botocore.exceptions import ClientError
-from sqlalchemy import Insert, select
+from sqlalchemy import Insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from starlette.responses import RedirectResponse
 
-from biodm.components.table import S3File
+from biodm.components.table import Base, S3File
 from biodm.managers import DatabaseManager, S3Manager
 from biodm.utils.security import UserInfo
 from .dbservice import UnaryEntityService
@@ -21,6 +17,10 @@ class S3Service(UnaryEntityService):
     def s3(self) -> S3Manager:
         return self.app.s3
 
+    @classmethod
+    def callback(cls, id):
+        return f"{cls.app.server_endpoint}files/{id}/up_success"
+
     @DatabaseManager.in_session
     async def _insert(self, stmt: Insert, session: AsyncSession) -> (Any | None):
         """INSERT special case for file: populate url after getting entity id."""
@@ -28,31 +28,38 @@ class S3Service(UnaryEntityService):
 
         item.upload_form = str(self.s3.create_presigned_post(
             object_name=f"{item.filename}.{item.extension}",
-            callback=f"{self.app.server_endpoint}files/up_success/{item.id}"
+            callback=self.callback(item.id)
         ))
 
         return item
 
     @DatabaseManager.in_session
-    async def upload_success(self, pk_val, session: AsyncSession):
-        file = await session.scalar(
-            select(self.table).where(self.gen_cond(pk_val))
-        )
-        if not file:
-            raise RuntimeError("Critical: s3 ref unknonw in DB!")
+    async def _insert_many(self, stmt: Insert, session: AsyncSession) -> Sequence[Base]:
+        """INSERT many objects into the DB database, check token write permission before commit."""
+        items = (await session.scalars(stmt)).all()
 
+        for item in items:
+            item.upload_form = str(self.s3.create_presigned_post(
+                object_name=f"{item.filename}.{item.extension}",
+                callback=self.callback(item.id)
+            ))
+
+        return items
+
+    @DatabaseManager.in_session
+    async def upload_success(self, pk_val, session: AsyncSession):
+        file = await self.read(pk_val, fields=['ready', 'upload_form'], session=session)
         setattr(file, 'ready', True)
         setattr(file, 'upload_form', "")
 
-    async def download(self, pk_val: List[Any], user_info: UserInfo | None = None):
-        await self._check_permissions("download", user_info, {k: v for k, v in zip(self.pk, pk_val)})
+    @DatabaseManager.in_session
+    async def download(self, pk_val: List[Any], user_info: UserInfo | None, session: AsyncSession):
+        await self._check_permissions("download", user_info, {k: v for k, v in zip(self.pk, pk_val)}, session=session)
         # TODO: test this ^
-        file = await self.read(pk_val, fields=['filename', 'extension'])
+        file = await self.read(pk_val, fields=['filename', 'extension', 'dl_count'], session=session)
 
         assert isinstance(file, S3File) # mypy.
 
-        return self.s3.create_presigned_download_url(f"{file.filename}.{file.extension}")
-
-    async def download_success(self, pk_val):
-        # TODO: add a counter to S3File + implement increment here.
-        pass
+        url = self.s3.create_presigned_download_url(f"{file.filename}.{file.extension}")
+        file.dl_count += 1
+        return url

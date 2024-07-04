@@ -6,18 +6,18 @@ from marshmallow.fields import String, Date, List, Nested, Integer, UUID
 class DatasetSchema(Schema):
     id = Integer()
     version = Integer()
-    name = String(required=True)
-
+    name = String()
+    description = String(required=False)
     # name_owner_group = String(
     #     required=True, 
     #     # validate=validate.OneOf(
     #     #     [g.name for g in Group]
     #     # )
     # )
-    username_user_contact = String(required=True)
-    id_project = Integer(required=True)
+    username_user_contact = String() # required=True
+    id_project = Integer() # required=True
 
-    # owner_group = Nested('GroupSchema') # , only=('name', 'n_members',)
+    # owner_group = Nested('GroupSchema') # , only=('path', 'n_members',)
     contact = Nested('UserSchema') # , only=('username', )
     project = Nested('ProjectSchema', exclude=('datasets', ))
     tags = List(Nested('TagSchema'))
@@ -36,8 +36,8 @@ class DatasetSchema(Schema):
             assert(id_uc == contact_id)
         elif contact_id and not id_uc:
             ret["username_user_contact"] = contact_id
-        elif not id_uc:
-            raise ValidationError("Need one of username_user_contact or contact fields.")
+        # elif not id_uc:
+        #     raise ValidationError("Need one of username_user_contact or contact fields.")
 
         id_pr = data.get('id_project')
         project_id = data.get('project', {}).get('id')
@@ -46,11 +46,11 @@ class DatasetSchema(Schema):
             assert(id_uc == project_id)
         elif project_id and not id_pr:
             ret["id_project"] = project_id
-        elif not id_pr:
-            raise ValidationError("Need one of id_project or project fields.")
+        # elif not id_pr:
+            # raise ValidationError("Need one of id_project or project fields.")
 
         # name_group = data.get('name_owner_group')
-        # group_name = data.get('owner_group', {}).get('name')
+        # group_name = data.get('owner_group', {}).get('name') # TODO: path
         # if name_group and group_name:
         #     assert(name_group == group_name)
         # elif group_name and not name_group:

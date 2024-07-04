@@ -2,15 +2,17 @@
 from operator import or_
 from typing import Callable, List, Sequence, Any, Tuple, Dict, overload, Literal, Set, Type
 
-from sqlalchemy import insert, select, delete, or_
+from sqlalchemy import insert, select, delete, or_, func
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import load_only, selectinload, ONETOMANY, MANYTOONE, aliased
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import load_only, selectinload, ONETOMANY, MANYTOONE, aliased, make_transient
 from sqlalchemy.sql import Insert, Delete, Select
+from sqlalchemy.sql.selectable import Alias
 
 from biodm import config
 from biodm.component import ApiService
-from biodm.components import Base, Permission
+from biodm.components import Base, Permission, Versioned
 from biodm.exceptions import FailedRead, FailedDelete, ImplementionError, UnauthorizedError
 from biodm.managers import DatabaseManager
 from biodm.scope import Scope
@@ -137,9 +139,12 @@ class UnaryEntityService(DatabaseService):
             return
 
         if not user_info.info:
-            raise UnauthorizedError("No Write access.", orig=Exception())
+            groups = ['no_groups']
+        else:
+            _, groups, _ = user_info.info
+            # raise UnauthorizedError(f"No {verb} access.", orig=Exception())
+            # _, groups, _ = user_info.info
 
-        _, groups, _ = user_info.info
         for permission in perms:
             for one in to_it(pending):
                 link = permission['from'][-1]
@@ -168,13 +173,41 @@ class UnaryEntityService(DatabaseService):
                     stmt = stmt.join(jtable)
 
                 stmt = stmt.options(selectinload(ListGroup.groups))
-                allowed = await session.scalar(stmt)
+                allowed: ListGroup = await session.scalar(stmt)
 
-                if allowed and not allowed.groups:
+                if not allowed or not allowed.groups:
+                    # Empty perm list: public.
                     continue
 
-                if not allowed or not set(groups) & set(g.name for g in allowed.groups):
-                    raise UnauthorizedError("No Write access.", orig=Exception())
+                def check() -> bool:
+                    """Path matching."""
+                    for allowedgroup in set(g.path for g in allowed.groups):
+                        for usergroup in set(groups):
+                            if allowedgroup in usergroup:
+                                return True
+                    return False
+
+                if not check():
+                    raise UnauthorizedError(f"No {verb} access.", orig=Exception())
+
+    @DatabaseManager.in_session
+    async def populate_ids_sqlite(
+        self,
+        data: Dict[str, Any] | List[Dict[str, Any]],
+        session: AsyncSession
+    ):
+        """Handle SQLite autoincrement for composite primary key.
+            Which is a handy feature for a versioned entity. So we fetch the current max id in a
+            separate request and prepopulate the dicts. This is not the most performant, but sqlite
+            support is for testing purposes mostly.
+        """
+        # 1. get max id
+        max_id = await session.scalar(func.max(self.table.id))
+        id = (max_id or 0) + 1
+        # 2. loop
+        for one in to_it(data):
+            one['id'] = id
+            id = id + 1
 
     @overload
     async def create(
@@ -207,6 +240,10 @@ class UnaryEntityService(DatabaseService):
         - Perform write permission check according to input data
         """
         await self._check_permissions("write", user_info, data)
+
+        if 'sqlite' in config.DATABASE_URL and self.table.is_versioned():
+            # SQLite will not autoincrement id in case of a composite primary key.
+            await self.populate_ids_sqlite(data)
 
         stmt = self._backend_specific_insert(self.table)
 
@@ -339,7 +376,10 @@ class UnaryEntityService(DatabaseService):
                 .join(Group)
                 .where(
                     or_(
-                        Group.name.in_(groups),
+                        or_(*[
+                            Group.path.like(upper_level + '%')
+                            for upper_level in groups
+                        ]),
                         ListGroup.id.not_in(
                             select(asso_list_group.c.id_listgroup)
                         )
@@ -369,6 +409,14 @@ class UnaryEntityService(DatabaseService):
         :rtype: Select
         """
         nested, fields = partition(fields, lambda x: x in self.relationships)
+        _, fields = partition(
+            fields,
+            lambda x: isinstance(
+                getattr(getattr(self.table, x, {}), 'descriptor', None),
+                hybrid_property
+            )
+        )
+        # TODO: manage hybrid properties ?
         stmt = self._apply_read_permissions(user_info, stmt)
 
         # Fields
@@ -383,7 +431,12 @@ class UnaryEntityService(DatabaseService):
 
         for n in nested:
             relationship, attr = self.relationships[n], getattr(self.table, n)
-            target = relationship.target.decl_class
+            target = relationship.target
+
+            if isinstance(target, Alias):
+                target = self.table
+            else:
+                target = target.decl_class
 
             if relationship.direction in (MANYTOONE, ONETOMANY):
                 if target == self.table:
@@ -403,12 +456,8 @@ class UnaryEntityService(DatabaseService):
                         attr,
                         isouter=True
                     )
-                # if target == self.table:
-                #     target = aliased(self.table)
                 stmt = (
-                    relationship
-                    .target
-                    .decl_class
+                    target
                     .svc
                     ._apply_read_permissions(user_info, stmt)
                 )
@@ -517,6 +566,34 @@ class UnaryEntityService(DatabaseService):
         stmt = delete(self.table).where(self.gen_cond(pk_val))
         await self._delete(stmt, **kwargs)
 
+    @DatabaseManager.in_session
+    async def release(
+        self,
+        pk_val: List[Any],
+        fields: List[str],
+        update: Dict[str, Any],
+        user_info: UserInfo | None = None,
+        session: AsyncSession = None,
+    ) -> str:
+        await self._check_permissions(
+            "write",
+            user_info, {k: v for k, v in zip(self.pk, pk_val)},
+            session=session
+        )
+
+        item = await self.read(pk_val, fields, session=session)
+        # Put item in a `flexible` state where we may edit pk.
+        make_transient(item)
+        item.version += 1
+
+        # Apply update.
+        for key, val in update.items():
+            setattr(item, key, val)
+
+        # new pk -> new row.
+        session.add(item)
+
+        return item
 
 class CompositeEntityService(UnaryEntityService):
     """Special case for Composite Entities (i.e. containing nested entities attributes)."""
@@ -590,6 +667,7 @@ class CompositeEntityService(UnaryEntityService):
                     if isinstance(one, CompositeInsert):
                         one.item = one.item.values(**mapping)
                     else:
+                        assert isinstance(one, Insert)
                         one = one.values(**mapping)
 
             # Insert delayed and populate back into item.
@@ -704,29 +782,6 @@ class CompositeEntityService(UnaryEntityService):
             await self._create_one(one, **kwargs)
             for one in data
         ]
-
-    # async def create(
-    #     self,
-    #     data: Dict[str, Any] | List[Dict[str, Any]],
-    #     stmt_only: bool = False,
-    #     user_info: UserInfo | None = None,
-    #     **kwargs
-    # ) -> Base | List[Base] | CompositeInsert | List[CompositeInsert] | str:
-    # @overload
-    # async def create(
-    #     self,
-    #     data: List[Dict[str, Any]] | Dict[str, Any],
-    #     stmt_only: Literal[True],
-    #     user_info: UserInfo | None,
-    # ) -> InsertStmt | List[InsertStmt]: ...
-
-    # @overload
-    # async def create(
-    #     self,
-    #     data: List[Dict[str, Any]] | Dict[str, Any],
-    #     stmt_only: Literal[False],
-    #     user_info: UserInfo | None,
-    # ) -> Base | List[Base]: ...
 
     async def create(
         self,

@@ -4,33 +4,27 @@ from marshmallow.fields import String, List, Nested, Integer
 
 class GroupSchema(Schema):
     """Schema for Keycloak Groups. id field is purposefully left out as we manage it internally."""
-    name = String(required=True)
+    path = String(required=True)
     # Test
     n_members = Integer(required=False)
 
-    name_parent = String(
-        required=False,
-        # Important for bulk insert into
-        load_default=None
-        # validate=validate.OneOf(
-        #     [g.name for g in Group]
-        # )
-    )
-
-    parent = Nested('GroupSchema', exclude=['parent', 'users'])
+    parent = Nested('GroupSchema', only=['path'], dump_only=True) # parent', 'users', 'children
+    children = List(Nested('GroupSchema'), only=['path']) # exclude=['parent', 'users', 'children']
     users = List(Nested('UserSchema', exclude=['groups']))
 
+    # @pre_load
+    # def pre_load_process(self, data, many, **kwargs):
+    #     ret = data
 
-    @pre_load
-    def pre_load_process(self, data, many, **kwargs):
-        ret = data
+    #     path_parent = data.get('path_parent')
+    #     parent_path = data.get('parent', {}).get('path')
 
-        name_parent = data.get('name_parent')
-        parent_name = data.get('parent', {}).get('name')
+    #     if path_parent and parent_path:
+    #         assert(path_parent == parent_path)
+    #     elif parent_path and not path_parent:
+    #         ret["path_parent"] = parent_path
 
-        if name_parent and parent_name:
-            assert(name_parent == parent_name)
-        elif parent_name and not name_parent:
-            ret["name_parent"] = parent_name
+    #     for child in data.get('children', []):
+    #         child["path_parent"] = data["path"]
 
-        return ret
+    #     return ret

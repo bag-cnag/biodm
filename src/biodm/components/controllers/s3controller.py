@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List, Type
 
-from starlette.routing import Route, Mount
+from starlette.routing import Route, Mount, BaseRoute
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
@@ -24,12 +24,11 @@ class S3Controller(ResourceController):
             )
         return S3Service
 
-    def routes(self, **_) -> List[Mount | Route]:
+    def routes(self, **_) -> List[Mount | Route] | List[Mount] | List[BaseRoute]:
         """Add an endpoint for successful file uploads and direct download."""
         file_routes = [
-            Route(f'{self.prefix}/download/{self.qp_id}',    self.download,         methods=[HttpMethod.GET.value]),
-            Route(f'{self.prefix}/up_success/{self.qp_id}',  self.upload_success,   methods=[HttpMethod.GET.value]),
-            Route(f'{self.prefix}/dl_success/{self.qp_id}',  self.download_success, methods=[HttpMethod.POST.value]),
+            Route(f'{self.prefix}/{self.qp_id}/download',    self.download,         methods=[HttpMethod.GET.value]),
+            Route(f'{self.prefix}/{self.qp_id}/up_success',  self.upload_success,   methods=[HttpMethod.GET.value]),
         ]
         self.route_upload_callback = Path(self.prefix, file_routes[1].path)
 
@@ -46,15 +45,11 @@ class S3Controller(ResourceController):
             )
         )
 
-    async def download_success(self, request: Request):
-        """Used as a callback in s3 presigned download urls for statistics."""
-        # TODO: Implement
-        pass
-
     async def upload_success(self, request: Request):
         """ Used as a callback in the s3 presigned upload urls that are emitted.
             Uppon receival, update entity status in the DB."""
-        assert isinstance(self.svc, S3Service)
+        assert isinstance(self.svc, S3Service) # mypy.
 
         await self.svc.upload_success(pk_val=self._extract_pk_val(request))
+
         return json_response("Uploaded.", status_code=201)
