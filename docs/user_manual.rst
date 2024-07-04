@@ -125,6 +125,35 @@ it is replaced by double underscore: ``__`` (with no prefix).
     generate failing conditions.
 
 
+Versioning
+~~~~~~~~~~~
+
+When a table is inheriting from ``Versioned`` e.g ``Dataset`` in our demo, associated controller
+exposes an extra route: ``POST /my_versioned_resources/{id}_{version}/release``.
+
+
+This triggers creation of a new row with a version increment.
+
+**E.g.**
+
+.. code-block:: bash
+
+    curl -X POST ${SERVER_ENDPOINT}/my_file_resources/{id}_{version}/release
+
+OR to pass in an update for the new version.
+
+.. code-block:: bash
+
+    curl -d '{"name": "new_name"}' ${SERVER_ENDPOINT}/my_file_resources/{id}_{version}/release
+
+.. note::
+
+    At the moment nested collections will remain to ancestries.
+    Moreover, you still need to pass explicitely the version.
+    In a future version of ``BioDM`` it is planned that all actions involving a
+    versioned entity default to latest version and that previous versions stay readonly.
+    To fetch the whole chain you may use filter on the shared id.
+
 Filtering
 ~~~~~~~~~
 
@@ -190,7 +219,7 @@ To download a file use the following endpoint.
 
 .. code-block:: bash
 
-    curl ${SERVER_ENDPOINT}/my_file_resources/download/{id}
+    curl ${SERVER_ENDPOINT}/my_file_resources/{id}/download
 
 That will return a url to directly download the file via GET request.
 

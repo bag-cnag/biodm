@@ -1,6 +1,6 @@
 # https://www.keycloak.org/server/containers
 ARG IMG=quay.io/keycloak/keycloak:22.0
-FROM ${IMG} as builder
+FROM ${IMG} AS builder
 
 # Fetch env from args
 ARG _KC_DB=postgres

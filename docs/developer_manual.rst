@@ -51,6 +51,8 @@ Functionalities depending on external micro-services are enabled if matching con
 **e.g.** Keycloak functionalities shall be activated, if and only if, defaultless config parameters prefixed by ``KC_`` are populated.
 Otherwise, User/Group tables shall still be deployed. However, they will not be synced against a keycloak server.
 
+You may have a look at ``compose.test.yml`` file to see how testing containers used in our `CI`, are deployed with partial configuration in order to test by parts.
+
 Minimal Demo
 ~~~~~~~~~~~~
 
@@ -72,9 +74,9 @@ over the following minimal example.
 
 
     # Tables
-    class Dataset(bd.components.Base):
-        id            : sao.Mapped[int]          = sa.Column(sa.Integer,                      primary_key=True)
+    class Dataset(bd.components.Versioned, bd.components.Base):
         name          : sao.Mapped[str]          = sa.Column(sa.String(50),                   nullable=False)
+        description   : sao.Mapped[str]          = sa.Column(sa.String(500),                  nullable=False)
         username_owner: sao.Mapped[int]          = sa.Column(sa.ForeignKey("USER.username"),  nullable=False)
         owner         : sao.Mapped["User"]       = sao.relationship(foreign_keys=[username_owner])
         files         : sao.Mapped[List["File"]] = sao.relationship(back_populates="dataset")
@@ -86,14 +88,16 @@ over the following minimal example.
 
     # Schemas
     class DatasetSchema(ma.Schema):
-        id             = mf.Integer(              dump_only=True)
+        id             = mf.Integer()
+        version        = mf.Integer()
         name           = mf.String(required=True)
+        description    = mf.String(required=False)
         username_owner = mf.String(required=True, load_only=True)
         owner          = mf.Nested("UserSchema")
         files          = mf.List(mf.Nested("FileSchema"))
 
     class FileSchema(ma.Schema):
-        id             = mf.Integer(                dump_only=True)
+        id             = mf.Integer()
         filename       = mf.String(required=True)
         extension      = mf.String(required=True)
         url            = mf.String(                 dump_only=True)
@@ -120,6 +124,16 @@ over the following minimal example.
             host=bd.config.SERVER_HOST, port=bd.config.SERVER_PORT,
             loop="uvloop", log_level="debug", access_log=False
         )
+
+.. note::
+
+    Dataset has no declared primary_key fields, because it inherits from ``Versioned`` that populate
+    ``[id, version]`` as primary key. To see what this enables, see also :ref:`user-manual`.
+
+.. warning::
+    SQLite doesn't support [partial|] autoincrement for a composite primary key.
+    In the case of a versioned entity, this is explicitely handled by fetching the max index for
+    newly created objects. Overall it is advised to avoid composite primary key for sqlite.
 
 .. note::
 

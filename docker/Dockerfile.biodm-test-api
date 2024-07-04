@@ -1,7 +1,7 @@
 ARG PYTHON__V
 ARG PIP_CACHE_DIR=/root/.cache/pip
 
-FROM python:${PYTHON__V}-slim-bookworm AS base
+FROM python:${PYTHON__V}-slim-bookworm
 
 ARG PIP_CACHE_DIR
 
