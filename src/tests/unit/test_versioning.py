@@ -16,3 +16,32 @@ def test_create_versioned_resource(client):
 
     assert json_response['id'] == 1
     assert json_response['version'] == 1
+
+
+def test_release_version(client):
+    """"""
+    item = {"name": "ver_test"}
+    response = client.post('/bs', content=json_bytes(item))
+
+    assert response.status_code == 201
+
+    update = {"name": "ver_updated"}
+    response = client.post('/bs/1_1/release', content=json_bytes(update))
+
+    assert response.status_code == 200
+    json_response = json.loads(response.text)
+
+    assert json_response['id'] == 1
+    assert json_response['version'] == 2
+    assert json_response['name'] == update['name']
+
+    response = client.get('/bs?id=1')
+
+    assert response.status_code == 200
+    json_response = json.loads(response.text)
+    
+    assert len(json_response) == 2 
+    assert json_response[0]['version'] == 1
+    assert json_response[0]['name'] == item['name']
+    assert json_response[1]['version'] == 2
+    assert json_response[1]['name'] == update['name']
