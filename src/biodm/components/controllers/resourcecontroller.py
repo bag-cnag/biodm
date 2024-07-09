@@ -9,7 +9,6 @@ from marshmallow.exceptions import RegistryError
 from starlette.routing import Mount, Route, BaseRoute
 from starlette.requests import Request
 from starlette.responses import Response
-from yaml import serialize
 
 from biodm import Scope
 from biodm.components.services import (
@@ -22,8 +21,7 @@ from biodm.components.services import (
 from biodm.exceptions import (
     InvalidCollectionMethod, PayloadEmptyError, UnauthorizedError, PartialIndex
 )
-from biodm.tables import user
-from biodm.utils.utils import json_response, to_it
+from biodm.utils.utils import json_response
 from biodm.utils.security import UserInfo
 from biodm.components import Base
 from .controller import HttpMethod, EntityController
@@ -162,7 +160,7 @@ class ResourceController(EntityController):
         """
         # child_routes = child_routes or []
         # flake8: noqa: E501  pylint: disable=line-too-long
-        ls = [
+        return [
             Route(f"{self.prefix}",                   self.create,         methods=[HttpMethod.POST.value]),
             Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET.value]),
             Mount(self.prefix, routes=[
@@ -175,7 +173,6 @@ class ResourceController(EntityController):
                 Route(f"/{self.qp_id}/release",       self.release,        methods=[HttpMethod.POST.value]),
             ] if self.table.is_versioned() else []))
         ]
-        return ls
 
     def _extract_pk_val(self, request: Request) -> List[Any]:
         """Extracts id from request.
@@ -237,36 +234,12 @@ class ResourceController(EntityController):
         fields = fields.split(',') if fields else None
         if fields:
             fields = set(fields) | self.pk
-        elif no_depth:
+        else:
             fields = [
                 k for k,v in self.schema.dump_fields.items()
-                if not (hasattr(v, 'nested') or hasattr(v, 'inner'))
+                if not no_depth or not (hasattr(v, 'nested') or hasattr(v, 'inner'))
             ]
-        else:
-            fields = self.schema.dump_fields.keys()
         return fields
-    
-    async def read_nested(self, request: Request):
-        """Reads a nested collection from parent primary key."""
-        attribute = request.path_params['attribute']
-        target_rel = self.table.relationships()[attribute]
-        if not target_rel:
-            raise ValueError(
-                f"Invalid nested collection name {attribute} of {self.table.__class__.__name__}"
-            )
-        target_ctrl: ResourceController = target_rel.target.decl_class.svc.table.ctrl
-        fields = target_ctrl._extract_fields(dict(request.query_params))
-        # fields = self._extract_fields(dict(request.query_params))
-
-        return json_response(
-            data=target_ctrl.serialize(
-                data=await self.svc.read_nested(
-                    pk_val=self._extract_pk_val(request),
-                    attribute=attribute,
-                    user_info=await UserInfo(request),
-                ), many=True, only=fields
-            ), status_code=200 
-        )
 
     async def create(self, request: Request) -> Response:
         """Creates associated entity.
@@ -432,3 +405,24 @@ class ResourceController(EntityController):
         serialized = self.serialize(new_version, many=False, only=fields)
 
         return json_response(serialized, status_code=200)
+
+    async def read_nested(self, request: Request):
+        """Reads a nested collection from parent primary key."""
+        attribute = request.path_params['attribute']
+        target_rel = self.table.relationships()[attribute]
+        if not target_rel:
+            raise ValueError(
+                f"Unknown collection name {attribute} of {self.table.__class__.__name__}"
+            )
+        target_ctrl: ResourceController = target_rel.target.decl_class.svc.table.ctrl
+        fields = target_ctrl._extract_fields(dict(request.query_params))
+
+        return json_response(
+            data=target_ctrl.serialize(
+                data=await self.svc.read_nested(
+                    pk_val=self._extract_pk_val(request),
+                    attribute=attribute,
+                    user_info=await UserInfo(request),
+                ), many=True, only=fields
+            ), status_code=200
+        )

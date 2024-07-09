@@ -138,17 +138,11 @@ class UnaryEntityService(DatabaseService):
         if not perms or not user_info:
             return
 
-        # TODO: change like read permissions.
-        if not user_info.info:
-            groups = ['no_groups']
-        else:
-            _, groups, _ = user_info.info
-            # raise UnauthorizedError(f"No {verb} access.", orig=Exception())
-            # _, groups, _ = user_info.info
+        groups = user_info.info[1] if user_info.info else []
 
         for permission in perms:
             for one in to_it(pending):
-                link = permission['from'][-1]
+                link, chain = permission['from'][-1], permission['from'][:-1]
                 entity = permission['table'].entity.prop
 
                 stmt = (
@@ -170,7 +164,8 @@ class UnaryEntityService(DatabaseService):
                         ])
                     )
                 )
-                for jtable in permission['from'][:-1]:
+
+                for jtable in chain:
                     stmt = stmt.join(jtable)
 
                 stmt = stmt.options(selectinload(ListGroup.groups))
@@ -189,7 +184,7 @@ class UnaryEntityService(DatabaseService):
                     return False
 
                 if not check():
-                    raise UnauthorizedError(f"No {verb} access.", orig=Exception())
+                    raise UnauthorizedError(f"No {verb} access.")
 
     @DatabaseManager.in_session
     async def populate_ids_sqlite(
@@ -589,6 +584,7 @@ class UnaryEntityService(DatabaseService):
 
     async def delete(self, pk_val, user_info: UserInfo | None = None, **kwargs) -> None:
         """DELETE."""
+        # TODO: user_info ?
         stmt = delete(self.table).where(self.gen_cond(pk_val))
         await self._delete(stmt, **kwargs)
 

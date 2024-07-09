@@ -19,7 +19,7 @@ class S3Controller(ResourceController):
     def _infer_svc(self) -> Type[S3Service]:
         if not issubclass(self.table, S3File):
             raise ImplementionError(
-                "S3Controller should be paired or given a table inheriting"
+                "S3Controller should be attached on a table inheriting"
                 " from biodm.component.S3File"
             )
         return S3Service
