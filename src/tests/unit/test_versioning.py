@@ -5,13 +5,14 @@ from biodm import exceptions as exc
 from biodm.utils.utils import json_bytes
 
 
-def test_create_project(client):
+def test_create_versioned_resource(client):
     """"""
-    # TODO: setup versioned A, B or C
-    project = {'name': 'pr_test'}
-    dataset = {'name': 'ds_test', 'contact': {'username': 'test'}}
+    item = {"name": "ver_test"}
     response = client.post('/bs', content=json_bytes(item))
 
     assert response.status_code == 201
-    assert "id" in response.text
-    assert "test" in response.text
+
+    json_response = json.loads(response.text)
+
+    assert json_response['id'] == 1
+    assert json_response['version'] == 1

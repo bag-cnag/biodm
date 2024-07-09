@@ -207,8 +207,9 @@ class UnaryEntityService(DatabaseService):
         id = (max_id or 0) + 1
         # 2. loop
         for one in to_it(data):
-            one['id'] = id
-            id = id + 1
+            if 'id' not in one.keys():
+                one['id'] = id
+                id = id + 1
 
     @overload
     async def create(

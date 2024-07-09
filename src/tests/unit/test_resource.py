@@ -41,6 +41,7 @@ def test_create_composite_resource(client):
     oracle['c']['ca'] = {}
     for i, x in enumerate(oracle['bs']):
         x['id'] = i+1
+        x['version'] = 1
 
     response = client.post('/as', content=json_bytes(item))
     json_response = json.loads(response.text)
@@ -188,16 +189,16 @@ def test_filter_op_on_string(client):
 
 
 def test_update_unary_resource(client):
-    item = {'name': 'test'}
-    cr_response = client.post('/bs', content=json_bytes(item))
+    item = {'data': 'test'}
+    cr_response = client.post('/cs', content=json_bytes(item))
     item_id = json.loads(cr_response.text)['id']
 
-    up_response = client.put(f'/bs/{item_id}', data=json_bytes({'name': 'modified'}))
+    up_response = client.put(f'/cs/{item_id}', data=json_bytes({'data': 'modified'}))
     json_response = json.loads(up_response.text)
 
     assert up_response.status_code == 201
     assert json_response['id'] == item_id
-    assert json_response['name'] == 'modified'   
+    assert json_response['data'] == 'modified'
 
 
 def test_update_composite_resource(client):
@@ -209,11 +210,11 @@ def test_update_composite_resource(client):
         {
             'x': 3,
             'bs': [
-                {'id': 1, 'name': 'bop'}
+                {'id': 1, 'version': 1, 'name': 'bop'}
             ]
         }
     ))
-    bs_oracle = [{'id': 1, 'name': 'bop'}, {'id': 2, 'name': 'bap'}]
+    bs_oracle = [{'id': 1, 'version': 1, 'name': 'bop'}, {'id': 2, 'version': 1, 'name': 'bap'}]
     json_response = json.loads(up_response.text)
 
     assert up_response.status_code == 201
