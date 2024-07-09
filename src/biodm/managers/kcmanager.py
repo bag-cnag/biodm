@@ -6,7 +6,7 @@ from keycloak.openid_connection import KeycloakOpenIDConnection
 from keycloak.keycloak_openid import KeycloakOpenID
 from keycloak.exceptions import KeycloakError, KeycloakDeleteError, KeycloakGetError
 
-from biodm.component import ApiComponent
+from biodm.component import ApiManager
 from biodm.exceptions import (
     KeycloakUnavailableError, FailedDelete, FailedUpdate, FailedCreate, TokenDecodingError
 )
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from biodm.api import Api
 
 
-class KeycloakManager(ApiComponent):
+class KeycloakManager(ApiManager):
     """Manages a service account connection and an admin connection.
     Use the first to authenticate tokens and the second to manage the realm.
     """
@@ -67,6 +67,10 @@ class KeycloakManager(ApiComponent):
     def openid(self):
         """Service account connection."""
         return self._openid
+
+    @property
+    def endpoint(self):
+        return self.admin.server_url
 
     async def auth_url(self, redirect_uri: str):
         """Authentication URL."""

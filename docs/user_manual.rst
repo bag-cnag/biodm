@@ -119,11 +119,6 @@ it is replaced by double underscore: ``__`` (with no prefix).
 
 **E.g**. ``parent__child__grandchild``
 
-.. warning::
-
-    The special group path ``no_groups`` is reserved as it is used to
-    generate failing conditions.
-
 
 Versioning
 ~~~~~~~~~~~

@@ -24,8 +24,21 @@ class ApiComponent(metaclass=ABCMeta):
         self.__class__.logger = app.logger
 
 
+class ApiManager(ApiComponent, metaclass=ABCMeta):
+    """Manager base class.
+    A manager represents an external service dependency.
+    It holds a connection object and relevant primitives for data state change."""
+    @property
+    @abstractmethod
+    def endpoint(self) -> str:
+        """External service endpoint."""
+        raise NotImplementedError
+
+
 class ApiService(ApiComponent, metaclass=ABCMeta):
-    """Service base class."""
+    """Service base class.
+    A Service acts as a translation layer between a controller receiving a request
+    and managers executing data state change."""
     @abstractmethod
     async def create(
         self,

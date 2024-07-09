@@ -95,6 +95,19 @@ dataset1 = {
 }
 
 
+public_project = {
+    "name": f"pr_{session_id}_public",
+    "datasets": [
+        {
+            "name": f"ds_{session_id}_public",
+            "contact": {
+                "username": user1['username']
+            },
+        },
+    ]
+}
+
+
 def test_create_data_and_login(srv_endpoint, utils):
     global token_user1, token_user2
 
@@ -164,3 +177,26 @@ def test_read_dataset_no_read_perm(srv_endpoint):
     assert str(json_response1[0]['name']) == str(dataset1['name'])
     assert str(json_response1[0]['id_project']) == str(dataset1['id_project'])
     assert json_response2 == []
+
+
+def test_create_public_data(srv_endpoint, utils):
+    response = requests.post(
+        f'{srv_endpoint}/projects',
+        data=utils.json_bytes(public_project),
+    )
+
+    assert response.status_code == 201
+
+
+@pytest.mark.dependency(name="test_create_public_data")
+def test_read_public_data(srv_endpoint, utils):
+    response = requests.get(
+        f'{srv_endpoint}/datasets',
+        data=utils.json_bytes(public_project),
+    )
+
+    json_response = json.loads(response.text)
+
+    assert response.status_code == 200
+    assert len(json_response) == 1
+    assert json_response[0]['name'] == public_project['datasets'][0]['name']
