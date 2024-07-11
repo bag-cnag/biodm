@@ -131,6 +131,11 @@ over the following minimal example.
     ``[id, version]`` as primary key. To see what this enables, see also :ref:`user-manual`.
 
 .. warning::
+
+    It is currently not possible to apply ``Versioned`` and ``S3File`` on the same table. This is 
+    planned for ``v0.5.0`` release.
+
+.. warning::
     SQLite doesn't support [partial|] autoincrement for a composite primary key.
     In the case of a versioned entity, this is explicitely handled by fetching the max index for
     newly created objects. Overall it is advised to avoid composite primary key for sqlite.
