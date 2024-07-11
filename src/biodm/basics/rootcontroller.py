@@ -39,7 +39,7 @@ class RootController(Controller):
 
         """
         return json_response(json.dumps(
-            self.schema_gen.get_schema(routes=self.app.routes),
+            self.app.apispec.get_schema(routes=self.app.routes),
             indent=config.INDENT
         ), status_code=200)
 

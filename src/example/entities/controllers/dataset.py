@@ -21,23 +21,29 @@ class DatasetController(ResourceController):
               examples: |
                 # TODO:
                 {"name": "instant_sc_1234", ""}
+              content:
+                application/json:
+                  schema: DatasetSchema
           204:
               description: Empty Payload.
         """
 
     @overload_docstring
     async def read(**kwargs):
-        """
+      """
         parameters:
           - in: path
-            id: entity id
+            name: id
+            description: entity id
         responses:
           200:
             description: Found matching Dataset.
             examples: |
               # TODO:
               {"name": "epidemiology"} 
+            content:
+              application/json:
+                schema: DatasetSchema
           404:
             description: Dataset not found.
         """
-

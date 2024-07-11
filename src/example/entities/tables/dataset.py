@@ -14,7 +14,7 @@ from .project import Project
 class Dataset(Versioned, Base):
     # data fields
     name:        Mapped[str] = mapped_column(String(50), nullable=False)
-    description: Mapped[str] = Column(Text,       nullable=True)
+    description: Mapped[str] = mapped_column(Text,       nullable=True)
     # # created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=)datetime.datetime.utcnow
     # # updated_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=)
     # # licence_s3_path = Column(String(100),         nullable=True)

@@ -10,6 +10,9 @@ class TagController(ResourceController):
               description: Create Tag.
               examples: |
                 {"name": "epidemiology"}
+              content:
+                application/json:
+                  schema: TagSchema
           204:
               description: Empty Payload    
         """
@@ -19,12 +22,16 @@ class TagController(ResourceController):
         """
         parameters:
           - in: path
-            id: entity id
+            name: id
+            description: entity id
         responses:
           200:
             description: Found matching Tag.
             examples: |
-              {"name": "epidemiology"} 
+              {"name": "epidemiology"}
+          content:
+            application/json:
+              schema: TagSchema
           404:
             description: Tag not found.
         """

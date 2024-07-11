@@ -594,13 +594,13 @@ class UnaryEntityService(DatabaseService):
         pk_val: List[Any],
         fields: List[str],
         update: Dict[str, Any],
+        session: AsyncSession,
         user_info: UserInfo | None = None,
-        session: AsyncSession = None,
     ) -> str:
         await self._check_permissions(
-            "write",
-            user_info, {k: v for k, v in zip(self.pk, pk_val)},
-            session=session
+            "write", user_info, {
+                k: v for k, v in zip(self.pk, pk_val)
+            }, session=session
         )
 
         item = await self.read(pk_val, fields, session=session)

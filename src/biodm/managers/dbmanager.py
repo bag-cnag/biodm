@@ -12,7 +12,7 @@ from biodm.exceptions import PostgresUnavailableError, DBError
 
 if TYPE_CHECKING:
     from biodm.api import Api
-    from biodm.components.services import DatabaseService
+    from biodm.component import ApiComponent
 
 
 class DatabaseManager(ApiManager):

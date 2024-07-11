@@ -56,8 +56,8 @@ class TokenDecodingError(RequestError):
 ## Routing
 class InvalidCollectionMethod(RequestError):
     """Raised when a unit method is accesed as a collection."""
-    def __init__(self, detail: str, orig: Exception) -> None:
-        super().__init__(detail=detail + "Method not allowed on a collection.", orig=orig)
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail=detail + "Method not allowed on a collection.")
 
 
 class PartialIndex(RequestError):

@@ -3,7 +3,7 @@ import pytest
 import json
 
 from biodm import exceptions as exc
-from biodm.utils.utils import json_bytes
+from biodm.utils.utils import json_bytes, json_response
 
 
 def test_resource_schema(client):
@@ -221,6 +221,31 @@ def test_update_composite_resource(client):
     assert json_response['id'] == item_id
     assert json_response['x'] == 3
     assert json_response['bs'] == bs_oracle
+
+
+def test_read_nested_collection(client):
+    item = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'}, {'name': 'bap'},]}
+
+    create = client.post('/as', content=json_bytes(item))
+    assert create.status_code == 201
+
+    response = client.get('/as/1/bs')
+    assert response.status_code == 200
+
+    json_response = json.loads(response.text)
+    assert len(json_response) == 2
+    for i, b in enumerate(json_response):
+        assert item['bs'][i]['name'] == b['name']
+
+
+@pytest.mark.xfail(raises=ValueError)
+def test_read_nested_collection_wrong_name(client):
+    item = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'}, {'name': 'bap'},]}
+
+    create = client.post('/as', content=json_bytes(item))
+    assert create.status_code == 201
+
+    _ = client.get('/as/1/bsss')
 
 
 def test_delete_resource(client):

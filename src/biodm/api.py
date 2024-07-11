@@ -6,13 +6,15 @@ from time import sleep
 from typing import Callable, List, Optional, Dict, Any, Type
 from types import ModuleType
 
+from apispec import APISpec
+from apispec.ext.marshmallow import MarshmallowPlugin
+from starlette_apispec import APISpecSchemaGenerator
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import Response, HTMLResponse
 from starlette.requests import Request
 from starlette.routing import Route
-from starlette.schemas import SchemaGenerator
 from starlette.types import ASGIApp
 from sqlalchemy.exc import IntegrityError
 
@@ -134,16 +136,17 @@ class Api(Starlette):
         routes = self.adopt_controllers(classes)
 
         ## Schema Generator.
-        self.schema_generator = SchemaGenerator(
-            {
-                "openapi": "3.0.0", "info": {
-                    "name": config.API_NAME,
-                    "version": config.API_VERSION,
-                    "backend": "biodm",
-                    "backend_version": CORE_VERSION
-                }
-            }
+        self.apispec = APISpecSchemaGenerator(
+            APISpec(
+                title=config.API_NAME,
+                version=config.API_VERSION,
+                openapi_version="3.0.0",
+                plugins=[MarshmallowPlugin()],
+                info={"description": "", "backend": "biodm", "backend_version": CORE_VERSION},
+            )
         )
+        jwt_scheme = {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+        self.apispec.spec.components.security_scheme("jwt", jwt_scheme)
 
         """Headless Services
 
@@ -163,7 +166,7 @@ class Api(Starlette):
         self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
-            allow_origins=self._network_ips,
+            allow_origins=self._network_ips + ["http://localhost:9080"], # + swagger-ui.
             allow_methods=["*"],
             allow_headers=["*"],
             max_age=config.CACHE_MAX_AGE
