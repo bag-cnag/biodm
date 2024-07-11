@@ -93,6 +93,13 @@ services:
       biodm-dev:
         ipv4_address: 10.10.0.4
 
+  swagger-ui:
+    image: swaggerapi/swagger-ui:v5.17.14
+    ports:
+      - "9080:8080"
+    environment:
+      API_URL: http://localhost:8000/schema
+
 networks:
   biodm-dev:
     driver: bridge

@@ -4,7 +4,7 @@ import json
 from abc import abstractmethod
 from enum import Enum
 from io import BytesIO
-from typing import Any, List, Dict, TYPE_CHECKING, Optional
+from typing import Any, Iterable, List, Dict, TYPE_CHECKING, Optional
 
 from marshmallow.schema import Schema
 from marshmallow.exceptions import ValidationError
@@ -42,11 +42,6 @@ class Controller(ApiComponent):
         """Controller routes."""
         raise NotImplementedError
 
-    @property
-    def schema_gen(self):
-        """Schema generator."""
-        return self.app.schema_generator
-
     async def openapi_schema(self, _):
         """ Generates openapi schema for this controllers' routes.
 
@@ -59,14 +54,12 @@ class Controller(ApiComponent):
 
         description: Generatate API schema for routes managed by given Controller.
         responses:
-          200:
-              description: Returns the Schema as a JSON response.
+            200:
+                description: Returns the Schema as JSON.
         """
         return json_response(
             json.dumps(
-                self.schema_gen.get_schema(
-                    routes=self.routes(schema=True)
-                ),
+                self.app.apispec.get_schema(routes=self.routes(schema=True)),
                 indent=config.INDENT,
             ),
             status_code=200,
@@ -118,7 +111,7 @@ class EntityController(Controller):
         cls,
         data: Dict[str, Any] | Base | List[Base],
         many: bool,
-        only: Optional[List[str]] = None
+        only: Optional[Iterable[str]] = None
     ) -> str:
         """Serialize SQLAlchemy statement execution result to json.
 
@@ -126,8 +119,8 @@ class EntityController(Controller):
         :type data: dict, class:`biodm.components.Base`, List[class:`biodm.components.Base`]
         :param many: plurality flag, essential to marshmallow
         :type many: bool
-        :param only: List of fields to restrict serialization on, optional, defaults to None
-        :type only: List[str]
+        :param only: Set of fields to restrict serialization on, optional, defaults to None
+        :type only: Iterable[str]
         """
         try:
             dump_fields = cls.schema.dump_fields

@@ -7,15 +7,15 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from biodm import Scope, config
-from biodm.component import ApiComponent
+from biodm.component import ApiManager
 from biodm.exceptions import PostgresUnavailableError, DBError
 
 if TYPE_CHECKING:
     from biodm.api import Api
-    from biodm.components.services import DatabaseService
+    from biodm.component import ApiComponent
 
 
-class DatabaseManager(ApiComponent):
+class DatabaseManager(ApiManager):
     """Manages DB side query execution."""
     def __init__(self, app: Api) -> None:
         super().__init__(app=app)
@@ -36,6 +36,10 @@ class DatabaseManager(ApiComponent):
             )
         except SQLAlchemyError as e:
             raise PostgresUnavailableError(f"Failed to connect to DB") from e
+
+    @property
+    def endpoint(self):
+        return f"{self.engine.url.host}:{self.engine.url.port}"
 
     @staticmethod
     def async_database_url(url) -> str:
@@ -59,7 +63,6 @@ class DatabaseManager(ApiComponent):
         """Opens and yields a new AsyncSession."""
         try:
             async with self.async_session() as session:
-                # versioned_session(session)
                 yield session
                 await session.commit()
         except Exception as e:
@@ -101,7 +104,8 @@ class DatabaseManager(ApiComponent):
 
             # conditional context management.
             async with AsyncExitStack() as stack:
-                self = args[0]
+                # In priciple decorated function is a class member.
+                self: ApiComponent = args[0]
                 session = kwargs.pop('session', None)
                 # Ensure session.
                 session = (

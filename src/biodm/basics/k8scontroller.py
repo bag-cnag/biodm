@@ -73,9 +73,8 @@ class K8sController(ResourceController):
         description: Deploy manifest matching identifier and tie it to requesting user.
         parameters:
           - in: path
-            id: manifest id
-          - in: header
-            X-User-Token: user token
+            name: id
+            description: manifest id
         """
         manifest = request.path_params.get('manifest')
         if manifest in self.k8s.manifests.__dict__:

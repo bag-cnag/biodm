@@ -138,16 +138,11 @@ class UnaryEntityService(DatabaseService):
         if not perms or not user_info:
             return
 
-        if not user_info.info:
-            groups = ['no_groups']
-        else:
-            _, groups, _ = user_info.info
-            # raise UnauthorizedError(f"No {verb} access.", orig=Exception())
-            # _, groups, _ = user_info.info
+        groups = user_info.info[1] if user_info.info else []
 
         for permission in perms:
             for one in to_it(pending):
-                link = permission['from'][-1]
+                link, chain = permission['from'][-1], permission['from'][:-1]
                 entity = permission['table'].entity.prop
 
                 stmt = (
@@ -169,7 +164,8 @@ class UnaryEntityService(DatabaseService):
                         ])
                     )
                 )
-                for jtable in permission['from'][:-1]:
+
+                for jtable in chain:
                     stmt = stmt.join(jtable)
 
                 stmt = stmt.options(selectinload(ListGroup.groups))
@@ -188,7 +184,7 @@ class UnaryEntityService(DatabaseService):
                     return False
 
                 if not check():
-                    raise UnauthorizedError(f"No {verb} access.", orig=Exception())
+                    raise UnauthorizedError(f"No {verb} access.")
 
     @DatabaseManager.in_session
     async def populate_ids_sqlite(
@@ -206,8 +202,9 @@ class UnaryEntityService(DatabaseService):
         id = (max_id or 0) + 1
         # 2. loop
         for one in to_it(data):
-            one['id'] = id
-            id = id + 1
+            if 'id' not in one.keys():
+                one['id'] = id
+                id = id + 1
 
     @overload
     async def create(
@@ -343,17 +340,13 @@ class UnaryEntityService(DatabaseService):
         if not perms or not user_info:
             return stmt
 
-        if not user_info.info:
-            # Plug in dummy value in order to fail the condition in query.
-            # TODO: Document 'no_groups' as forbidden group name / make a condition.
-            groups = ['no_groups']
-        else:
-            _, groups, _ = user_info.info
+        groups = user_info.info[1] if user_info.info else []
 
         # Build nested query to filter permitted results.
         for permission in perms:
             link, chain = permission['from'][-1], permission['from'][:-1]
             entity = permission['table'].entity.prop
+            lgverb = permission['table'].__table__.c[f'id_{verb}']
 
             sub = select(link)
             for jtable in chain:
@@ -364,30 +357,32 @@ class UnaryEntityService(DatabaseService):
                 .join(
                     permission['table'],
                     onclause=unevalled_all([
-                        pair[0] == pair[1]
-                        for pair in entity.local_remote_pairs
-                    ])
-                )
-                .join(
-                    ListGroup,
-                    onclause=permission['table'].__table__.c[f'id_{verb}'] == ListGroup.id,
-                )
-                .join(asso_list_group)
-                .join(Group)
-                .where(
-                    or_(
-                        or_(*[
-                            Group.path.like(upper_level + '%')
-                            for upper_level in groups
-                        ]),
-                        ListGroup.id.not_in(
-                            select(asso_list_group.c.id_listgroup)
+                            pair[0] == pair[1]
+                            for pair in entity.local_remote_pairs
+                        ] + ( # No groups: look for empty permissions (public).
+                            [] if groups else [lgverb == None]
                         )
                     )
                 )
-                .subquery()
             )
-            stmt = stmt.join(inner)
+            if groups: # Groups: fetch group names to apply condition.
+                inner = (
+                    inner
+                    .join(
+                        ListGroup,
+                        onclause=lgverb == ListGroup.id,
+                    )
+                    .join(asso_list_group)
+                    .join(Group)
+                    .where(
+                        or_(*[ # Group path matching.
+                            Group.path.like(upper_level + '%')
+                            for upper_level in groups
+                        ]),
+                    )
+                )
+
+            stmt = stmt.join(inner.subquery())
         return stmt
 
     def _restrict_select_on_fields(
@@ -468,6 +463,32 @@ class UnaryEntityService(DatabaseService):
                     )
                 )
         return stmt
+
+    @DatabaseManager.in_session
+    async def getattr_in_session(
+        self,
+        item: Base,
+        attr: str,
+        session: AsyncSession,
+    ) -> List[Base]:
+        session.add(item)
+        await session.refresh(item, attr)
+        return getattr(item, attr)
+
+    async def read_nested(
+        self,
+        pk_val: List[Any],
+        attribute: str,
+        user_info: UserInfo | None = None,
+    ):
+        """Read nested collection from an entity."""
+        # Read applies permissions on nested collection as well.
+        item = await self.read(
+            pk_val,
+            fields=list(pk.name for pk in self.pk) + [attribute],
+            user_info=user_info
+        )
+        return getattr(item, attribute)
 
     async def read(
         self,
@@ -563,6 +584,7 @@ class UnaryEntityService(DatabaseService):
 
     async def delete(self, pk_val, user_info: UserInfo | None = None, **kwargs) -> None:
         """DELETE."""
+        # TODO: user_info ?
         stmt = delete(self.table).where(self.gen_cond(pk_val))
         await self._delete(stmt, **kwargs)
 
@@ -572,13 +594,13 @@ class UnaryEntityService(DatabaseService):
         pk_val: List[Any],
         fields: List[str],
         update: Dict[str, Any],
+        session: AsyncSession,
         user_info: UserInfo | None = None,
-        session: AsyncSession = None,
     ) -> str:
         await self._check_permissions(
-            "write",
-            user_info, {k: v for k, v in zip(self.pk, pk_val)},
-            session=session
+            "write", user_info, {
+                k: v for k, v in zip(self.pk, pk_val)
+            }, session=session
         )
 
         item = await self.read(pk_val, fields, session=session)
@@ -733,13 +755,18 @@ class CompositeEntityService(UnaryEntityService):
         delayed = {}
 
         # Relationships declared after initial instanciation are permissions.
-        for key in self.runtime_relationships & data.keys():
-            rel, sub = self.table.relationships()[key], data.pop(key)
+        for key in self.runtime_relationships:
+            rel = self.table.relationships()[key]
             stmt_perm = self._backend_specific_insert(rel.target.decl_class)
 
             perm_delayed = {}
-            for verb in Permission.fields() & set(sub.keys()):
-                perm_delayed[str(verb)] = await ListGroup.svc.create(sub.get(verb), stmt_only=True)
+            if key in data.keys():
+                sub = data.pop(key)
+
+                for verb in Permission.fields() & set(sub.keys()):
+                    perm_delayed[str(verb)] = await ListGroup.svc.create(
+                        sub.get(verb), stmt_only=True
+                    )
 
             stmt_perm = stmt_perm.returning(rel.target.decl_class)
             delayed[str(key)] = CompositeInsert(item=stmt_perm, nested={}, delayed=perm_delayed)

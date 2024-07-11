@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from starlette.testclient import TestClient
 
 from biodm.api import Api
-from biodm.components import Base
+from biodm.components import Base, Versioned
 from biodm.components.controllers import ResourceController
 
 # SQLAlchemy
@@ -16,7 +16,15 @@ asso_a_b = sa.Table(
     "ASSO_A_B",
     Base.metadata,
     sa.Column("id_a",            sa.ForeignKey("A.id"),        primary_key=True),
-    sa.Column("id_b",            sa.ForeignKey("B.id"),        primary_key=True),
+    sa.Column("id_b",            sa.Integer(),        primary_key=True),
+    sa.Column("version_b",       sa.Integer(),   primary_key=True),
+    sa.ForeignKeyConstraint(
+        ['id_b', 'version_b'], ['B.id', 'B.version']
+    )
+    # sa.ForeignKeyConstraint(
+        # ("id_b", "B.id"),
+        # ("version_b", "B.version") 
+    # )
 )
 
 
@@ -30,8 +38,7 @@ class A(Base):
     c:     Mapped["C"] = relationship(foreign_keys=[id_c], backref="ca", lazy="select")
 
 
-class B(Base):
-    id = sa.Column(sa.Integer, primary_key=True)
+class B(Versioned, Base):
     name = sa.Column(sa.String, nullable=False)
 
 
@@ -53,6 +60,8 @@ class ASchema(ma.Schema):
 
 class BSchema(ma.Schema):
     id = ma.fields.Integer()
+    version = ma.fields.Integer()
+
     name = ma.fields.String(required=True)
 
 

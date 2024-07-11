@@ -119,11 +119,6 @@ it is replaced by double underscore: ``__`` (with no prefix).
 
 **E.g**. ``parent__child__grandchild``
 
-.. warning::
-
-    The special group path ``no_groups`` is reserved as it is used to
-    generate failing conditions.
-
 
 Versioning
 ~~~~~~~~~~~
@@ -176,6 +171,18 @@ and followed by:
 .. note::
 
     When querying with ``curl``, don't forget to escape ``&`` symbol or enclose the whole url in quotes, else your scripting language may intepret it as several commands.
+
+
+Query a nested collection
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Alternatively you may get a resource nested collection like this
+
+.. code-block:: bash
+
+    curl ${SERVER_ENDPOINT}/my_resources/{id}/{collection}
+
+It also supports partial results. i.e. by appending ``?fields=f1,...,fn`` 
 
 
 File management

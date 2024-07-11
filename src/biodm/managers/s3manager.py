@@ -5,14 +5,14 @@ from boto3 import client
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
-from biodm.component import ApiComponent
+from biodm.component import ApiManager
 from biodm.utils.utils import utcnow
 
 if TYPE_CHECKING:
     from biodm.api import Api
 
 
-class S3Manager(ApiComponent):
+class S3Manager(ApiManager):
     """Manages requests with an S3 storage instance."""
     def __init__(
         self,
@@ -45,6 +45,10 @@ class S3Manager(ApiComponent):
         )
         # Will raise an error if configuration doesn't point to a valid bucket.
         # self.s3_client.head_bucket(Bucket=self.bucket_name)
+
+    @property
+    def endpoint(self):
+        return self.endpoint_url
 
     def create_presigned_post(self,
                               object_name,

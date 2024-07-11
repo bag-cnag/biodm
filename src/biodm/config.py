@@ -17,6 +17,7 @@ SERVER_TIMEOUT  = config("SERVER_TIMEOUT",  cast=int,  default=30)
 # Responses.
 INDENT          = config('INDENT',          cast=int,  default=2)
 LIMIT           = config('LIMIT',           cast=int,  default=50)
+CACHE_MAX_AGE   = config('CACHE_MAX_AGE',   cast=int,  default=600)
 
 # DB.
 DATABASE_URL = config("DATABASE_URL", cast=str, default="sqlite:///:memory:")

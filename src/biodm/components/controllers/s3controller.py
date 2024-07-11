@@ -19,7 +19,7 @@ class S3Controller(ResourceController):
     def _infer_svc(self) -> Type[S3Service]:
         if not issubclass(self.table, S3File):
             raise ImplementionError(
-                "S3Controller should be paired or given a table inheriting"
+                "S3Controller should be attached on a table inheriting"
                 " from biodm.component.S3File"
             )
         return S3Service
@@ -35,7 +35,19 @@ class S3Controller(ResourceController):
         return file_routes + super().routes()
 
     async def download(self, request: Request):
-        """Returns aws s3 direct download URL with a redirect header."""
+        """Returns boto3 presigned download URL with a redirect header.
+
+        ---
+
+        description: Returns a download presigned URL to retrieve file from s3 bucket.
+        parameters:
+          - in: path
+            name: id
+            description: entity primary key elements separated by '_'.
+        responses:
+            307:
+                description: Download URL, with a redirect header.
+        """
         assert isinstance(self.svc, S3Service) # mypy.
 
         return RedirectResponse(
@@ -47,7 +59,19 @@ class S3Controller(ResourceController):
 
     async def upload_success(self, request: Request):
         """ Used as a callback in the s3 presigned upload urls that are emitted.
-            Uppon receival, update entity status in the DB."""
+            Uppon receival, update entity status in the DB.
+
+        ---
+
+        description: File upload callback - hit by s3 bucket on success upload.
+        parameters:
+          - in: path
+            name: id
+            description: entity primary key elements separated by '_'.
+        responses:
+            201:
+                description: Upload confirmation 'Uploaded'.
+        """
         assert isinstance(self.svc, S3Service) # mypy.
 
         await self.svc.upload_success(pk_val=self._extract_pk_val(request))

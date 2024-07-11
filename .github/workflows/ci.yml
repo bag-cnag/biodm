@@ -60,7 +60,8 @@ jobs:
     - name: Build integration tests containers
       run: |
         docker compose -f compose.test.yml build \
-        --build-arg PIP_CACHE_DIR=${{ steps.pip-cache.outputs.dir }}
+        --build-arg PIP_CACHE_DIR=${{ steps.pip-cache.outputs.dir }} \
+        --build-arg PYTHON__V=${{ matrix.python-version }}
 
     - name: Run integration tests - keycloak -
       run: |

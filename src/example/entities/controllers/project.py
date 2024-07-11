@@ -7,21 +7,15 @@ class ProjectController(ResourceController):
     @overload_docstring
     async def create(**kwargs):
         """
+        description: Create new Project from request body.
         responses:
-          201:
-              description: Create Project.
-              examples: |
-                {"name": "pr_test_xyz"}
-          204:
-              description: Empty Payload.
+            201:
+                description: Create Project.
+                examples: |
+                    {"name": "pr_test_xyz"}
+                content:
+                  application/json:
+                    schema: ProjectSchema
+            204:
+                description: Empty Payload
         """
-
-    # @admin_required
-    @overload_docstring
-    async def update(**kwargs):
-        """abc"""
-
-    # @admin_required
-    @overload_docstring
-    async def delete(**kwargs):
-        """abc"""

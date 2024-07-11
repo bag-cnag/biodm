@@ -2,11 +2,11 @@ import time
 from typing import Tuple, List, Any, Dict
 
 from kubernetes import client
-from biodm.component import ApiComponent
+from biodm.component import ApiManager
 from biodm.scope import Scope
 
 
-class K8sManager(ApiComponent):
+class K8sManager(ApiManager):
     """Small util wrapper around kubernetes python client API.
 
     Related config:
@@ -32,14 +32,14 @@ class K8sManager(ApiComponent):
         cert,
         token,
         namespace,
-        manifests=None
+        # manifests=None
     ) -> None:
         super().__init__(app=app)
         self._config = client.Configuration()
         self._client = client.ApiClient(self._config)
         self.namespace = namespace
         self.authenticate(token, host, cert)
-        self.manifests = manifests
+        # self.manifests = manifests
 
     def authenticate(self, token, host, cert):
         """Set configuration with the credentials and certificate"""
@@ -47,6 +47,10 @@ class K8sManager(ApiComponent):
         self._config.api_key_prefix['authorization'] = 'Bearer'
         self._config.host = host
         self._config.ssl_ca_cert = cert
+
+    @property
+    def endpoint(self):
+        return self._config.host
 
     def log(self, *args):
         """Conditional print"""

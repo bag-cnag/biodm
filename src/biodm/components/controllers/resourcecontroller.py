@@ -1,4 +1,5 @@
 """Controller class for Tables acting as a Resource."""
+
 from __future__ import annotations
 from functools import partial
 from typing import TYPE_CHECKING, List, Set, Any, Dict, Type
@@ -9,7 +10,6 @@ from marshmallow.exceptions import RegistryError
 from starlette.routing import Mount, Route, BaseRoute
 from starlette.requests import Request
 from starlette.responses import Response
-from yaml import serialize
 
 from biodm import Scope
 from biodm.components.services import (
@@ -22,7 +22,7 @@ from biodm.components.services import (
 from biodm.exceptions import (
     InvalidCollectionMethod, PayloadEmptyError, UnauthorizedError, PartialIndex
 )
-from biodm.utils.utils import json_response, to_it
+from biodm.utils.utils import json_response
 from biodm.utils.security import UserInfo
 from biodm.components import Base
 from .controller import HttpMethod, EntityController
@@ -95,6 +95,22 @@ class ResourceController(EntityController):
         self.pk = set(self.table.pk())
         self.svc: UnaryEntityService = self._infer_svc()(app=self.app, table=self.table)
         self.__class__.schema = (schema if schema else self._infer_schema())(unknown=RAISE)
+        self._replace_schema_in_docstrings()
+
+    def _replace_schema_in_docstrings(self):
+        """Sets an appropriate schema annotation for Responses."""
+        # TODO: replace id annotations by precise pk elements ?
+        for f in dir(self):
+            if not f.startswith('_'):
+                fct = getattr(self, f, {})
+                if hasattr(fct, '__annotations__'):
+                    if fct.__annotations__.get('return', '') == 'Response':
+                        fct.__func__.__doc__ = (
+                            fct
+                            .__func__
+                            .__doc__
+                            .replace('schema: Schema', f"schema: {self.schema.__class__.__name__}")
+                        ) if fct.__func__.__doc__ else None
 
     def _infer_resource_name(self) -> str:
         """Infer entity name from controller name."""
@@ -113,8 +129,8 @@ class ResourceController(EntityController):
     def _infer_svc(self) -> Type[DatabaseService]:
         """Set approriate service for given controller.
 
-           Upon subclassing Controller, this method should be overloaded to provide
-           matching service. This match case may be further populated with edge cases.
+        Upon subclassing Controller, this method should be overloaded to provide
+        matching service. This match case may be further populated with edge cases.
         """
         match self.resource.lower():
             case "user":
@@ -154,28 +170,26 @@ class ResourceController(EntityController):
 
     def routes(self, **_) -> List[Mount | Route] | List[Mount] | List[BaseRoute]:
         """Sets up standard RESTful endpoints.
-        child_routes: from children classes calling super().__init__().
+            child_routes: from children classes calling super().__init__().
 
         Relevant doc:
         - https://restfulapi.net/http-methods/
         """
         # child_routes = child_routes or []
         # flake8: noqa: E501  pylint: disable=line-too-long
-        ls = [
+        return [
             Route(f"{self.prefix}",                   self.create,         methods=[HttpMethod.POST.value]),
             Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET.value]),
             Mount(self.prefix, routes=[
-                # Route('/search',                      self.filter,         methods=[HttpMethod.GET.value]),
                 Route('/schema',                      self.openapi_schema, methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}',               self.read,           methods=[HttpMethod.GET.value]),
-                Route(f'/{self.qp_id}/{{attribute}}', self.read,           methods=[HttpMethod.GET.value]),
+                Route(f'/{self.qp_id}/{{attribute}}', self.read_nested,    methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE.value]),
                 Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT.value]),
             ] + ([
                 Route(f"/{self.qp_id}/release",       self.release,        methods=[HttpMethod.POST.value]),
             ] if self.table.is_versioned() else []))
         ]
-        return ls
 
     def _extract_pk_val(self, request: Request) -> List[Any]:
         """Extracts id from request.
@@ -185,7 +199,6 @@ class ResourceController(EntityController):
         :raises InvalidCollectionMethod: if primary key values are not found in the path.
         :return: Primary key values
         :rtype: List[Any]
-        ---
         """
         pk_val = [request.path_params.get(k) for k in self.pk]
         if not pk_val:
@@ -237,17 +250,16 @@ class ResourceController(EntityController):
         fields = fields.split(',') if fields else None
         if fields:
             fields = set(fields) | self.pk
-        elif no_depth:
+        else:
             fields = [
                 k for k,v in self.schema.dump_fields.items()
-                if not (hasattr(v, 'nested') or hasattr(v, 'inner'))
+                if not no_depth or not (hasattr(v, 'nested') or hasattr(v, 'inner'))
             ]
-        else:
-            fields = self.schema.dump_fields.keys()
         return fields
 
     async def create(self, request: Request) -> Response:
         """Creates associated entity.
+
         Does "UPSERTS" behind the hood.
         If you'd prefer to avoid the case of having an entity being created with parts of its
         primary key you should flag said parts with dump_only=True in your marshmallow schemas.
@@ -256,14 +268,27 @@ class ResourceController(EntityController):
         :type request: Request
         :return: created object in JSON form
         :rtype: Response
+
         ---
+
+        description: Create new(s) entries from request body.
+        requestBody:
+            description: payload.
+            required: true
+            content:
+                application/json:
+                    schema: Schema
         responses:
             201:
-                description: Creates associated entity.
+                description: Creates associated entit(y|ies).
                 examples: |
                     {"username": "user"}
+                    [{"name": "tag1"}, {"name": "tag2"}]
+                content:
+                  application/json:
+                    schema: Schema
             204:
-                description: Empty Payload
+                description: Empty Payload.
         """
         validated_data = self.validate(await self._extract_body(request))
         return json_response(
@@ -283,15 +308,17 @@ class ResourceController(EntityController):
         :type request: Request
         :return: JSON reprentation of the object
         :rtype: Response
+
         ---
+
         description: Query DB for entity with matching id.
         parameters:
           - in: path
-            id: entity primary key elements separated by '_'
-                e.g. /datasets/1_1 returns dataset with id=1 and version=1
+            name: id
+            description: entity primary key elements separated by '_' e.g. /datasets/1_1 returns dataset with id=1 and version=1
           - in: query
-            fields: a comma separated list of fields to query only a subset of the resource
-                    e.g. /datasets/1_1?name,description,contact,files
+            name: fields
+            description: a comma separated list of fields to query only a subset of the resource e.g. /datasets/1_1?name,description,contact,files
         responses:
           200:
               description: Found matching item
@@ -301,7 +328,6 @@ class ResourceController(EntityController):
               description: Not Found
         """
         fields = self._extract_fields(dict(request.query_params))
-        # TODO: handle nested attribute
         return json_response(
             data=await self.svc.read(
                 pk_val=self._extract_pk_val(request),
@@ -312,24 +338,44 @@ class ResourceController(EntityController):
             status_code=200,
         )
 
-    async def update(self, request: Request):
-        """UPDATE.
-        Essentially calling create, as it is doing upserts.
+    async def update(self, request: Request) -> Response:
+        """UPDATE. Essentially calling create, as it perorm upserts.
 
         :param request: incomming request
         :type request: Request
         :return: updated object in JSON form
         :rtype: Response
+
         ---
+
+        description: Update an existing resource with request body.
+        requestBody:
+            description: payload.
+            required: true
+            content:
+                application/json:
+                    schema: Schema
+        parameters:
+          - in: path
+            name: id
+            description: entity primary key elements separated by '_'.
+        responses:
+            201:
+                description: Update associated resource.
+                content:
+                  application/json:
+                    schema: Schema
+            204:
+                description: Empty Payload
         """
         pk_val = self._extract_pk_val(request)
         validated_data = self.validate(await self._extract_body(request))
 
-        # Plug in pk into the dict(s).
-        pk_val = dict(zip(self.pk, pk_val)) # type: ignore [assignment]
-        for data in to_it(validated_data):
-            # TODO: check if to_it is necessary ? Shouldn't be a list.
-            data.update(pk_val)
+        # Should be a single record.
+        assert isinstance(validated_data, dict)
+
+        # Plug in pk into the dict.
+        validated_data.update(dict(zip(self.pk, pk_val))) # type: ignore [assignment]
 
         return json_response(
             data=await self.svc.create(
@@ -341,23 +387,28 @@ class ResourceController(EntityController):
             status_code=201,
         )
 
-    async def delete(self, request: Request):
-        """ Delete resource.
+    async def delete(self, request: Request) -> Response:
+        """Delete resource.
+
+        :param request: incomming request
+        :type request: Request
+        :return: Deletion confirmation 'Deleted.'
+        :rtype: Response
+
+
 
         ---
 
-        - description: Delete DB entry for entity with matching id.
-        - parameters:
-            - in: path
-              id: entity id
-
-        - responses:
-            - 200:
-                description: Deleted matching item
-
-            - 404:
+        description: Delete resource matching id.
+        parameters:
+          - in: path
+            name: id
+            description: entity primary key elements separated by '_'
+        responses:
+            200:
+                description: Deleted.
+            404:
                 description: Not Found
-
         """
         await self.svc.delete(
             pk_val=self._extract_pk_val(request),
@@ -365,11 +416,22 @@ class ResourceController(EntityController):
         )
         return json_response("Deleted.", status_code=200)
 
-    async def filter(self, request: Request):
-        """ Returns all resources, accepting a querystring filter.
+    async def filter(self, request: Request) -> Response:
+        """Returns all resources, accepting a querystring filter.
 
         ---
-        description: Parses a querystring on the route /ressources/search?{querystring}
+
+        description: Uses a querystring to filter all resources of that type.
+        parameters:
+          - in: query
+            name: querystring
+            description: query filters
+        responses:
+            201:
+                description: Filtered list.
+                content:
+                  application/json:
+                    schema: Schema
         """
         params = dict(request.query_params)
         fields = self._extract_fields(params)
@@ -383,11 +445,30 @@ class ResourceController(EntityController):
             status_code=200,
         )
 
-    async def release(self, request: Request):
-        """Releases new version for versioned entities.
+    async def release(self, request: Request) -> Response:
+        """Releases a new version for a versioned resource.
 
         ---
-        description: Parses a querystring on the route /ressources/search?{querystring}
+
+        description: Release a versioned resource, creating a new entry with incremented version.
+        requestBody:
+            description: payload - primary keys not allowed -.
+            required: false
+            content:
+                application/json:
+                    schema: Schema
+        parameters:
+          - in: path
+            name: id
+            description: entity primary key elements separated by '_'
+        responses:
+            201:
+                description: New resource version, updated values, without its nested collections.
+                content:
+                  application/json:
+                    schema: Schema
+            500:
+                description: Attempted update of primary key components.
         """
         # TODO: flag to make previous versions readonly
         # TODO: make it possible to create/update with the id only -> defaults to lastversion.
@@ -397,17 +478,66 @@ class ResourceController(EntityController):
         validated_data = self.validate(await request.body() or b'{}')
 
         assert not isinstance(validated_data, list)
-        assert not any([pk in validated_data.keys() for pk in self.pk])
+        if any([pk in validated_data.keys() for pk in self.pk]):
+            raise ValueError("Cannot edit versioned resource primary key.")
 
         fields = self._extract_fields(dict(request.query_params), no_depth=True)
 
-        new_version = await self.svc.release(
-            pk_val=self._extract_pk_val(request),
-            fields=fields,
-            update=validated_data,
-            user_info=await UserInfo(request),
+        # Note: serialization is delayed. Hence the no_depth.
+        return json_response(
+            self.serialize(
+                await self.svc.release(
+                    pk_val=self._extract_pk_val(request),
+                    fields=fields,
+                    update=validated_data,
+                    user_info=await UserInfo(request),
+                ), many=False, only=fields
+            ), status_code=200
         )
-        # Delay serialization
-        serialized = self.serialize(new_version, many=False, only=fields)
 
-        return json_response(serialized, status_code=200)
+    async def read_nested(self, request: Request) -> Response:
+        """Reads a nested collection from parent primary key.
+            Call read, with attribute and serializes with child resource controller.
+
+        ---
+
+        description: Read nested collection from parent resource.
+        parameters:
+          - in: path
+            name: id
+            description: entity primary key elements separated by '_'
+          - in: path
+            name: attribute
+            description: nested collection name.
+        responses:
+          200:
+              description: Nested collection.
+          500:
+              description: Wrong attribute name.
+        """
+        attribute = request.path_params['attribute']
+        target_rel = self.table.relationships().get(attribute, {})
+        if not target_rel or not getattr(target_rel, 'uselist', False):
+            raise ValueError(
+                f"Unknown collection name {attribute} of {self.table.__class__.__name__}"
+            )
+
+        target_ctrl: ResourceController = (
+            target_rel
+            .target
+            .decl_class
+            .svc
+            .table
+            .ctrl
+        )
+        fields = target_ctrl._extract_fields(dict(request.query_params))
+
+        return json_response(
+            data=target_ctrl.serialize(
+                data=await self.svc.read_nested(
+                    pk_val=self._extract_pk_val(request),
+                    attribute=attribute,
+                    user_info=await UserInfo(request),
+                ), many=True, only=fields
+            ), status_code=200
+        )

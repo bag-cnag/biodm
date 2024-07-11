@@ -1,17 +1,22 @@
 from asyncio import wait_for
+from inspect import getfullargspec
 import logging
 import logging.config
+from time import sleep
 from typing import Callable, List, Optional, Dict, Any, Type
 from types import ModuleType
 
+from apispec import APISpec
+from apispec.ext.marshmallow import MarshmallowPlugin
+from starlette_apispec import APISpecSchemaGenerator
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import Response, HTMLResponse
 from starlette.requests import Request
 from starlette.routing import Route
-from starlette.schemas import SchemaGenerator
 from starlette.types import ASGIApp
+from sqlalchemy.exc import IntegrityError
 
 from biodm import Scope, config
 from biodm.basics import CORE_CONTROLLERS, K8sController
@@ -47,18 +52,27 @@ class HistoryMiddleware(BaseHTTPMiddleware):
         super().__init__(app, self.dispatch)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Any:
-        user_info = UserInfo(request)
-        if user_info.info:
-            body = await request.body()
-            username, _, _ = user_info.info
-            entry = {
-                'username_user': username,
-                'endpoint': str(request.url).rsplit(self.server_host, maxsplit=1)[-1],
-                'method': request.method,
-                'content': str(body) if body else ""
-            }
+        user_info = await UserInfo(request)
+        username = user_info.info[0] if user_info.info else "anon" # Needs a key.
+
+        body = await request.body()
+        entry = {
+            'username_user': username,
+            'endpoint': str(request.url).rsplit(self.server_host, maxsplit=1)[-1],
+            'method': request.method,
+            'content': str(body) if body else ""
+        }
+        try:
             await History.svc.create(entry)
-        return await call_next(request)
+        except IntegrityError as _:
+            # Collision may happen in case two anonymous requests hit at the exact same tick.
+            try: # Try once more.
+                sleep(0.1)
+                await History.svc.create(entry)
+            except:
+                pass
+        finally: # Keep going in any case. History feature should not be blocking.
+            return await call_next(request)
 
 
 class Api(Starlette):
@@ -74,7 +88,7 @@ class Api(Starlette):
     # Managers
     db: DatabaseManager
     s3: S3Manager
-    kc: ApiComponent
+    kc: KeycloakManager
     k8: K8sManager
     # Controllers
     controllers: List[Controller] = []
@@ -93,6 +107,8 @@ class Api(Starlette):
             self.scope |= Scope.DEBUG
         if test:
             self.scope |= Scope.TEST
+
+        self._network_ips = [self.server_endpoint]
 
         ## Instance Info.
         instance = instance or {}
@@ -120,16 +136,17 @@ class Api(Starlette):
         routes = self.adopt_controllers(classes)
 
         ## Schema Generator.
-        self.schema_generator = SchemaGenerator(
-            {
-                "openapi": "3.0.0", "info": {
-                    "name": config.API_NAME,
-                    "version": config.API_VERSION,
-                    "backend": "biodm",
-                    "backend_version": CORE_VERSION
-                }
-            }
+        self.apispec = APISpecSchemaGenerator(
+            APISpec(
+                title=config.API_NAME,
+                version=config.API_VERSION,
+                openapi_version="3.0.0",
+                plugins=[MarshmallowPlugin()],
+                info={"description": "", "backend": "biodm", "backend_version": CORE_VERSION},
+            )
         )
+        jwt_scheme = {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+        self.apispec.spec.components.security_scheme("jwt", jwt_scheme)
 
         """Headless Services
 
@@ -146,21 +163,13 @@ class Api(Starlette):
         super().__init__(debug, routes, *args, **kwargs)
 
         ## Middlewares
-        # self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
-        assert config.SERVER_HOST
-
+        self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
-            allow_origins=(
-                [config.SERVER_HOST, "*"] + (
-                    [config.KC_HOST]
-                    if hasattr(config, "KC_HOST") and config.KC_HOST
-                    else []
-                )
-            ),
+            allow_origins=self._network_ips + ["http://localhost:9080"], # + swagger-ui.
             allow_methods=["*"],
             allow_headers=["*"],
-            # max_age=10 # TODO: max age cache in config.
+            max_age=config.CACHE_MAX_AGE
         )
         if self.scope is Scope.PROD:
             self.add_middleware(TimeoutMiddleware, timeout=config.SERVER_TIMEOUT)
@@ -196,36 +205,25 @@ class Api(Starlette):
         Appart from the DB, managers are optional, with respect to config population.
         """
         self.db = DatabaseManager(app=self)
-        # others
-        kc = self._parse_config("kc")
-        if all((param in kc and bool(kc[param])
-                for param in ('host',
-                              'realm',
-                              'public_key',
-                              'admin',
-                              'admin_password',
-                              'client_id',
-                              'client_secret',
-                              'jwt_options'))):
-            self.kc = KeycloakManager(app=self, **kc)
-            self.logger.info(f"KC manager UP.")
+        self._network_ips.append(self.db.endpoint)
 
-        s3 = self._parse_config("s3")
-        if all((param in s3 and bool(s3[param])
-                for param in ('endpoint_url',
-                              'bucket_name',
-                              'access_key_id',
-                              'secret_access_key'))):
-            self.s3 = S3Manager(app=self, **s3)
-            self.logger.info(f"S3 manager UP.")
-
-        k8 = self._parse_config("k8")
-        if all((param in k8 and bool(k8[param])
-                for param in ('host',
-                              'cert',
-                              'token'))):
-            self.k8 = K8sManager(app=self, **k8)
-            self.logger.info(f"K8 manager UP.")
+        for mclass, mprefix in zip(
+            (KeycloakManager, S3Manager, K8sManager),
+            ('kc', 's3', 'k8')
+        ):
+            margs = set(getfullargspec(mclass).args) - set(('self', 'app'))
+            conf = self._parse_config(mprefix)
+            if all(
+                (
+                    param in conf and bool(conf[param])
+                    for param in margs
+                )
+            ):
+                setattr(self, mprefix, mclass(app=self, **conf))
+                self._network_ips.append(getattr(self, mprefix).endpoint)
+                self.logger.info(f"{mprefix.upper()} Manager - UP.")
+            else:
+                self.logger.info(f"{mprefix.upper()} Manager - SKIPPED (no config).")
 
     def adopt_controllers(self, controllers: List[Type[Controller]]) -> List[Route]:
         """Adopts controllers, and their associated routes."""

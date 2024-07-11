@@ -23,13 +23,6 @@ OAUTH2_PORT = 8091
 def cellxgene() -> Dict[str, str]:
     """
     description: Deploys cellxgene and tie it to the user
-    parameters:
-        - in: path
-          id: busybox
-        - in: header
-          X-User-Token: user token
-        - in: query
-          dataset: s3 path to an .h5ad dataset
     """
     name = ""
     return cellxgene_manifest(name)
