@@ -50,13 +50,15 @@ cd src/example/
 python3 src/example/app.py
 ```
 
-Alternatively, if your goal is simply to run `example` and nothing else
-you may use the following commands:
+Alternatively, if your goal is simply to run `example` locally
+you may use the following command beforehand in order to deploy the development stack:
 
 ```bash
-docker compose -f compose.test.yml build
-docker compose -f compose.test.yml up
+docker compose -f compose.yml up --build -d
 ```
+
+This stack comes with an interactive swagger-ui visitable at ``http://localhost:9080/``
+once the server is running.
 
 ## About
 
