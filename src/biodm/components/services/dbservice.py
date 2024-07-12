@@ -1,6 +1,6 @@
 """Database service: Translates requests data into SQLA statements and execute."""
 from operator import or_
-from typing import Callable, List, Sequence, Any, Tuple, Dict, overload, Literal, Set, Type
+from typing import Callable, Iterable, List, Sequence, Any, Tuple, Dict, overload, Literal, Set, Type
 
 from sqlalchemy import insert, select, delete, or_, func
 from sqlalchemy.dialects import postgresql, sqlite
@@ -620,9 +620,9 @@ class UnaryEntityService(DatabaseService):
 class CompositeEntityService(UnaryEntityService):
     """Special case for Composite Entities (i.e. containing nested entities attributes)."""
     @property
-    def runtime_relationships(self) -> Set[str]:
-        """Evaluate relationships at runtime by computing the difference with
-          self.relatioships set a instanciation time.
+    def permission_relationships(self) -> Set[str]:
+        """Get permissions relationships by computing the difference of between instanciation time
+            and runtime, since those get populated later in Base.setup_permissions().
         """
         return set(self.table.relationships().keys()) - set(self.relationships.keys())
 
@@ -655,7 +655,6 @@ class CompositeEntityService(UnaryEntityService):
                 .decl_class
                 .svc
             )._insert(sub, **kwargs)
-            await session.commit()
 
         # Insert main object.
         item = await self._insert(composite.item, **kwargs)
@@ -664,8 +663,6 @@ class CompositeEntityService(UnaryEntityService):
         for key, sub in composite.nested.items():
             await getattr(item.awaitable_attrs, key)
             setattr(item, key, sub)
-
-        await session.commit()
 
         # Populate many-to-item fields with 'delayed' (because needing item id) objects.
         for key, delay in composite.delayed.items():
@@ -678,6 +675,8 @@ class CompositeEntityService(UnaryEntityService):
                 mapping = {}
                 for c in rels[key].remote_side:
                     if c.foreign_keys:
+                        # TODO: This (v) looks suspicious for some composite primary key edge cases.
+                        # TODO: check.
                         fk, = c.foreign_keys
                         mapping[c.name] = getattr(
                             item,
@@ -697,7 +696,6 @@ class CompositeEntityService(UnaryEntityService):
                 case list() | Insert():
                     # Insert
                     delay = await target_svc._insert_many(delay, **kwargs)
-                    await session.commit()
 
                     # Put in attribute the objects that are not already present.
                     delay, updated = partition(delay, lambda e: e not in getattr(item, key))
@@ -714,7 +712,6 @@ class CompositeEntityService(UnaryEntityService):
                     sub = await target_svc._insert_composite(delay, **kwargs)
                     setattr(item, key, sub)
 
-            await session.commit()
         return item
 
     async def _insert(
@@ -754,8 +751,9 @@ class CompositeEntityService(UnaryEntityService):
         nested = {}
         delayed = {}
 
-        # Relationships declared after initial instanciation are permissions.
-        for key in self.runtime_relationships:
+        for key in self.permission_relationships:
+            # IMPORTANT: Create an entry even for empty permissions.
+            # It is necessary in order to query permissions from nested entities.
             rel = self.table.relationships()[key]
             stmt_perm = self._backend_specific_insert(rel.target.decl_class)
 

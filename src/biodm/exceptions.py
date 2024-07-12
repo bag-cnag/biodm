@@ -73,19 +73,19 @@ class ManifestError(RequestError):
 
 
 ## DB
-class FailedCreate(DBError):
+class FailedCreate(RequestError):
     """Could not create record."""
 
 
-class FailedRead(DBError):
+class FailedRead(RequestError):
     """Requested record doesn't exist."""
 
 
-class FailedUpdate(DBError):
+class FailedUpdate(RequestError):
     """Raised when an update operation is not successful."""
 
 
-class FailedDelete(DBError):
+class FailedDelete(RequestError):
     """Raised when a delete operation is not successful."""
 
 

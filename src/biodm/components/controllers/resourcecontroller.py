@@ -1,7 +1,9 @@
 """Controller class for Tables acting as a Resource."""
 
 from __future__ import annotations
+from copy import copy
 from functools import partial
+from types import MethodType
 from typing import TYPE_CHECKING, List, Set, Any, Dict, Type
 
 from marshmallow.schema import RAISE
@@ -98,19 +100,60 @@ class ResourceController(EntityController):
         self._replace_schema_in_docstrings()
 
     def _replace_schema_in_docstrings(self):
-        """Sets an appropriate schema annotation for Responses."""
-        # TODO: replace id annotations by precise pk elements ?
-        for f in dir(self):
-            if not f.startswith('_'):
-                fct = getattr(self, f, {})
+        """Substitutes abstract endpoint documentation bits with one targeted on this controller.
+
+        Essentially handling APIspec/Marshmallow/OpenAPISchema support for abstract endpoints.
+        """
+        for method in dir(self):
+            if not method.startswith('_'):
+                fct = getattr(self, method, {})
                 if hasattr(fct, '__annotations__'):
                     if fct.__annotations__.get('return', '') == 'Response':
-                        fct.__func__.__doc__ = (
-                            fct
-                            .__func__
-                            .__doc__
-                            .replace('schema: Schema', f"schema: {self.schema.__class__.__name__}")
-                        ) if fct.__func__.__doc__ else None
+                        abs_doc = fct.__func__.__doc__ or ""
+                        # Use intance schema.
+                        abs_doc = abs_doc.replace(
+                            'schema: Schema', f"schema: {self.schema.__class__.__name__}"
+                        )
+
+                        # Set precise primary key routes.
+                        path_key = []
+                        for key in self.pk:
+                            attr = []
+                            attr.append("- in: path")
+                            attr.append(f"name: {key}")
+                            field = self.schema.declared_fields[key]
+                            desc  = field.metadata.get("description", None)
+                            attr.append("description: " + (desc or f"{self.resource} {key}"))
+                            path_key.append(attr)
+
+                        # Replace in apispec.
+                        doc = abs_doc.split('---')
+                        if len(doc) > 1:
+                            sphinxdoc, apispec = doc
+                            apispec = apispec.split('\n')
+                            found = False
+                            # Find our convention pattern (on two lines).
+                            for i in range(len(apispec)):
+                                if '- in: path' in apispec[i-1] and 'name: id' in apispec[i]:
+                                    found = True
+                                    break
+                            if found:
+                                # Work out same indentation level in order not to break the yaml.
+                                indent = len(apispec[i-1].split('- in: path')[0])
+                                flattened = []
+                                for path_attribute in path_key:
+                                    path_attribute[0] = " " * indent + path_attribute[0]
+                                    path_attribute[1] = " " * (indent+2) + path_attribute[1]
+                                    path_attribute[2] = " " * (indent+2) + path_attribute[2]
+                                    flattened.extend(path_attribute)
+
+                                final = apispec[:i-1] + flattened + apispec[i+1:]
+                                abs_doc = sphinxdoc + "\n---\n" + "\n".join(final)
+
+                                # Create copy of the function object and patch new doc.
+                                new_f = copy(fct.__func__)
+                                new_f.__doc__ = abs_doc
+                                setattr(self, method, MethodType(new_f, self))
 
     def _infer_resource_name(self) -> str:
         """Infer entity name from controller name."""
@@ -315,7 +358,6 @@ class ResourceController(EntityController):
         parameters:
           - in: path
             name: id
-            description: entity primary key elements separated by '_' e.g. /datasets/1_1 returns dataset with id=1 and version=1
           - in: query
             name: fields
             description: a comma separated list of fields to query only a subset of the resource e.g. /datasets/1_1?name,description,contact,files
@@ -358,7 +400,6 @@ class ResourceController(EntityController):
         parameters:
           - in: path
             name: id
-            description: entity primary key elements separated by '_'.
         responses:
             201:
                 description: Update associated resource.
@@ -403,7 +444,6 @@ class ResourceController(EntityController):
         parameters:
           - in: path
             name: id
-            description: entity primary key elements separated by '_'
         responses:
             200:
                 description: Deleted.
@@ -460,7 +500,6 @@ class ResourceController(EntityController):
         parameters:
           - in: path
             name: id
-            description: entity primary key elements separated by '_'
         responses:
             201:
                 description: New resource version, updated values, without its nested collections.
@@ -498,14 +537,12 @@ class ResourceController(EntityController):
     async def read_nested(self, request: Request) -> Response:
         """Reads a nested collection from parent primary key.
             Call read, with attribute and serializes with child resource controller.
-
         ---
 
         description: Read nested collection from parent resource.
         parameters:
           - in: path
             name: id
-            description: entity primary key elements separated by '_'
           - in: path
             name: attribute
             description: nested collection name.

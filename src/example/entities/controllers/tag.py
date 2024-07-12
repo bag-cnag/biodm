@@ -5,6 +5,12 @@ class TagController(ResourceController):
     @overload_docstring
     async def create(**kwargs):
         """
+        requestBody:
+          description: payload.
+          required: true
+          content:
+              application/json:
+                  schema: TagSchema
         responses:
           201:
               description: Create Tag.
@@ -22,8 +28,8 @@ class TagController(ResourceController):
         """
         parameters:
           - in: path
-            name: id
-            description: entity id
+            name: name
+            description: Tag name
         responses:
           200:
             description: Found matching Tag.

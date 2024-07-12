@@ -4,7 +4,7 @@ from marshmallow.fields import String, List, Nested, Integer
 
 class GroupSchema(Schema):
     """Schema for Keycloak Groups. id field is purposefully left out as we manage it internally."""
-    path = String(required=True)
+    path = String(required=True, metadata={"description": "Group name chain separated by '__'"})
     # Test
     n_members = Integer(required=False)
 
