@@ -251,21 +251,65 @@ combination with ``@overload_docstrings``, made to overload docstrings of contro
         @overload_docstring
         async def create(**kwargs):
             """
+            requestBody:
+                description: payload.
+                required: true
+                content:
+                    application/json:
+                        schema: DatasetSchema
             responses:
-              201:
+            201:
                 description: Create Dataset.
                 examples: |
-                  {"name": "ds_test", "owner": {"username": "my_team_member"}}
-              204:
+                    # TODO:
+                    {"name": "instant_sc_1234", ""}
+                content:
+                    application/json:
+                        schema: DatasetSchema
+            204:
                 description: Empty Payload.
             """
-
+        ...
+        class TagController(ResourceController):
+            @overload_docstring
+            async def read(**kwargs):
+                """
+                parameters:
+                - in: path
+                  name: name
+                  description: Tag name
+                responses:
+                  200:
+                    description: Found matching Tag.
+                    examples: |
+                      {"name": "epidemiology"}
+                    content:
+                      application/json:
+                        schema: TagSchema
+                  404:
+                    description: Tag not found.
+                """
         ...
 
 .. warning::
 
-    ``@overload_docstrings`` returns the parent class method, hence if you use the latter variant,
-    be sure to use it first even if you do not wish to document that endpoint.
+    ``@overload_docstrings`` returns a wrapper pointing to the parent class method,
+    hence if you use the latter variant, be sure to this decorator first even if you do not wish to
+    document that endpoint.
+
+**Docstrings Guide**
+Docstrings are parsed by `apispec <https://github.com/marshmallow-code/apispec/>`_ and shall
+comply with their specification. In particular you have to be precise with parameters,
+and marshmallow schema specifications.
+This is required in order to output specification in ``OpenAPISchema`` format,
+which enables support for ``swagger-ui`` and the rest of the ecosystem.
+
+.. note::
+
+    The core patches abstract method documentation at runtime for endpoints that are left
+    undocumented. However, if you are using ``@overload_docstrings`` ensuring that it works is up
+    to you.
+
 
 .. _dev-user-permissions:
 

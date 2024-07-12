@@ -1,10 +1,13 @@
+import json
 from http import HTTPStatus
 
 from biodm.utils.utils import json_response
 
 from .exceptions import (
+    FailedUpdate,
     RequestError,
     FailedDelete,
+    FailedRead,
     InvalidCollectionMethod,
     PayloadEmptyError,
     UnauthorizedError,
@@ -21,11 +24,11 @@ class Error:
 
     @property
     def __dict__(self):
-        return {'code': self.status, 'reason': self.reason, 'message': self.detail}
+        return {"code": self.status, "reason": self.reason, "message": self.detail}
 
     @property
     def response(self):
-        return json_response(data=self.__dict__, status_code=self.status)
+        return json_response(data=json.dumps(self.__dict__), status_code=self.status)
 
 async def onerror(_, exc):
     """Error event handler.
@@ -37,7 +40,7 @@ async def onerror(_, exc):
     if issubclass(exc.__class__, RequestError):
         detail = exc.detail
         match exc:
-            case FailedDelete():
+            case FailedDelete() | FailedRead() | FailedUpdate():
                 status = 404
             case InvalidCollectionMethod():
                 status = 405

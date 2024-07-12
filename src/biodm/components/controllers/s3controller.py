@@ -43,7 +43,6 @@ class S3Controller(ResourceController):
         parameters:
           - in: path
             name: id
-            description: entity primary key elements separated by '_'.
         responses:
             307:
                 description: Download URL, with a redirect header.
@@ -67,7 +66,6 @@ class S3Controller(ResourceController):
         parameters:
           - in: path
             name: id
-            description: entity primary key elements separated by '_'.
         responses:
             201:
                 description: Upload confirmation 'Uploaded'.

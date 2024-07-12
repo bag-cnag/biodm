@@ -15,6 +15,12 @@ class DatasetController(ResourceController):
     @overload_docstring
     async def create(**kwargs):
         """
+        requestBody:
+          description: payload.
+          required: true
+          content:
+            application/json:
+              schema: DatasetSchema
         responses:
           201:
               description: Create Dataset.
@@ -31,10 +37,14 @@ class DatasetController(ResourceController):
     @overload_docstring
     async def read(**kwargs):
       """
+        # TODO
         parameters:
           - in: path
             name: id
-            description: entity id
+            description: Dataset id
+          - in: path
+            name: version
+            description: Dataset version
         responses:
           200:
             description: Found matching Dataset.

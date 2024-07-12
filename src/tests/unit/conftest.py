@@ -21,10 +21,6 @@ asso_a_b = sa.Table(
     sa.ForeignKeyConstraint(
         ['id_b', 'version_b'], ['B.id', 'B.version']
     )
-    # sa.ForeignKeyConstraint(
-        # ("id_b", "B.id"),
-        # ("version_b", "B.version") 
-    # )
 )
 
 
