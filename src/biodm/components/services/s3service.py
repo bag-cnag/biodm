@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from biodm.components.table import Base, S3File
 from biodm.managers import DatabaseManager, S3Manager
+from biodm.utils.utils import to_it
 from biodm.utils.security import UserInfo
 from .dbservice import UnaryEntityService
 
@@ -32,6 +33,8 @@ class S3Service(UnaryEntityService):
         ))
 
         return item
+
+    # async def _insert_many(self, stmts: Sequence[Insert])
 
     @DatabaseManager.in_session
     async def _insert_many(self, stmt: Insert, session: AsyncSession) -> Sequence[Base]:

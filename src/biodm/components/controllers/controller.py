@@ -6,8 +6,10 @@ from enum import Enum
 from io import BytesIO
 from typing import Any, Iterable, List, Dict, TYPE_CHECKING, Optional
 
+from marshmallow import RAISE
 from marshmallow.schema import Schema
 from marshmallow.exceptions import ValidationError
+from marshmallow.types import StrSequenceOrSet
 from sqlalchemy.exc import MissingGreenlet
 from starlette.requests import Request
 from starlette.responses import Response
@@ -78,12 +80,15 @@ class EntityController(Controller):
     @classmethod
     def validate(
         cls,
-        data: bytes
+        data: bytes,
+        partial: bool = False
     ) -> List[Dict[str, Any]] | Dict[str, Any]:
         """Check incoming data against class schema and marshall to python dict.
 
         :param data: some request body
         :type data: bytes
+        :param partial: accept partial records
+        :type partial: bool, defaults to False
         :return: Marshalled python dict and plurality flag.
         :rtype: Tuple[(Any | List[Any] | Dict[str, Any] | None), bool]
         """
@@ -98,7 +103,7 @@ class EntityController(Controller):
                     raise PayloadValidationError("Wrong input JSON.")
 
             json_data = json.loads(data) # Accepts **kwargs in case support needed.
-            return cls.schema.load(json_data, many=many, partial=None, unknown=None)
+            return cls.schema.load(json_data, many=many, partial=partial, unknown=RAISE)
 
         except ValidationError as e:
             raise PayloadValidationError(cls.__name__) from e

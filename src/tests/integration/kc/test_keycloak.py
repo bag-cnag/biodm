@@ -21,6 +21,7 @@ def test_create_user(srv_endpoint, utils):
     """"""
     user = {"username": "u_test", "password": "1234"}
     response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(user))
+    assert "u_test" in response.text
     json_response = json.loads(response.text)
 
     assert response.status_code == 201

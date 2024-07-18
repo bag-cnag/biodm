@@ -98,14 +98,19 @@ class Base(DeclarativeBase, AsyncAttrs):
         }
         columns['entity'] = relationship(
             table,
-            backref=backref(rel_name, uselist=False),
+            backref=backref(
+                rel_name,
+                uselist=False,
+                cascade="all, delete-orphan" # important.
+            ),
             foreign_keys="[" + ",".join(
                 [
                     f"{new_asso_name}.{key}"
                     for key in columns.keys()
                 ]
             ) + "]",
-            passive_deletes=True
+            passive_deletes=True,
+            single_parent=True,
         )
         columns['__table_args__'] = (
             ForeignKeyConstraint(

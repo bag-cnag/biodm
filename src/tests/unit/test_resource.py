@@ -47,7 +47,13 @@ def test_create_composite_resource(client):
     json_response = json.loads(response.text)
 
     assert response.status_code == 201
-    assert json_response == oracle
+    assert json_response['x'] == oracle['x']
+    assert json_response['y'] == oracle['y']
+    assert json_response['c'] == oracle['c']
+    # May be in different orders.
+    oracle['bs'].sort(key=lambda x: x['id'])
+    json_response['bs'].sort(key=lambda x: x['id'])
+    assert oracle['bs'] == json_response['bs']
 
 
 @pytest.mark.xfail(raises=exc.PayloadEmptyError)
@@ -220,7 +226,11 @@ def test_update_composite_resource(client):
     assert up_response.status_code == 201
     assert json_response['id'] == item_id
     assert json_response['x'] == 3
-    assert json_response['bs'] == bs_oracle
+
+    # May be in different orders.
+    bs_oracle.sort(key=lambda x: x['id'])
+    json_response['bs'].sort(key=lambda x: x['id'])
+    assert bs_oracle == json_response['bs']
 
 
 def test_read_nested_collection(client):
@@ -256,3 +266,23 @@ def test_delete_resource(client):
 
     assert response.status_code == 200
     assert "Deleted." in response.text
+
+
+def test_update_resource_through_create(client):
+    item = {'name': '1234'}
+
+    response = client.post('/bs', content=json_bytes(item))
+    assert response.status_code == 201
+
+    update = {'id': '1', 'version': '1', 'name': '4321'}
+    response = client.post('/bs', content=json_bytes(update))
+    assert response.status_code == 201
+
+    response = client.get('/bs')
+    assert response.status_code == 200
+
+    json_response = json.loads(response.text)
+    assert len(json_response) == 1
+    assert json_response[0]['name'] == update['name']
+
+# TODO: test this on nested.

@@ -14,8 +14,8 @@ class DatasetSchema(Schema):
     #     #     [g.name for g in Group]
     #     # )
     # )
-    username_user_contact = String() # required=True
-    id_project = Integer() # required=True
+    username_user_contact = String(required=True) # required=True
+    id_project = Integer(required=True) # required=True
 
     # owner_group = Nested('GroupSchema') # , only=('path', 'n_members',)
     contact = Nested('UserSchema') # , only=('username', )

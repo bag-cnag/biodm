@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, List, Set, Any, Dict, Type
 from marshmallow.schema import RAISE
 from marshmallow.class_registry import get_class
 from marshmallow.exceptions import RegistryError
+from sqlalchemy.exc import IntegrityError
 from starlette.routing import Mount, Route, BaseRoute
 from starlette.requests import Request
 from starlette.responses import Response
@@ -22,8 +23,9 @@ from biodm.components.services import (
     KCUserService
 )
 from biodm.exceptions import (
-    InvalidCollectionMethod, PayloadEmptyError, UnauthorizedError, PartialIndex
+    InvalidCollectionMethod, PayloadEmptyError, PayloadValidationError, PartialIndex
 )
+from biodm.tables import user
 from biodm.utils.utils import json_response
 from biodm.utils.security import UserInfo
 from biodm.components import Base
@@ -97,18 +99,30 @@ class ResourceController(EntityController):
         self.pk = set(self.table.pk())
         self.svc: UnaryEntityService = self._infer_svc()(app=self.app, table=self.table)
         self.__class__.schema = (schema if schema else self._infer_schema())(unknown=RAISE)
-        self._replace_schema_in_docstrings()
+        self._replace_schema_in_apispec_docstrings()
 
-    def _replace_schema_in_docstrings(self):
-        """Substitutes abstract endpoint documentation bits with one targeted on this controller.
+    def _replace_schema_in_apispec_docstrings(self):
+        """Substitute abstract endpoint documentation bits with correct ones for this resource.
 
         Essentially handling APIspec/Marshmallow/OpenAPISchema support for abstract endpoints.
+
+        Current patterns for abstract documentation:
+        - Marshmallow Schema |
+          schema: Schema -> schema: self.Schema.__class__.__name__
+        - key Attributes |
+          - in: path
+            name: id
+          ->
+          List of table primary keys, with their description from marshmallow schema if any.
         """
         for method in dir(self):
             if not method.startswith('_'):
                 fct = getattr(self, method, {})
                 if hasattr(fct, '__annotations__'):
-                    if fct.__annotations__.get('return', '') == 'Response':
+                    if ( # Use typing anotations to identify endpoints.
+                         fct.__annotations__.get('request', '') == 'Request' and
+                         fct.__annotations__.get('return', '') == 'Response'
+                     ):
                         abs_doc = fct.__func__.__doc__ or ""
                         # Use intance schema.
                         abs_doc = abs_doc.replace(
@@ -131,8 +145,8 @@ class ResourceController(EntityController):
                         if len(doc) > 1:
                             sphinxdoc, apispec = doc
                             apispec = apispec.split('\n')
-                            found = False
                             # Find our convention pattern (on two lines).
+                            found = False
                             for i in range(len(apispec)):
                                 if '- in: path' in apispec[i-1] and 'name: id' in apispec[i]:
                                     found = True
@@ -333,16 +347,32 @@ class ResourceController(EntityController):
             204:
                 description: Empty Payload.
         """
-        validated_data = self.validate(await self._extract_body(request))
-        return json_response(
-            data=await self.svc.create(
+        body = await self._extract_body(request)
+        user_info = await UserInfo(request)
+
+        try:
+            validated_data = self.validate(body, partial=False)
+            created = await self.svc.create(
                 data=validated_data,
+                partial_data=False,
                 stmt_only=False,
-                user_info=await UserInfo(request),
-                serializer=partial(self.serialize, many=isinstance(validated_data, list)),
-            ),
-            status_code=201,
-        )
+                user_info=user_info,
+                serializer=partial(self.serialize, many=isinstance(validated_data, list))
+            )
+        except PayloadValidationError as pve:
+            # Try to create from partial data in case.
+            try:
+                validated_data = self.validate(body, partial=True)
+                created = await self.svc.create(
+                    data=validated_data,
+                    partial_data=True,
+                    stmt_only=False,
+                    user_info=user_info,
+                    serializer=partial(self.serialize, many=isinstance(validated_data, list))
+                )
+            except Exception as dbe:
+                raise dbe from pve
+        return json_response(data=created, status_code=201)
  
     async def read(self, request: Request) -> Response:
         """Fetch associated entity matching id in the path.
@@ -362,12 +392,12 @@ class ResourceController(EntityController):
             name: fields
             description: a comma separated list of fields to query only a subset of the resource e.g. /datasets/1_1?name,description,contact,files
         responses:
-          200:
-              description: Found matching item
-              examples: |
-                {"username": "user", "email": "Null", "groups": []}
-          404:
-              description: Not Found
+            200:
+                description: Found matching item
+                examples: |
+                    {"username": "user", "email": "Null", "groups": []}
+            404:
+                description: Not Found
         """
         fields = self._extract_fields(dict(request.query_params))
         return json_response(
@@ -410,10 +440,12 @@ class ResourceController(EntityController):
                 description: Empty Payload
         """
         pk_val = self._extract_pk_val(request)
-        validated_data = self.validate(await self._extract_body(request))
+        bod = await self._extract_body(request)
+        validated_data = self.validate(bod, partial=True)
 
         # Should be a single record.
-        assert isinstance(validated_data, dict)
+        if not isinstance(validated_data, dict):
+            raise ValueError("Attempt at updating a single resource with multiple values.")
 
         # Plug in pk into the dict.
         validated_data.update(dict(zip(self.pk, pk_val))) # type: ignore [assignment]
@@ -435,8 +467,6 @@ class ResourceController(EntityController):
         :type request: Request
         :return: Deletion confirmation 'Deleted.'
         :rtype: Response
-
-
 
         ---
 
@@ -470,8 +500,8 @@ class ResourceController(EntityController):
             201:
                 description: Filtered list.
                 content:
-                  application/json:
-                    schema: Schema
+                    application/json:
+                        schema: Schema
         """
         params = dict(request.query_params)
         fields = self._extract_fields(params)
@@ -514,7 +544,7 @@ class ResourceController(EntityController):
         assert self.table.is_versioned()
 
         # Allow empty body.
-        validated_data = self.validate(await request.body() or b'{}')
+        validated_data = self.validate(await request.body() or b'{}', partial=True)
 
         assert not isinstance(validated_data, list)
         if any([pk in validated_data.keys() for pk in self.pk]):

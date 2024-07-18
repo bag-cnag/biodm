@@ -1,13 +1,15 @@
 """Database service: Translates requests data into SQLA statements and execute."""
+from ast import stmt
+from functools import partial
 from operator import or_
 from typing import Callable, Iterable, List, Sequence, Any, Tuple, Dict, overload, Literal, Set, Type
 
-from sqlalchemy import insert, select, delete, or_, func
+from sqlalchemy import insert, select, delete, update, or_, func
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import load_only, selectinload, ONETOMANY, MANYTOONE, aliased, make_transient
-from sqlalchemy.sql import Insert, Delete, Select
+from sqlalchemy.sql import Insert, Delete, Select, Update
 from sqlalchemy.sql.selectable import Alias
 
 from biodm import config
@@ -62,6 +64,15 @@ class DatabaseService(ApiService):
         """INSERT one object into the DB, check token write permissions before commit."""
         item = await session.scalar(stmt)
         return item
+
+    @DatabaseManager.in_session
+    async def _insert_list(self, stmts: Sequence[Insert], session: AsyncSession) -> Sequence[Base]:
+        """INSERT list of items in one go."""
+        items = [
+            await session.scalar(stmt)
+            for stmt in stmts
+        ]
+        return items
 
     @DatabaseManager.in_session
     async def _insert_many(self, stmt: Insert, session: AsyncSession) -> Sequence[Base]:
@@ -197,19 +208,21 @@ class UnaryEntityService(DatabaseService):
             separate request and prepopulate the dicts. This is not the most performant, but sqlite
             support is for testing purposes mostly.
         """
-        # 1. get max id
-        max_id = await session.scalar(func.max(self.table.id))
-        id = (max_id or 0) + 1
-        # 2. loop
+        async def get_max_id():
+            max_id = await session.scalar(func.max(self.table.id))
+            return (max_id or 0) + 1
+
+        id = None
         for one in to_it(data):
             if 'id' not in one.keys():
-                one['id'] = id
-                id = id + 1
+                one['id'] = id or await get_max_id() # Query if necessary.
+                id = one['id'] + 1
 
     @overload
     async def create(
         self,
         data: Dict[str, Any] | List[Dict[str, Any]],
+        partial_data: bool,
         stmt_only: Literal[True],
         user_info: UserInfo | None,
         **kwargs
@@ -219,6 +232,7 @@ class UnaryEntityService(DatabaseService):
     async def create(
         self,
         data: Dict[str, Any] | List[Dict[str, Any]],
+        partial_data: bool,
         stmt_only: Literal[False],
         user_info: UserInfo | None,
         **kwargs
@@ -227,6 +241,7 @@ class UnaryEntityService(DatabaseService):
     async def create(
         self,
         data: Dict[str, Any] | List[Dict[str, Any]],
+        partial_data: bool = False,
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs
@@ -238,34 +253,76 @@ class UnaryEntityService(DatabaseService):
         """
         await self._check_permissions("write", user_info, data)
 
-        if 'sqlite' in config.DATABASE_URL and self.table.is_versioned():
-            # SQLite will not autoincrement id in case of a composite primary key.
+        # SQLite support for composite primary keys, with leading id.
+        if (
+            'sqlite' in config.DATABASE_URL and
+            hasattr(self.table, 'id') and
+            len(list(self.table.pk())) > 1
+        ):
             await self.populate_ids_sqlite(data)
 
-        stmt = self._backend_specific_insert(self.table)
+        stmts = []
+        for one in to_it(data):
+            stmts.append(self.upsert(one, partial_data=partial_data))
 
-        if isinstance(data, list):
-            stmt = stmt.values(data)
-            set_ = {
-                key: getattr(stmt.excluded, key)
-                for key in set(stmt.excluded.keys()) - self.pk
-            }
-            f_ins = self._insert_many
-        else:
-            stmt = stmt.values(**data)
-            set_ = {
-                key: data[key]
-                for key in data.keys() - self.pk
-            }
-            f_ins = self._insert
+        assert stmts
+
+        if len(stmts) == 1:
+            return stmts[0] if stmt_only else await self._insert(stmts[0], **kwargs)
+        return stmts if stmt_only else await self._insert_list(stmts, **kwargs)
+
+    def upsert(self, data: Dict[Any, str], partial_data: bool=False) -> Insert | Update:
+        """Generates an upsert (Insert + .on_conflict_do_x) depending on data population.
+            OR an explicit Update statement for partial data with full primary key.
+
+        This statement builder is by design taking a unit entity dict and
+        cannot check if partial data is complete in case this is coming from upper resources
+        in the hierarchical structure.
+        In that case statements are patched on the fly at insertion time at
+        CompositeEntityService._insert_composite().
+        In case of really incomplete data, some upserts will fail, and raise it up to controller
+        which has the details about it.
+        Ultimately, the goal is to offer support for a more flexible and tolerant mode of writing
+        data, but this is completely optional.
+
+        :param data: validated data, unit - i.e. one single entity, no depth - dictionary
+        :type data: Dict[Any, str]
+        :param partial_data: partial data flag, enables conditional updates, defaults to False
+        :type partial_data: bool, optional
+        :return: statement
+        :rtype: Insert | Update
+        """
+        if partial_data:
+            ## Partial data support
+            required = set(c.name for c in self.table.__table__.columns if not c.nullable) # TODO: be more specific, and exclude parts with default values.
+            if required - data.keys(): # Some data missing.
+                pk = set(self.table.pk())
+                if all(k in data.keys() for k in pk): # pk present: UPDATE.
+                    values = {k: data.get(k) for k in data.keys() - pk}
+                    stmt = (
+                        update(self.table)
+                        .where(self.gen_cond([data.get(k) for k in pk]))
+                        .values(**values)
+                        .returning(self.table)
+                    )
+                    return stmt
+
+        stmt = self._backend_specific_insert(self.table)
+        stmt = stmt.values(**data)
+
+        set_ = {
+            key: data[key]
+            for key in data.keys() - self.pk
+        }
 
         # UPSERT.
-        stmt = stmt.on_conflict_do_update(
-            index_elements=[k.name for k in self.pk], set_=set_
-        ) if set_ else stmt
+        if set_: # update
+            stmt = stmt.on_conflict_do_update(index_elements=self.table.pk(), set_=set_)
+        else: # effectively a select
+            stmt = stmt.on_conflict_do_nothing(index_elements=self.table.pk())
 
         stmt = stmt.returning(self.table)
-        return stmt if stmt_only else await f_ins(stmt, **kwargs)
+        return stmt
 
     def gen_cond(self, pk_val: List[Any]) -> Any:
         """Generates (pk_1 == pk_1.type.python_type(val_1)) & (pk_2 == ...) ...).
@@ -692,25 +749,28 @@ class CompositeEntityService(UnaryEntityService):
                         one = one.values(**mapping)
 
             # Insert delayed and populate back into item.
-            match delay:
-                case list() | Insert():
-                    # Insert
-                    delay = await target_svc._insert_many(delay, **kwargs)
+            if rels[key].uselist:
+                match delay:
+                    case list():
+                        delay = await target_svc._insert_list(delay, **kwargs)
+                    case Insert():
+                        delay = await target_svc._insert_many(delay, **kwargs)
 
-                    # Put in attribute the objects that are not already present.
-                    delay, updated = partition(delay, lambda e: e not in getattr(item, key))
+                # Put in attribute the objects that are not already present.
+                delay, updated = partition(delay, lambda e: e not in getattr(item, key))
 
-                    # Refresh objects that were present so item comes back with updated values.
-                    for u in updated:
-                        await session.refresh(u)
+                # Refresh objects that were present so item comes back with updated values.
+                for u in updated:
+                    await session.refresh(u)
 
-                    if isinstance(getattr(item, key), list):
-                        getattr(item, key).extend(delay)
-                    else:
-                        getattr(item, key).update(delay)
-                case CompositeInsert():
-                    sub = await target_svc._insert_composite(delay, **kwargs)
-                    setattr(item, key, sub)
+                getattr(item, key).extend(delay)
+            else:
+                match delay:
+                    case Insert() | Update():
+                        delay = await target_svc._insert(delay, **kwargs)
+                    case CompositeInsert():
+                        delay = await target_svc._insert_composite(delay, **kwargs)
+                setattr(item, key, delay)
 
         return item
 
@@ -720,7 +780,7 @@ class CompositeEntityService(UnaryEntityService):
         **kwargs
     ) -> Base:
         """Redirect in case of composite insert."""
-        if isinstance(stmt, Insert):
+        if isinstance(stmt, Insert | Update):
             return await super()._insert(stmt, **kwargs)
         return await self._insert_composite(stmt, **kwargs)
 
@@ -737,9 +797,21 @@ class CompositeEntityService(UnaryEntityService):
             for composite in stmt
         ]
 
+    async def _insert_list(
+        self,
+        stmts: Sequence[InsertStmt],
+        **kwargs
+    ) -> List[Base]:
+        """Redirect in case of composite insert."""
+        return [
+            await self._insert(stmt, **kwargs)
+            for stmt in stmts
+        ]
+
     async def _create_one(
         self,
         data: Dict[str, Any],
+        partial_data: bool = False,
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs,
@@ -763,11 +835,17 @@ class CompositeEntityService(UnaryEntityService):
 
                 for verb in Permission.fields() & set(sub.keys()):
                     perm_delayed[str(verb)] = await ListGroup.svc.create(
-                        sub.get(verb), stmt_only=True
+                        sub.get(verb), partial_data=partial_data, stmt_only=True,
                     )
 
+            # Do nothing in case the entry already exists.
+            # In principle, potential updates of listgroups is ensured by _insert_composite.
+            stmt_perm = stmt_perm.on_conflict_do_nothing(
+                index_elements=rel.target.decl_class.pk(), 
+            )
+
             stmt_perm = stmt_perm.returning(rel.target.decl_class)
-            delayed[str(key)] = CompositeInsert(item=stmt_perm, nested={}, delayed=perm_delayed)
+            delayed[key] = CompositeInsert(item=stmt_perm, nested={}, delayed=perm_delayed)
 
         # Remaining table relationships.
         for key in self.relationships.keys() & data.keys():
@@ -779,7 +857,7 @@ class CompositeEntityService(UnaryEntityService):
                 .target
                 .decl_class
                 .svc
-                .create(sub, stmt_only=True, user_info=user_info)
+                .create(sub, partial_data=partial_data, stmt_only=True, user_info=user_info)
             )
 
             # Single nested entity.
@@ -790,7 +868,7 @@ class CompositeEntityService(UnaryEntityService):
                 delayed[key] = nested_stmt
 
         # Statement for original item.
-        stmt = await super().create(data, stmt_only=True, user_info=user_info)
+        stmt = await super().create(data, partial_data=partial_data, stmt_only=True, user_info=user_info)
 
         # Pack & return.
         composite = CompositeInsert(item=stmt, nested=nested, delayed=delayed)
@@ -811,11 +889,12 @@ class CompositeEntityService(UnaryEntityService):
     async def create(
         self,
         data: List[Dict[str, Any]] | Dict[str, Any],
+        partial_data: bool = False,
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs
     ) -> Base | List[Base] | InsertStmt | List[InsertStmt]:
         """CREATE, Handle list and single case."""
-        kwargs.update({"stmt_only": stmt_only, "user_info": user_info})
+        kwargs.update({"stmt_only": stmt_only, "user_info": user_info, "partial_data": partial_data})
         f = self._create_many if isinstance(data, list) else self._create_one
         return await f(data, **kwargs)
