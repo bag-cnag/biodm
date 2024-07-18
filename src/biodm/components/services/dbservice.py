@@ -294,7 +294,14 @@ class UnaryEntityService(DatabaseService):
         """
         if partial_data:
             ## Partial data support
-            required = set(c.name for c in self.table.__table__.columns if not c.nullable) # TODO: be more specific, and exclude parts with default values.
+            required = set(
+                c.name for c in self.table.__table__.columns
+                if not (
+                    c.nullable or
+                    self.table.has_default(c.name) or
+                    self.table.is_autoincrement(c.name)
+                )
+            )
             if required - data.keys(): # Some data missing.
                 pk = set(self.table.pk())
                 if all(k in data.keys() for k in pk): # pk present: UPDATE.
@@ -306,7 +313,8 @@ class UnaryEntityService(DatabaseService):
                         .returning(self.table)
                     )
                     return stmt
-
+            # don't handle else, this may or may not fail later. 
+        # Normal UPSERT.
         stmt = self._backend_specific_insert(self.table)
         stmt = stmt.values(**data)
 
@@ -315,7 +323,6 @@ class UnaryEntityService(DatabaseService):
             for key in data.keys() - self.pk
         }
 
-        # UPSERT.
         if set_: # update
             stmt = stmt.on_conflict_do_update(index_elements=self.table.pk(), set_=set_)
         else: # effectively a select
@@ -754,6 +761,11 @@ class CompositeEntityService(UnaryEntityService):
                     case list():
                         delay = await target_svc._insert_list(delay, **kwargs)
                     case Insert():
+                        # TODO: this branch is very marginaly visited, 
+                        # in principle it is not necessary anymore
+                        # along with _insert_many methods.
+                        # removing it still fails tests for now
+                        # TODO: cleanup.
                         delay = await target_svc._insert_many(delay, **kwargs)
 
                 # Put in attribute the objects that are not already present.

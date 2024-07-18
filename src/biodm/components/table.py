@@ -110,7 +110,7 @@ class Base(DeclarativeBase, AsyncAttrs):
                 ]
             ) + "]",
             passive_deletes=True,
-            single_parent=True,
+            single_parent=True, # also.
         )
         columns['__table_args__'] = (
             ForeignKeyConstraint(
@@ -282,6 +282,19 @@ class Base(DeclarativeBase, AsyncAttrs):
     def col(cls, name):
         """Return columns object from name."""
         return cls.__dict__[name]
+
+    @classmethod
+    def is_autoincrement(cls, name):
+        """Flag if column is autoincrement."""
+        if name == 'id' and 'sqlite' in config.DATABASE_URL:
+            return True
+        return cls.__dict__[name].autoincrement == True
+
+    @classmethod
+    def has_default(cls, name):
+        """Flag if column has default value."""
+        col = cls.__dict__[name]
+        return col.default or col.server_default
 
     @classmethod
     def colinfo(cls, name):

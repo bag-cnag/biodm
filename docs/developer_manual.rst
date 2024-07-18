@@ -299,9 +299,9 @@ combination with ``@overload_docstrings``, made to overload docstrings of contro
 
 **Docstrings Guide**
 Docstrings are parsed by `apispec <https://github.com/marshmallow-code/apispec/>`_ and shall
-comply with their specification. In particular you have to be precise with parameters,
-and marshmallow schema specifications.
-This is required in order to output specification in ``OpenAPISchema`` format,
+comply with their specification. In particular you have to be precise with input parameters,
+and marshmallow schema reference names.
+This is required in order to output specification in ``OpenAPISchema`` format, with link discovery
 which enables support for ``swagger-ui`` and the rest of the ecosystem.
 
 .. note::

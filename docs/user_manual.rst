@@ -81,6 +81,16 @@ For each entity being managed by a ``ResourceController``, the following routes 
 
 Supports submitting a resource and or a list of resource with nested resources.
 
+**Flexible write**:
+
+This endpoint works as a flexible write operation. It supports a mixin input of old and new data:
+
+- new data shall comply to resource Shema ruleset.
+
+- reference old data by setting (at least) primary key values in the dict.
+
+  - Other fields will be applied as an update.
+
 * GET
 
 one
