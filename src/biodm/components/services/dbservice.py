@@ -347,7 +347,7 @@ class UnaryEntityService(DatabaseService):
             for key in data.keys() - self.pk
         }
 
-        if set_ and not self.table.is_versioned: # upsert
+        if set_ and not self.table.is_versioned(): # upsert
             stmt = stmt.on_conflict_do_update(index_elements=self.table.pk(), set_=set_)
         else: # effectively a select.
             stmt = stmt.on_conflict_do_nothing(index_elements=self.table.pk())

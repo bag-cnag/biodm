@@ -131,6 +131,7 @@ over the following minimal example.
     ``[id, version]`` as primary key. To see what this enables, see also :ref:`user-manual`.
 
 .. warning::
+
     SQLite doesn't support [partial|] autoincrement for a composite primary key.
     In the case of a versioned entity, this is explicitely handled by fetching the max index for
     newly created objects. Overall it is advised to avoid composite primary key for sqlite.
@@ -173,6 +174,26 @@ Running this script deploys a server:
   * Internally managing core tables:
 
      * ListGroup, History
+
+
+File management
+-----------
+To ensure bucket key uniqueness for uploaded files, the key gets salted with what's in
+``S3File.key_salt`` column. By default this is an ``uuid4`` but in case you would like to
+manage this differently you could override this attribute in ``File`` class.
+
+.. code-block:: python
+    :caption: demo.py
+
+    class File(bd.components.S3File, bd.components.Base):
+        class File()
+            ...
+            @declared_attr
+            @classmethod
+            def key_salt(cls) -> Mapped[str]:
+                # Replace lambda below by a personalized function.
+                return Column(String(8), nullable=False, default=lambda: "myprefix")
+
 
 Permissions
 -----------
