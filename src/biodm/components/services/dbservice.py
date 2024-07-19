@@ -303,6 +303,10 @@ class UnaryEntityService(DatabaseService):
         Ultimately, the goal is to offer support for a more flexible and tolerant mode of writing
         data, use of it is optional.
 
+        Versioned resource: in the case of a versioned resource, passing a reference is allowed
+        BUT an update is not as updates shall go through /release route.
+        Statement will still be emited but simply discard the update.
+
         :param data: validated data, unit - i.e. one single entity, no depth - dictionary
         :type data: Dict[Any, str]
         :param partial_data: partial data flag, enables conditional updates, defaults to False
@@ -324,6 +328,8 @@ class UnaryEntityService(DatabaseService):
                 pk = set(self.table.pk())
                 if all(k in data.keys() for k in pk): # pk present: UPDATE.
                     values = {k: data.get(k) for k in data.keys() - pk}
+                    if values and self.table.is_versioned:
+                        raise # Not allowed.
                     stmt = (
                         update(self.table)
                         .where(self.gen_cond([data.get(k) for k in pk]))
@@ -341,9 +347,9 @@ class UnaryEntityService(DatabaseService):
             for key in data.keys() - self.pk
         }
 
-        if set_: # upsert
+        if set_ and not self.table.is_versioned: # upsert
             stmt = stmt.on_conflict_do_update(index_elements=self.table.pk(), set_=set_)
-        else: # effectively a select
+        else: # effectively a select.
             stmt = stmt.on_conflict_do_nothing(index_elements=self.table.pk())
 
         stmt = stmt.returning(self.table)
@@ -667,7 +673,7 @@ class UnaryEntityService(DatabaseService):
         update: Dict[str, Any],
         session: AsyncSession,
         user_info: UserInfo | None = None,
-    ) -> str:
+    ) -> Base:
         await self._check_permissions(
             "write", user_info, {
                 k: v for k, v in zip(self.pk, pk_val)

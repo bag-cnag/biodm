@@ -131,11 +131,6 @@ over the following minimal example.
     ``[id, version]`` as primary key. To see what this enables, see also :ref:`user-manual`.
 
 .. warning::
-
-    It is currently not possible to apply ``Versioned`` and ``S3File`` on the same table. This is 
-    planned for ``v0.5.0`` release.
-
-.. warning::
     SQLite doesn't support [partial|] autoincrement for a composite primary key.
     In the case of a versioned entity, this is explicitely handled by fetching the max index for
     newly created objects. Overall it is advised to avoid composite primary key for sqlite.
@@ -228,7 +223,7 @@ On our example, this is how you could apply those on `DatasetController`:
     class DatasetController(bdc.ResourceController):
         def __init__(self, app) -> None:
             super().__init__(app=app)
-            self.create = group_required(self.create, ['my_team'])
+            self.write = group_required(self.create, ['my_team'])
             self.update = group_required(self.update, ['my_team'])
             self.delete = admin_required(self.delete)
 
@@ -249,7 +244,7 @@ combination with ``@overload_docstrings``, made to overload docstrings of contro
 
         @group_required(['my_team'])
         @overload_docstring
-        async def create(**kwargs):
+        async def write(**kwargs):
             """
             requestBody:
                 description: payload.
@@ -259,7 +254,7 @@ combination with ``@overload_docstrings``, made to overload docstrings of contro
                         schema: DatasetSchema
             responses:
             201:
-                description: Create Dataset.
+                description: Write Dataset resource.
                 examples: |
                     # TODO:
                     {"name": "instant_sc_1234", ""}

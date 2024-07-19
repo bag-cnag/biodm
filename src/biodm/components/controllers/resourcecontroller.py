@@ -242,10 +242,11 @@ class ResourceController(EntityController):
                 Route(f'/{self.qp_id}',               self.read,           methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}/{{attribute}}', self.read_nested,    methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE.value]),
-                Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT.value]),
             ] + ([
                 Route(f"/{self.qp_id}/release",       self.release,        methods=[HttpMethod.POST.value]),
-            ] if self.table.is_versioned() else []))
+            ] if self.table.is_versioned() else [
+                Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT.value]),
+            ]))
         ]
 
     def _extract_pk_val(self, request: Request) -> List[Any]:
@@ -410,6 +411,8 @@ class ResourceController(EntityController):
 
     async def update(self, request: Request) -> Response:
         """UPDATE. Essentially calling create, as it perorm upserts.
+
+        - Excluded of versioned resources routes.
 
         (coming up) This will be the only way to update primary key values. TODO
 

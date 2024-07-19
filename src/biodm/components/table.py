@@ -7,10 +7,11 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, List, Dict, Tuple, Type, Set, ClassVar, Type, Self
+from uuid import uuid4
 
 import marshmallow as ma
 from sqlalchemy import (
-    BOOLEAN, ForeignKeyConstraint, Integer, UniqueConstraint, inspect, Column, String, TIMESTAMP, ForeignKey,
+    BOOLEAN, ForeignKeyConstraint, Integer, UniqueConstraint, Uuid, inspect, Column, String, TIMESTAMP, ForeignKey,
 )
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
@@ -323,6 +324,11 @@ class S3File:
     # @classmethod
     # def user(cls) -> Mapped["User"]:
     #     return relationship(foreign_keys=[cls.id_user_uploader], lazy="select")
+
+    @declared_attr
+    @classmethod
+    def key_salt(cls) -> Mapped[str]:
+        return Column(String(36), nullable=False, default=lambda: str(uuid4()))
 
     emited_at = Column(
         TIMESTAMP(timezone=True), default=utcnow, nullable=False
