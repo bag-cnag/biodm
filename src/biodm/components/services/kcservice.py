@@ -50,7 +50,7 @@ class KCGroupService(KCService):
 
         data['id'] = await self.kc.create_group(path.name, parent_id)
 
-    async def create(
+    async def write(
         self,
         data: Dict[str, Any] | List[Dict[str, Any]],
         stmt_only: bool = False,
@@ -69,7 +69,7 @@ class KCGroupService(KCService):
                 for user in group.get("users", []):
                     await User.svc.read_or_create(user, [group["path"]], [group["id"]],)
         # DB
-        return await super().create(data, stmt_only=stmt_only, **kwargs)
+        return await super().write(data, stmt_only=stmt_only, **kwargs)
 
     async def delete(self, pk_val: List[Any], user_info: UserInfo | None = None, **_) -> None:
         """DELETE Group from DB then from Keycloak."""
@@ -107,7 +107,7 @@ class KCUserService(KCService):
         # Important to remove password as it is not stored locally, SQLA would throw error.
         data.pop('password')
 
-    async def create(
+    async def write(
         self,
         data: Dict[str, Any] | List[Dict[str, Any]],
         stmt_only: bool = False,
@@ -128,7 +128,7 @@ class KCUserService(KCService):
                 # Then User.
                 await self.read_or_create(user, groups=group_paths, group_ids=group_ids)
 
-        return await super().create(data, stmt_only=stmt_only, **kwargs)
+        return await super().write(data, stmt_only=stmt_only, **kwargs)
 
     async def delete(self, pk_val: List[Any], user_info: UserInfo | None = None, **_) -> None:
         """DELETE User from DB then from keycloak."""

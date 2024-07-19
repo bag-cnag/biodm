@@ -5,7 +5,7 @@ from biodm.utils.security import admin_required
 class ProjectController(ResourceController):
     # @admin_required
     @overload_docstring
-    async def create(**kwargs):
+    async def write(**kwargs):
         """
         description: Create new Project from request body.
         responses:

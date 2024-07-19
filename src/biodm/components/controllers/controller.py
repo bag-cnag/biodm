@@ -157,7 +157,7 @@ class EntityController(Controller):
             ) from e
 
     @abstractmethod
-    async def create(self, request: Request) -> Response:
+    async def write(self, request: Request) -> Response:
         raise NotImplementedError
 
     @abstractmethod

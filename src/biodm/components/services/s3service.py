@@ -22,11 +22,12 @@ class S3Service(UnaryEntityService):
     def callback(cls, id):
         return f"{cls.app.server_endpoint}files/{id}/up_success"
 
+    # TODO: support composite pk and replacement on the fly in callback using ctrl.route_upload_callback
+
     @DatabaseManager.in_session
     async def _insert(self, stmt: Insert, session: AsyncSession) -> (Any | None):
         """INSERT special case for file: populate url after getting entity id."""
-        item = await session.scalar(stmt)
-
+        item = await super()._insert(stmt, session=session)
         item.upload_form = str(self.s3.create_presigned_post(
             object_name=f"{item.filename}.{item.extension}",
             callback=self.callback(item.id)
@@ -34,12 +35,12 @@ class S3Service(UnaryEntityService):
 
         return item
 
-    # async def _insert_many(self, stmts: Sequence[Insert])
+    # TODO: think about update.
 
     @DatabaseManager.in_session
-    async def _insert_many(self, stmt: Insert, session: AsyncSession) -> Sequence[Base]:
+    async def _insert_list(self, stmts: Sequence[Insert], session: AsyncSession) -> Sequence[Base]:
         """INSERT many objects into the DB database, check token write permission before commit."""
-        items = (await session.scalars(stmt)).all()
+        items = await super()._insert_list(stmts, session=session)
 
         for item in items:
             item.upload_form = str(self.s3.create_presigned_post(
@@ -52,12 +53,16 @@ class S3Service(UnaryEntityService):
     @DatabaseManager.in_session
     async def upload_success(self, pk_val, session: AsyncSession):
         file = await self.read(pk_val, fields=['ready', 'upload_form'], session=session)
-        setattr(file, 'ready', True)
-        setattr(file, 'upload_form', "")
+        file.ready = True
+        file.upload_form = ""
 
     @DatabaseManager.in_session
     async def download(self, pk_val: List[Any], user_info: UserInfo | None, session: AsyncSession):
-        await self._check_permissions("download", user_info, {k: v for k, v in zip(self.pk, pk_val)}, session=session)
+        await self._check_permissions(
+            "download", user_info, {
+                k: v for k, v in zip(self.pk, pk_val)
+            }, session=session
+        )
         # TODO: test this ^
         file = await self.read(pk_val, fields=['filename', 'extension', 'dl_count'], session=session)
 

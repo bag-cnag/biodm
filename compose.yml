@@ -51,7 +51,11 @@ services:
       - KEYCLOAK_HTTP_ENABLED=true
       - KEYCLOAK_HOSTNAME_STRICT_HTTPS=false
       - KC_HEALTH_ENABLED=true
-    command: ["start-dev", "--import-realm"]
+    command: [
+      "start-dev",
+      "--import-realm",
+      "--hostname-strict", "false",
+    ]
     depends_on:
       - kc-db
     links:
