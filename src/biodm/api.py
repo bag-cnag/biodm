@@ -63,12 +63,12 @@ class HistoryMiddleware(BaseHTTPMiddleware):
             'content': str(body) if body else ""
         }
         try:
-            await History.svc.create(entry)
+            await History.svc.write(entry)
         except IntegrityError as _:
             # Collision may happen in case two anonymous requests hit at the exact same tick.
             try: # Try once more.
                 sleep(0.1)
-                await History.svc.create(entry)
+                await History.svc.write(entry)
             except:
                 pass
         finally: # Keep going in any case. History feature should not be blocking.

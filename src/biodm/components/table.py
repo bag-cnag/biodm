@@ -7,10 +7,11 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, List, Dict, Tuple, Type, Set, ClassVar, Type, Self
+from uuid import uuid4
 
 import marshmallow as ma
 from sqlalchemy import (
-    BOOLEAN, ForeignKeyConstraint, Integer, UniqueConstraint, inspect, Column, String, TIMESTAMP, ForeignKey,
+    BOOLEAN, ForeignKeyConstraint, Integer, UniqueConstraint, Uuid, inspect, Column, String, TIMESTAMP, ForeignKey,
 )
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
@@ -110,7 +111,7 @@ class Base(DeclarativeBase, AsyncAttrs):
                 ]
             ) + "]",
             passive_deletes=True,
-            single_parent=True,
+            single_parent=True, # also.
         )
         columns['__table_args__'] = (
             ForeignKeyConstraint(
@@ -284,6 +285,19 @@ class Base(DeclarativeBase, AsyncAttrs):
         return cls.__dict__[name]
 
     @classmethod
+    def is_autoincrement(cls, name):
+        """Flag if column is autoincrement."""
+        if name == 'id' and 'sqlite' in config.DATABASE_URL:
+            return True
+        return cls.__dict__[name].autoincrement == True
+
+    @classmethod
+    def has_default(cls, name):
+        """Flag if column has default value."""
+        col = cls.__dict__[name]
+        return col.default or col.server_default
+
+    @classmethod
     def colinfo(cls, name):
         """Return column and associated python type for conditions."""
         c = cls.col(name)
@@ -310,6 +324,11 @@ class S3File:
     # @classmethod
     # def user(cls) -> Mapped["User"]:
     #     return relationship(foreign_keys=[cls.id_user_uploader], lazy="select")
+
+    @declared_attr
+    @classmethod
+    def key_salt(cls) -> Mapped[str]:
+        return Column(String(36), nullable=False, default=lambda: str(uuid4()))
 
     emited_at = Column(
         TIMESTAMP(timezone=True), default=utcnow, nullable=False

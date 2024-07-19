@@ -132,10 +132,6 @@ over the following minimal example.
 
 .. warning::
 
-    It is currently not possible to apply ``Versioned`` and ``S3File`` on the same table. This is 
-    planned for ``v0.5.0`` release.
-
-.. warning::
     SQLite doesn't support [partial|] autoincrement for a composite primary key.
     In the case of a versioned entity, this is explicitely handled by fetching the max index for
     newly created objects. Overall it is advised to avoid composite primary key for sqlite.
@@ -178,6 +174,26 @@ Running this script deploys a server:
   * Internally managing core tables:
 
      * ListGroup, History
+
+
+File management
+-----------
+To ensure bucket key uniqueness for uploaded files, the key gets salted with what's in
+``S3File.key_salt`` column. By default this is an ``uuid4`` but in case you would like to
+manage this differently you could override this attribute in ``File`` class.
+
+.. code-block:: python
+    :caption: demo.py
+
+    class File(bd.components.S3File, bd.components.Base):
+        class File()
+            ...
+            @declared_attr
+            @classmethod
+            def key_salt(cls) -> Mapped[str]:
+                # Replace lambda below by a personalized function.
+                return Column(String(8), nullable=False, default=lambda: "myprefix")
+
 
 Permissions
 -----------
@@ -228,7 +244,7 @@ On our example, this is how you could apply those on `DatasetController`:
     class DatasetController(bdc.ResourceController):
         def __init__(self, app) -> None:
             super().__init__(app=app)
-            self.create = group_required(self.create, ['my_team'])
+            self.write = group_required(self.create, ['my_team'])
             self.update = group_required(self.update, ['my_team'])
             self.delete = admin_required(self.delete)
 
@@ -249,7 +265,7 @@ combination with ``@overload_docstrings``, made to overload docstrings of contro
 
         @group_required(['my_team'])
         @overload_docstring
-        async def create(**kwargs):
+        async def write(**kwargs):
             """
             requestBody:
                 description: payload.
@@ -259,7 +275,7 @@ combination with ``@overload_docstrings``, made to overload docstrings of contro
                         schema: DatasetSchema
             responses:
             201:
-                description: Create Dataset.
+                description: Write Dataset resource.
                 examples: |
                     # TODO:
                     {"name": "instant_sc_1234", ""}
@@ -299,9 +315,9 @@ combination with ``@overload_docstrings``, made to overload docstrings of contro
 
 **Docstrings Guide**
 Docstrings are parsed by `apispec <https://github.com/marshmallow-code/apispec/>`_ and shall
-comply with their specification. In particular you have to be precise with parameters,
-and marshmallow schema specifications.
-This is required in order to output specification in ``OpenAPISchema`` format,
+comply with their specification. In particular you have to be precise with input parameters,
+and marshmallow schema reference names.
+This is required in order to output specification in ``OpenAPISchema`` format, with link discovery
 which enables support for ``swagger-ui`` and the rest of the ecosystem.
 
 .. note::

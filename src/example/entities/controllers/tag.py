@@ -3,7 +3,7 @@ from biodm.components.controllers import ResourceController, overload_docstring
 
 class TagController(ResourceController):
     @overload_docstring
-    async def create(**kwargs):
+    async def write(**kwargs):
         """
         requestBody:
           description: payload.

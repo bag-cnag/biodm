@@ -81,6 +81,16 @@ For each entity being managed by a ``ResourceController``, the following routes 
 
 Supports submitting a resource and or a list of resource with nested resources.
 
+**Flexible write**:
+
+This endpoint works as a flexible write operation. It supports a mixin input of old and new data:
+
+- new data shall comply to resource Shema ruleset.
+
+- reference old data by setting (at least) primary key values in the dict.
+
+  - Other fields will be applied as an update.
+
 * GET
 
 one
@@ -96,6 +106,8 @@ or all
     curl ${SERVER_ENDPOINT}/my_resources
 
 * PUT
+
+Not available for versioned resources, see Versioning below.
 
 .. code-block:: bash
 
@@ -129,6 +141,13 @@ exposes an extra route: ``POST /my_versioned_resources/{id}_{version}/release``.
 
 This triggers creation of a new row with a version increment.
 
+.. note::
+
+    ``PUT /release`` is the way of updating versioned resources.
+    The endpoint ``PUT /`` (a.k.a ``update``) will not be available for such resources, and
+    updating by reference through  ``POST /`` will at best be ignored.
+
+
 **E.g.**
 
 .. code-block:: bash
@@ -143,11 +162,8 @@ OR to pass in an update for the new version.
 
 .. note::
 
-    At the moment nested collections will remain to ancestries.
-    Moreover, you still need to pass explicitely the version.
-    In a future version of ``BioDM`` it is planned that all actions involving a
-    versioned entity default to latest version and that previous versions stay readonly.
-    To fetch the whole chain you may use filter on the shared id.
+    In the case of a resource both ``Versioned`` and ``S3File``, ``POST /release`` will generate
+    a new upload form and set ready flag to false.
 
 Filtering
 ~~~~~~~~~

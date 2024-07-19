@@ -180,7 +180,7 @@ class ResourceController(EntityController):
 
     @property
     def qp_id(self) -> str:
-        """Put primary key in queryparam form."""
+        """Return primary key in queryparam form."""
         return "".join(["{" + f"{k}" + "}_" for k in self.pk])[:-1]
 
     def _infer_svc(self) -> Type[DatabaseService]:
@@ -235,17 +235,18 @@ class ResourceController(EntityController):
         # child_routes = child_routes or []
         # flake8: noqa: E501  pylint: disable=line-too-long
         return [
-            Route(f"{self.prefix}",                   self.create,         methods=[HttpMethod.POST.value]),
+            Route(f"{self.prefix}",                   self.write,         methods=[HttpMethod.POST.value]),
             Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET.value]),
             Mount(self.prefix, routes=[
                 Route('/schema',                      self.openapi_schema, methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}',               self.read,           methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}/{{attribute}}', self.read_nested,    methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE.value]),
-                Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT.value]),
             ] + ([
                 Route(f"/{self.qp_id}/release",       self.release,        methods=[HttpMethod.POST.value]),
-            ] if self.table.is_versioned() else []))
+            ] if self.table.is_versioned() else [
+                Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT.value]),
+            ]))
         ]
 
     def _extract_pk_val(self, request: Request) -> List[Any]:
@@ -314,12 +315,10 @@ class ResourceController(EntityController):
             ]
         return fields
 
-    async def create(self, request: Request) -> Response:
-        """Creates associated entity.
+    async def write(self, request: Request) -> Response:
+        """WRITE operation.
 
         Does "UPSERTS" behind the hood.
-        If you'd prefer to avoid the case of having an entity being created with parts of its
-        primary key you should flag said parts with dump_only=True in your marshmallow schemas.
 
         :param request: incomming request
         :type request: Request
@@ -352,7 +351,7 @@ class ResourceController(EntityController):
 
         try:
             validated_data = self.validate(body, partial=False)
-            created = await self.svc.create(
+            created = await self.svc.write(
                 data=validated_data,
                 partial_data=False,
                 stmt_only=False,
@@ -363,7 +362,7 @@ class ResourceController(EntityController):
             # Try to create from partial data in case.
             try:
                 validated_data = self.validate(body, partial=True)
-                created = await self.svc.create(
+                created = await self.svc.write(
                     data=validated_data,
                     partial_data=True,
                     stmt_only=False,
@@ -413,6 +412,10 @@ class ResourceController(EntityController):
     async def update(self, request: Request) -> Response:
         """UPDATE. Essentially calling create, as it perorm upserts.
 
+        - Excluded of versioned resources routes.
+
+        (coming up) This will be the only way to update primary key values. TODO
+
         :param request: incomming request
         :type request: Request
         :return: updated object in JSON form
@@ -451,7 +454,7 @@ class ResourceController(EntityController):
         validated_data.update(dict(zip(self.pk, pk_val))) # type: ignore [assignment]
 
         return json_response(
-            data=await self.svc.create(
+            data=await self.svc.write(
                 data=validated_data,
                 stmt_only=False,
                 user_info=await UserInfo(request),
@@ -598,7 +601,7 @@ class ResourceController(EntityController):
             .ctrl
         )
         fields = target_ctrl._extract_fields(dict(request.query_params))
-
+        # TODO: try to rework so that it calls read instead.
         return json_response(
             data=target_ctrl.serialize(
                 data=await self.svc.read_nested(

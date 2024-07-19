@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from biodm.api import Api
     from biodm.components import Base
     from biodm.utils import UserInfo
-    from biodm.utils.sqla import InsertStmt
+    from biodm.utils.sqla import UpsertStmt
 
 
 class ApiComponent(metaclass=ABCMeta):
@@ -40,13 +40,14 @@ class ApiService(ApiComponent, metaclass=ABCMeta):
     A Service acts as a translation layer between a controller receiving a request
     and managers executing data state change."""
     @abstractmethod
-    async def create(
+    async def write(
         self,
         data: Dict[str, Any] | List[Dict[str, Any]],
+        partial_data: bool = False,
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs: Dict[str, Any]
-    ) -> InsertStmt | List[InsertStmt] | Base | List[Base]:
+    ) -> UpsertStmt | List[UpsertStmt] | Base | List[Base]:
         raise NotImplementedError
 
     @abstractmethod

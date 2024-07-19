@@ -208,29 +208,25 @@ def test_update_unary_resource(client):
 
 
 def test_update_composite_resource(client):
-    item = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'}, {'name': 'bap'},]}
+    item = {'x': 1, 'y': 2, 'c': {'data': 'bip'}}
     cr_response = client.post('/as', content=json_bytes(item))
     item_id = json.loads(cr_response.text)['id']
 
+    c_oracle = {'data': 'bop'}
     up_response = client.put(f'/as/{item_id}', data=json_bytes(
         {
             'x': 3,
-            'bs': [
-                {'id': 1, 'version': 1, 'name': 'bop'}
-            ]
+            'c': c_oracle
         }
     ))
-    bs_oracle = [{'id': 1, 'version': 1, 'name': 'bop'}, {'id': 2, 'version': 1, 'name': 'bap'}]
     json_response = json.loads(up_response.text)
 
     assert up_response.status_code == 201
     assert json_response['id'] == item_id
     assert json_response['x'] == 3
+    assert json_response['c']['id'] == 2
+    assert json_response['c']['data'] == c_oracle['data']
 
-    # May be in different orders.
-    bs_oracle.sort(key=lambda x: x['id'])
-    json_response['bs'].sort(key=lambda x: x['id'])
-    assert bs_oracle == json_response['bs']
 
 
 def test_read_nested_collection(client):
@@ -268,7 +264,26 @@ def test_delete_resource(client):
     assert "Deleted." in response.text
 
 
+
 def test_update_resource_through_create(client):
+    item = {'data': '1234'}
+
+    response = client.post('/cs', content=json_bytes(item))
+    assert response.status_code == 201
+
+    update = {'id': '1', 'data': '4321'}
+    response = client.post('/cs', content=json_bytes(update))
+    assert response.status_code == 201
+
+    response = client.get('/cs')
+    assert response.status_code == 200
+
+    json_response = json.loads(response.text)
+    assert len(json_response) == 1
+    assert json_response[0]['data'] == update['data']
+
+
+def test_no_update_version_resource_through_write(client):
     item = {'name': '1234'}
 
     response = client.post('/bs', content=json_bytes(item))
@@ -283,6 +298,6 @@ def test_update_resource_through_create(client):
 
     json_response = json.loads(response.text)
     assert len(json_response) == 1
-    assert json_response[0]['name'] == update['name']
+    assert json_response[0]['name'] == item['name']
 
 # TODO: test this on nested.

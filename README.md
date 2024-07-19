@@ -26,7 +26,7 @@ BioDM is a fast, modular, stateless and asynchronous REST API framework with the
 - Also sets up essentials:
   - Liveness endpoint
   - Login and token retrieval system
-  - OpenAPI schema generation through _[apispec](https://github.com/marshmallow-code/apispec)
+  - OpenAPI schema generation through [apispec](https://github.com/marshmallow-code/apispec)
 
 ## Quickstart
 ### Install
@@ -57,7 +57,7 @@ you may use the following command beforehand in order to deploy the development 
 docker compose -f compose.yml up --build -d
 ```
 
-This stack comes with an interactive swagger-ui visitable at ``http://localhost:9080/``
+This stack comes with an interactive ``swagger-ui`` visitable at ``http://localhost:9080/``
 once the server is running.
 
 ## About

@@ -258,7 +258,7 @@ Just like example, tests have to be run within their directory.
 
 To run a unit test in a debugging session, you may create the following ``.vscode/launch.json``
 file at the root of this repository. The ``run and debug`` tab should now ofer an extra option.
-If you installed sources in editable mode, that allows you to set breakpoints within BioDM codebase. 
+If you installed sources in editable mode, that allows you to set breakpoints within BioDM codebase.
 
 .. code-block:: json
     :caption: launch.json
@@ -267,15 +267,16 @@ If you installed sources in editable mode, that allows you to set breakpoints wi
         "version": "0.2.0",
         "configurations": [
             {
-                "name": "BioDM PyTest",
+                "name": "PyTest: BioDM Unit tests",
                 "type": "debugpy",
                 "request": "launch",
                 "cwd": "${workspaceFolder}/src/tests/unit",
                 "subProcess": true,
                 "module": "pytest",
-                "python": "/path/to/myvenv/bin/python3",
+                "python": "/path/to/myvenv/bin/python3", # Replace with your virtual environment
                 "args": [
-                    "-k", "test_basics"
+                    # "-k", "test_basics", # Optional: pick your tests
+                    "-vv"
                 ],
                 "justMyCode": false,
             },
@@ -288,7 +289,7 @@ Integration
 
 Integration tests are leveraging ``docker compose`` and the development environment to simulate
 external services allowing for end to end testing. It is effectively testing the app from
-outside, hence it is not possible to go over BioDM sources with the debugger on such tests.
+outside.
 
 Integration are split in silos according to their external service dependency:
 
@@ -305,3 +306,46 @@ Integration are split in silos according to their external service dependency:
 
     docker compose -f compose.test.yml run --build test-s3-run
     docker compose -f compose.test.yml down
+
+* run in a VSCode debugpy session
+
+**pre-requisite** development environment up
+
+For integration tests you need two sessions: server side (api) and client side (tests), you
+may adjust the following configurations to your need.
+
+VSCode supports running both sessions at the same time from the ``run and debug`` tab.
+
+.. code-block:: json
+    :caption: launch.json
+
+    {
+        "version": "0.2.0",
+        "configurations": [
+            {
+                "name": "Python: BioDM Example API",
+                "type": "debugpy",
+                "request": "launch",
+                "cwd": "${workspaceFolder}/src/example/",
+                "program": "app.py",
+                "console": "integratedTerminal",
+                "python": "/path/to/myvenv/bin/python3", # Replace with your virtual environment
+                "justMyCode": false,
+            },
+            {
+                "name": "PyTest: BioDM Integration tests",
+                "type": "debugpy",
+                "request": "launch",
+                "cwd": "${workspaceFolder}/src/tests/integration/kc|s3|k8", # pick one directory
+                "subProcess": true,
+                "module": "pytest",
+                "python": "/path/to/myvenv/bin/python3", # Replace with your virtual environment
+                "args": [
+                    # "-k", "some_test_name" # Optional: pick your tests
+                    "-vv"
+                ],
+                "justMyCode": false,
+                "envFile": "${cwd}.env"
+            },
+        ]
+    }

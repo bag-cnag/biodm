@@ -30,7 +30,7 @@ class S3Controller(ResourceController):
             Route(f'{self.prefix}/{self.qp_id}/download',    self.download,         methods=[HttpMethod.GET.value]),
             Route(f'{self.prefix}/{self.qp_id}/up_success',  self.upload_success,   methods=[HttpMethod.GET.value]),
         ]
-        self.route_upload_callback = Path(self.prefix, file_routes[1].path)
+        self.route_upload_callback = Path(file_routes[1].path)
 
         return file_routes + super().routes()
 
