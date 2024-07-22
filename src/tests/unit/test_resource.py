@@ -3,6 +3,7 @@ import pytest
 import json
 
 from biodm import exceptions as exc
+from marshmallow import exceptions as me
 from biodm.utils.utils import json_bytes, json_response
 
 
@@ -61,7 +62,7 @@ def test_create_empty_data(client):
     client.post('/as', content=json_bytes({}))
 
 
-@pytest.mark.xfail(raises=exc.PayloadValidationError)
+@pytest.mark.xfail(raises=me.ValidationError)
 def test_create_wrong_data(client):
     client.post('/as', content=json_bytes({'wrong': False}))
 
@@ -281,23 +282,3 @@ def test_update_resource_through_create(client):
     json_response = json.loads(response.text)
     assert len(json_response) == 1
     assert json_response[0]['data'] == update['data']
-
-
-def test_no_update_version_resource_through_write(client):
-    item = {'name': '1234'}
-
-    response = client.post('/bs', content=json_bytes(item))
-    assert response.status_code == 201
-
-    update = {'id': '1', 'version': '1', 'name': '4321'}
-    response = client.post('/bs', content=json_bytes(update))
-    assert response.status_code == 201
-
-    response = client.get('/bs')
-    assert response.status_code == 200
-
-    json_response = json.loads(response.text)
-    assert len(json_response) == 1
-    assert json_response[0]['name'] == item['name']
-
-# TODO: test this on nested.

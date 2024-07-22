@@ -53,6 +53,10 @@ class TokenDecodingError(RequestError):
     """Raised when token decoding failed."""
 
 
+class UpdateVersionedError(RequestError):
+    """Raised when an attempt at updating a versioned resource is detected."""
+
+
 ## Routing
 class InvalidCollectionMethod(RequestError):
     """Raised when a unit method is accesed as a collection."""

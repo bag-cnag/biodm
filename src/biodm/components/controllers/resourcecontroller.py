@@ -1,11 +1,14 @@
 """Controller class for Tables acting as a Resource."""
 
 from __future__ import annotations
+from cgi import print_exception
 from copy import copy
-from functools import partial
+from functools import partial, wraps
 from types import MethodType
-from typing import TYPE_CHECKING, List, Set, Any, Dict, Type
+from typing import TYPE_CHECKING, Callable, List, Set, Any, Dict, Type
+from traceback import print_exception
 
+from marshmallow import ValidationError
 from marshmallow.schema import RAISE
 from marshmallow.class_registry import get_class
 from marshmallow.exceptions import RegistryError
@@ -23,7 +26,11 @@ from biodm.components.services import (
     KCUserService
 )
 from biodm.exceptions import (
-    InvalidCollectionMethod, PayloadEmptyError, PayloadValidationError, PartialIndex
+    InvalidCollectionMethod,
+    PayloadEmptyError,
+    PartialIndex,
+    UpdateVersionedError,
+    PayloadValidationError
 )
 from biodm.tables import user
 from biodm.utils.utils import json_response
@@ -36,7 +43,7 @@ if TYPE_CHECKING:
     from marshmallow.schema import Schema
 
 
-def overload_docstring(f): # flake8: noqa: E501  pylint: disable=line-too-long
+def overload_docstring(f: Callable): # flake8: noqa: E501  pylint: disable=line-too-long
     """Decorator to allow for docstring overloading.
 
     To apply on a "c-like" preprocessor on controllers subclasses.
@@ -49,24 +56,12 @@ def overload_docstring(f): # flake8: noqa: E501  pylint: disable=line-too-long
     Relevant SO posts:
     - https://stackoverflow.com/questions/38125271/extending-or-overwriting-a-docstring-when-composing-classes
     - https://stackoverflow.com/questions/1782843/python-decorator-handling-docstrings
+    - https://stackoverflow.com/questions/13079299/dynamically-adding-methods-to-a-class
 
     :param f: The method we overload the docstrings of
     :type f: Callable
     """
-    async def wrapper(self: Type[ResourceController], *args, **kwargs):
-        """callable."""
-        if Scope.DEBUG in self.app.scope:
-            assert isinstance(self, ResourceController)
-
-        async def inner(obj, *args, **kwargs):
-            """Is a proxy for actually calling Parent class."""
-            return await getattr(super(obj.__class__, obj), f.__name__)(*args, **kwargs)
-        return await inner(self, *args, **kwargs)
-
-    wrapper.__name__ = f.__name__
-    wrapper.__doc__ = f.__doc__
-    return wrapper
-
+    return ResourceController.replace_method_docstrings(f.__name__, f.__doc__)
 
 class ResourceController(EntityController):
     """Class for controllers exposing routes constituting a ressource.
@@ -99,75 +94,126 @@ class ResourceController(EntityController):
         self.pk = set(self.table.pk())
         self.svc: UnaryEntityService = self._infer_svc()(app=self.app, table=self.table)
         self.__class__.schema = (schema if schema else self._infer_schema())(unknown=RAISE)
-        self._replace_schema_in_apispec_docstrings()
+        self._infuse_schema_in_apispec_docstrings()
 
-    def _replace_schema_in_apispec_docstrings(self):
-        """Substitute abstract endpoint documentation bits with correct ones for this resource.
+    @staticmethod
+    def replace_method_docstrings(method: str, doc: str):
+        """Set a mirror function documented by input and calling parent class method.
+
+        :param method: method name
+        :type method: str
+        :param doc: new documentation
+        :type doc: str
+        """
+        async def mirror(self, *args, **kwargs):
+            return await getattr(super(self.__class__, self), method)(*args, **kwargs)
+        mirror.__name__ = method
+        mirror.__doc__ = doc
+        return mirror
+
+    def _infuse_schema_in_apispec_docstrings(self):
+        """Substitute endpoint documentation template bits with adapted ones for this resource.
 
         Essentially handling APIspec/Marshmallow/OpenAPISchema support for abstract endpoints.
 
         Current patterns for abstract documentation:
         - Marshmallow Schema |
-          schema: Schema -> schema: self.Schema.__class__.__name__
+            schema: Schema -> schema: self.Schema.__class__.__name__
         - key Attributes |
-          - in: path
+            - in: path
             name: id
-          ->
-          List of table primary keys, with their description from marshmallow schema if any.
+            ->
+            List of table primary keys, with their description from marshmallow schema if any.
         """
+        def process_apispec_docstrings(self, abs_doc):
+            # Use intance schema.
+            abs_doc = abs_doc.replace(
+                'schema: Schema', f"schema: {self.schema.__class__.__name__}"
+            )
+
+            # Template replacement #1: path key.
+            path_key = []
+            for key in self.pk:
+                attr = []
+                attr.append("- in: path")
+                attr.append(f"name: {key}")
+                field = self.schema.declared_fields[key]
+                desc  = field.metadata.get("description", None)
+                attr.append("description: " + (desc or f"{self.resource} {key}"))
+                path_key.append(attr)
+
+            # Template replacement #2: field conditions.
+            field_conditions = []
+            for col in self.table.__table__.columns:
+                condition = []
+                condition.append("- in: query")
+                condition.append(f"name: {col.name}")
+                if col.type.python_type == str:
+                    condition.append(
+                        "description: text - key=val | key=pattern "
+                        "where pattern may contain '*' for wildcards"
+                    )
+                elif col.type.python_type in (int, float):
+                    condition.append(
+                        "description: numeric - key=val | key=val1,val2.. | key.op(val) "
+                        "for op in (le|lt|ge|gt)"
+                    )
+                else:
+                    condition.append(f"description: {self.resource} {col.name}")
+                field_conditions.append(condition)
+            pass
+            # Split.
+            doc = abs_doc.split('---')
+            if len(doc) > 1:
+                sphinxdoc, apispec = doc
+                apispec = apispec.split('\n')
+                flattened = []
+                # Search and replace templates.
+                for i in range(len(apispec)):
+                    if '- in: path' in apispec[i-1] and 'name: id' in apispec[i]:
+                        # Work out same indentation level in order not to break the yaml.
+                        indent = len(apispec[i-1].split('- in: path')[0])
+                        for path_attribute in path_key:
+                            path_attribute[0] = " " * indent + path_attribute[0]
+                            path_attribute[1] = " " * (indent+2) + path_attribute[1]
+                            path_attribute[2] = " " * (indent+2) + path_attribute[2]
+                            flattened.extend(path_attribute)
+                        break
+                if flattened:
+                    apispec = apispec[:i-1] + flattened + apispec[i+1:]
+
+                flattened = []
+                for i in range(len(apispec)):
+                    if '- in: query' in apispec[i-1] and 'name: fields_conditions' in apispec[i]:
+                        indent = len(apispec[i-1].split('- in: query')[0])
+                        flattened = []
+                        for condition in field_conditions:
+                            condition[0] = " " * indent + condition[0]
+                            condition[1] = " " * (indent+2) + condition[1]
+                            condition[2] = " " * (indent+2) + condition[2]
+                            flattened.extend(condition)
+                        break
+                if flattened:
+                    apispec = apispec[:i-1] + flattened + apispec[i+1:]
+                # Join.
+                abs_doc = sphinxdoc + "\n---\n" + "\n".join(apispec)
+            return abs_doc
+
         for method in dir(self):
             if not method.startswith('_'):
                 fct = getattr(self, method, {})
                 if hasattr(fct, '__annotations__'):
                     if ( # Use typing anotations to identify endpoints.
-                         fct.__annotations__.get('request', '') == 'Request' and
-                         fct.__annotations__.get('return', '') == 'Response'
-                     ):
-                        abs_doc = fct.__func__.__doc__ or ""
-                        # Use intance schema.
-                        abs_doc = abs_doc.replace(
-                            'schema: Schema', f"schema: {self.schema.__class__.__name__}"
-                        )
-
-                        # Set precise primary key routes.
-                        path_key = []
-                        for key in self.pk:
-                            attr = []
-                            attr.append("- in: path")
-                            attr.append(f"name: {key}")
-                            field = self.schema.declared_fields[key]
-                            desc  = field.metadata.get("description", None)
-                            attr.append("description: " + (desc or f"{self.resource} {key}"))
-                            path_key.append(attr)
-
-                        # Replace in apispec.
-                        doc = abs_doc.split('---')
-                        if len(doc) > 1:
-                            sphinxdoc, apispec = doc
-                            apispec = apispec.split('\n')
-                            # Find our convention pattern (on two lines).
-                            found = False
-                            for i in range(len(apispec)):
-                                if '- in: path' in apispec[i-1] and 'name: id' in apispec[i]:
-                                    found = True
-                                    break
-                            if found:
-                                # Work out same indentation level in order not to break the yaml.
-                                indent = len(apispec[i-1].split('- in: path')[0])
-                                flattened = []
-                                for path_attribute in path_key:
-                                    path_attribute[0] = " " * indent + path_attribute[0]
-                                    path_attribute[1] = " " * (indent+2) + path_attribute[1]
-                                    path_attribute[2] = " " * (indent+2) + path_attribute[2]
-                                    flattened.extend(path_attribute)
-
-                                final = apispec[:i-1] + flattened + apispec[i+1:]
-                                abs_doc = sphinxdoc + "\n---\n" + "\n".join(final)
-
-                                # Create copy of the function object and patch new doc.
-                                new_f = copy(fct.__func__)
-                                new_f.__doc__ = abs_doc
-                                setattr(self, method, MethodType(new_f, self))
+                            fct.__annotations__.get('request', '') == 'Request' and
+                            fct.__annotations__.get('return', '') == 'Response'
+                        ):
+                            # Replace with processed docstrings.
+                            setattr(self, method, MethodType(
+                                    ResourceController.replace_method_docstrings(
+                                        method, process_apispec_docstrings(self, fct.__doc__ or "")
+                                    ), self
+                                )
+                            )
 
     def _infer_resource_name(self) -> str:
         """Infer entity name from controller name."""
@@ -235,18 +281,18 @@ class ResourceController(EntityController):
         # child_routes = child_routes or []
         # flake8: noqa: E501  pylint: disable=line-too-long
         return [
-            Route(f"{self.prefix}",                   self.write,         methods=[HttpMethod.POST.value]),
+            Route(f"{self.prefix}",                   self.write,          methods=[HttpMethod.POST.value]),
             Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET.value]),
             Mount(self.prefix, routes=[
                 Route('/schema',                      self.openapi_schema, methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}',               self.read,           methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}/{{attribute}}', self.read_nested,    methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE.value]),
-            ] + ([
-                Route(f"/{self.qp_id}/release",       self.release,        methods=[HttpMethod.POST.value]),
-            ] if self.table.is_versioned() else [
-                Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT.value]),
-            ]))
+            ] + [(
+                Route(f"/{self.qp_id}/release",       self.release,        methods=[HttpMethod.POST.value])
+                if self.table.is_versioned() else
+                Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT.value])
+            )])
         ]
 
     def _extract_pk_val(self, request: Request) -> List[Any]:
@@ -341,8 +387,8 @@ class ResourceController(EntityController):
                     {"username": "user"}
                     [{"name": "tag1"}, {"name": "tag2"}]
                 content:
-                  application/json:
-                    schema: Schema
+                    application/json:
+                        schema: Schema
             204:
                 description: Empty Payload.
         """
@@ -358,7 +404,11 @@ class ResourceController(EntityController):
                 user_info=user_info,
                 serializer=partial(self.serialize, many=isinstance(validated_data, list))
             )
-        except PayloadValidationError as pve:
+        except IntegrityError:
+            raise UpdateVersionedError(
+                "Attempt at updating versioned resources via POST detected"
+            )
+        except ValidationError as ve:
             # Try to create from partial data in case.
             try:
                 validated_data = self.validate(body, partial=True)
@@ -369,8 +419,12 @@ class ResourceController(EntityController):
                     user_info=user_info,
                     serializer=partial(self.serialize, many=isinstance(validated_data, list))
                 )
-            except Exception as dbe:
-                raise dbe from pve
+            except IntegrityError:
+                raise UpdateVersionedError(
+                    "Attempt at updating versioned resources via POST detected"
+                )
+            except Exception:
+                raise ve
         return json_response(data=created, status_code=201)
  
     async def read(self, request: Request) -> Response:
@@ -437,8 +491,8 @@ class ResourceController(EntityController):
             201:
                 description: Update associated resource.
                 content:
-                  application/json:
-                    schema: Schema
+                    application/json:
+                        schema: Schema
             204:
                 description: Empty Payload
         """
@@ -453,15 +507,20 @@ class ResourceController(EntityController):
         # Plug in pk into the dict.
         validated_data.update(dict(zip(self.pk, pk_val))) # type: ignore [assignment]
 
-        return json_response(
-            data=await self.svc.write(
-                data=validated_data,
-                stmt_only=False,
-                user_info=await UserInfo(request),
-                serializer=partial(self.serialize, many=isinstance(validated_data, list)),
-            ),
-            status_code=201,
-        )
+        try:
+            return json_response(
+                data=await self.svc.write(
+                    data=validated_data,
+                    stmt_only=False,
+                    user_info=await UserInfo(request),
+                    serializer=partial(self.serialize, many=isinstance(validated_data, list)),
+                ),
+                status_code=201,
+            )
+        except IntegrityError:
+            raise UpdateVersionedError(
+                "Attempt at updating versioned resources detected"
+            )
 
     async def delete(self, request: Request) -> Response:
         """Delete resource.
@@ -497,8 +556,16 @@ class ResourceController(EntityController):
         description: Uses a querystring to filter all resources of that type.
         parameters:
           - in: query
-            name: querystring
-            description: query filters
+            name: fields_conditions
+          - in: query
+            name: fields
+            description: a comma separated list of fields to query only a subset of the resource e.g. /datasets/1_1?name,description,contact,files
+          - in: query
+            name: offset
+            description: page start
+          - in: query
+            name: limit
+            description: page end
         responses:
             201:
                 description: Filtered list.
@@ -569,7 +636,7 @@ class ResourceController(EntityController):
 
     async def read_nested(self, request: Request) -> Response:
         """Reads a nested collection from parent primary key.
-            Call read, with attribute and serializes with child resource controller.
+
         ---
 
         description: Read nested collection from parent resource.

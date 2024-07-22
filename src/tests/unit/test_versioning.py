@@ -45,3 +45,17 @@ def test_release_version(client):
     assert json_response[0]['name'] == item['name']
     assert json_response[1]['version'] == 2
     assert json_response[1]['name'] == update['name']
+
+
+@pytest.mark.xfail(raises=exc.UpdateVersionedError)
+def test_no_update_version_resource_through_write(client):
+    item = {'name': '1234'}
+
+    response = client.post('/bs', content=json_bytes(item))
+    assert response.status_code == 201
+
+    update = {'id': '1', 'version': '1', 'name': '4321'}
+    response = client.post('/bs', content=json_bytes(update))
+    assert response.status_code == 409
+
+# TODO: test this on nested.

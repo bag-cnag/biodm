@@ -10,12 +10,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import load_only, selectinload, ONETOMANY, MANYTOONE, aliased, make_transient
 from sqlalchemy.sql import Insert, Delete, Select, Update
+from sqlalchemy.sql._typing import _DMLTableArgument
 from sqlalchemy.sql.selectable import Alias
 
 from biodm import config
 from biodm.component import ApiService
 from biodm.components import Base, Permission, Versioned
-from biodm.exceptions import FailedRead, FailedDelete, ImplementionError, UnauthorizedError
+from biodm.exceptions import (
+    FailedRead, FailedDelete, ImplementionError, UnauthorizedError
+)
 from biodm.managers import DatabaseManager
 from biodm.scope import Scope
 from biodm.tables import ListGroup, Group
@@ -33,15 +36,15 @@ class DatabaseService(ApiService):
         Holds atomic database statement execution functions.
     """
     @property
-    def _backend_specific_insert(self) -> Callable:
+    def _backend_specific_insert(
+        self
+    ) -> Callable[[_DMLTableArgument], postgresql.Insert | sqlite.Insert]:
         """Returns an insert statement builder according to DB backend."""
         match self.app.db.engine.dialect:
             case postgresql.asyncpg.dialect():
                 return postgresql.insert
             case sqlite.aiosqlite.dialect():
                 return sqlite.insert
-            case _:
-                return insert
 
     def _get_permissions(self, verb: str) -> List[Dict[Any, Any]] | None:
         """Retrieve entries indexed with self.table containing given verb in permissions."""
@@ -337,7 +340,7 @@ class UnaryEntityService(DatabaseService):
                         .returning(self.table)
                     )
                     return stmt
-                # don't handle else, this may or may not fail later.
+            # Else: continue, if there is a problem error will be raised later.
         # Regular case
         stmt = self._backend_specific_insert(self.table)
         stmt = stmt.values(**data)
@@ -347,10 +350,12 @@ class UnaryEntityService(DatabaseService):
             for key in data.keys() - self.pk
         }
 
-        if set_ and not self.table.is_versioned(): # upsert
-            stmt = stmt.on_conflict_do_update(index_elements=self.table.pk(), set_=set_)
-        else: # effectively a select.
-            stmt = stmt.on_conflict_do_nothing(index_elements=self.table.pk())
+        if not self.table.is_versioned():
+            if set_: # upsert
+                stmt = stmt.on_conflict_do_update(index_elements=self.table.pk(), set_=set_)
+            else: # effectively a select.
+                stmt = stmt.on_conflict_do_nothing(index_elements=self.table.pk())
+        # Else: let conflict raise an error on versioned entities.
 
         stmt = stmt.returning(self.table)
         return stmt
