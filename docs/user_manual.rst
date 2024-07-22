@@ -145,7 +145,7 @@ This triggers creation of a new row with a version increment.
 
     ``PUT /release`` is the way of updating versioned resources.
     The endpoint ``PUT /`` (a.k.a ``update``) will not be available for such resources, and
-    updating by reference through  ``POST /`` will at best be ignored.
+    any attempt at updating by reference through  ``POST /`` will raise an error.
 
 
 **E.g.**
