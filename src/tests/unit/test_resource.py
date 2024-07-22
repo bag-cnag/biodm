@@ -3,6 +3,7 @@ import pytest
 import json
 
 from biodm import exceptions as exc
+from marshmallow import exceptions as me
 from biodm.utils.utils import json_bytes, json_response
 
 
@@ -61,7 +62,7 @@ def test_create_empty_data(client):
     client.post('/as', content=json_bytes({}))
 
 
-@pytest.mark.xfail(raises=exc.PayloadValidationError)
+@pytest.mark.xfail(raises=me.ValidationError)
 def test_create_wrong_data(client):
     client.post('/as', content=json_bytes({'wrong': False}))
 

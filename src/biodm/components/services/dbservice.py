@@ -17,7 +17,7 @@ from biodm import config
 from biodm.component import ApiService
 from biodm.components import Base, Permission, Versioned
 from biodm.exceptions import (
-    FailedRead, FailedDelete, ImplementionError, UnauthorizedError, PartialDataError
+    FailedRead, FailedDelete, ImplementionError, UnauthorizedError
 )
 from biodm.managers import DatabaseManager
 from biodm.scope import Scope
@@ -340,11 +340,7 @@ class UnaryEntityService(DatabaseService):
                         .returning(self.table)
                     )
                     return stmt
-                else:
-                    raise PartialDataError()
-
-        # raise error instead ?
-        # Else: continue, if there is a problem error will be raised later.
+            # Else: continue, if there is a problem error will be raised later.
         # Regular case
         stmt = self._backend_specific_insert(self.table)
         stmt = stmt.values(**data)

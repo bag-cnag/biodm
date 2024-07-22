@@ -1,8 +1,9 @@
 import json
 from http import HTTPStatus
 
-from biodm.utils.utils import json_response
+from marshmallow.exceptions import ValidationError
 
+from biodm.utils.utils import json_response
 from .exceptions import (
     FailedUpdate,
     RequestError,
@@ -41,10 +42,15 @@ async def onerror(_, exc):
     if issubclass(exc.__class__, RequestError):
         detail = exc.detail
         match exc:
+            case ValidationError():
+                status = 400
+                detail = str(exc.messages)
             case FailedDelete() | FailedRead() | FailedUpdate():
                 status = 404
-            case InvalidCollectionMethod() | UpdateVersionedError():
+            case InvalidCollectionMethod():
                 status = 405
+            case UpdateVersionedError():
+                status = 409
             case PayloadEmptyError():
                 status = 204
             case TokenDecodingError():

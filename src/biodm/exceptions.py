@@ -53,11 +53,6 @@ class TokenDecodingError(RequestError):
     """Raised when token decoding failed."""
 
 
-class PartialDataError(RequestError):
-    """Raised when attempting at writing partial data without setting either
-    required creation fields or primary key values for a given resource."""
-
-
 class UpdateVersionedError(RequestError):
     """Raised when an attempt at updating a versioned resource is detected."""
 

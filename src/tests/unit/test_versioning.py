@@ -56,6 +56,6 @@ def test_no_update_version_resource_through_write(client):
 
     update = {'id': '1', 'version': '1', 'name': '4321'}
     response = client.post('/bs', content=json_bytes(update))
-    assert response.status_code == 405
+    assert response.status_code == 409
 
 # TODO: test this on nested.

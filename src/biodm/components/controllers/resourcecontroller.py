@@ -1,11 +1,14 @@
 """Controller class for Tables acting as a Resource."""
 
 from __future__ import annotations
+from cgi import print_exception
 from copy import copy
 from functools import partial, wraps
 from types import MethodType
 from typing import TYPE_CHECKING, Callable, List, Set, Any, Dict, Type
+from traceback import print_exception
 
+from marshmallow import ValidationError
 from marshmallow.schema import RAISE
 from marshmallow.class_registry import get_class
 from marshmallow.exceptions import RegistryError
@@ -24,10 +27,10 @@ from biodm.components.services import (
 )
 from biodm.exceptions import (
     InvalidCollectionMethod,
-    PartialDataError,
     PayloadEmptyError,
     PartialIndex,
-    UpdateVersionedError
+    UpdateVersionedError,
+    PayloadValidationError
 )
 from biodm.tables import user
 from biodm.utils.utils import json_response
@@ -401,7 +404,11 @@ class ResourceController(EntityController):
                 user_info=user_info,
                 serializer=partial(self.serialize, many=isinstance(validated_data, list))
             )
-        except Exception as e:
+        except IntegrityError:
+            raise UpdateVersionedError(
+                "Attempt at updating versioned resources via POST detected"
+            )
+        except ValidationError as ve:
             # Try to create from partial data in case.
             try:
                 validated_data = self.validate(body, partial=True)
@@ -412,12 +419,12 @@ class ResourceController(EntityController):
                     user_info=user_info,
                     serializer=partial(self.serialize, many=isinstance(validated_data, list))
                 )
-            except PartialDataError as _:
-                raise PartialDataError(str(e))
             except IntegrityError:
                 raise UpdateVersionedError(
                     "Attempt at updating versioned resources via POST detected"
                 )
+            except Exception:
+                raise ve
         return json_response(data=created, status_code=201)
  
     async def read(self, request: Request) -> Response:
