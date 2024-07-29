@@ -1,4 +1,3 @@
-from httpx import request
 import requests
 import json
 import pytest

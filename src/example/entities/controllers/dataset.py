@@ -13,7 +13,7 @@ from biodm.components.controllers import ResourceController, overload_docstring
 
 class DatasetController(ResourceController):
     @overload_docstring
-    async def write(**kwargs):
+    async def create(**kwargs):
         """
         requestBody:
             description: payload.

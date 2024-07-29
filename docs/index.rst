@@ -15,10 +15,9 @@ Welcome to biodm's documentation!
     :caption: Contents:
 
     getting_started
-    developer_manual
+    developer_manual/index
     user_manual
-    advanced_use
-    biodm/modules.rst
+    biodm/modules
     licence
 
 

@@ -143,10 +143,19 @@ class Api(Starlette):
                 openapi_version="3.0.0",
                 plugins=[MarshmallowPlugin()],
                 info={"description": "", "backend": "biodm", "backend_version": CORE_VERSION},
+                security=[{'Authorization': []}] # Same name as security_scheme arg below.
             )
         )
-        jwt_scheme = {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
-        self.apispec.spec.components.security_scheme("jwt", jwt_scheme)
+
+        token = {
+            "type": "http",
+            "name": "authorization",
+            "in": "header",
+            "scheme": "bearer",
+            "bearerFormat": "JWT"
+        }
+
+        self.apispec.spec.components.security_scheme("Authorization", token)
 
         """Headless Services
 

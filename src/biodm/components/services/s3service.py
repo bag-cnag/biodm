@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 from biodm.components.table import Base, S3File
+from biodm.exceptions import FailedRead
 from biodm.managers import DatabaseManager, S3Manager
 from biodm.utils.utils import to_it
 from biodm.utils.security import UserInfo
@@ -76,10 +77,12 @@ class S3Service(UnaryEntityService):
                 k: v for k, v in zip(self.pk, pk_val)
             }, session=session
         )
-        # TODO: test this ^
         file = await self.read(pk_val, fields=['filename', 'extension', 'dl_count'], session=session)
 
         assert isinstance(file, S3File) # mypy.
+
+        if not file.ready:
+            raise FailedRead() # TODO: better error ?
 
         url = self.s3.create_presigned_download_url(await self.gen_key(file, session=session))
         file.dl_count += 1

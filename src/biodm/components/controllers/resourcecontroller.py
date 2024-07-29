@@ -32,7 +32,6 @@ from biodm.exceptions import (
     UpdateVersionedError,
     PayloadValidationError
 )
-from biodm.tables import user
 from biodm.utils.utils import json_response
 from biodm.utils.security import UserInfo
 from biodm.components import Base
@@ -61,7 +60,8 @@ def overload_docstring(f: Callable): # flake8: noqa: E501  pylint: disable=line-
     :param f: The method we overload the docstrings of
     :type f: Callable
     """
-    return ResourceController.replace_method_docstrings(f.__name__, f.__doc__)
+    return ResourceController.replace_method_docstrings(f.__name__, f.__doc__ or "")
+
 
 class ResourceController(EntityController):
     """Class for controllers exposing routes constituting a ressource.
@@ -107,8 +107,7 @@ class ResourceController(EntityController):
         """
         async def mirror(self, *args, **kwargs):
             return await getattr(super(self.__class__, self), method)(*args, **kwargs)
-        mirror.__name__ = method
-        mirror.__doc__ = doc
+        mirror.__name__, mirror.__doc__ = method, doc
         return mirror
 
     def _infuse_schema_in_apispec_docstrings(self):
@@ -121,9 +120,14 @@ class ResourceController(EntityController):
             schema: Schema -> schema: self.Schema.__class__.__name__
         - key Attributes |
             - in: path
-            name: id
+              name: id
             ->
             List of table primary keys, with their description from marshmallow schema if any.
+        - field conditions |
+            - in: query
+              name: field_conditions
+            ->
+            List of available fields to set conditions on.
         """
         def process_apispec_docstrings(self, abs_doc):
             # Use intance schema.
@@ -281,7 +285,7 @@ class ResourceController(EntityController):
         # child_routes = child_routes or []
         # flake8: noqa: E501  pylint: disable=line-too-long
         return [
-            Route(f"{self.prefix}",                   self.write,          methods=[HttpMethod.POST.value]),
+            Route(f"{self.prefix}",                   self.create,         methods=[HttpMethod.POST.value]),
             Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET.value]),
             Mount(self.prefix, routes=[
                 Route('/schema',                      self.openapi_schema, methods=[HttpMethod.GET.value]),
@@ -361,8 +365,8 @@ class ResourceController(EntityController):
             ]
         return fields
 
-    async def write(self, request: Request) -> Response:
-        """WRITE operation.
+    async def create(self, request: Request) -> Response:
+        """CREATE.
 
         Does "UPSERTS" behind the hood.
 
@@ -609,8 +613,7 @@ class ResourceController(EntityController):
             500:
                 description: Attempted update of primary key components.
         """
-        # TODO: flag to make previous versions readonly
-        # TODO: make it possible to create/update with the id only -> defaults to lastversion.
+        # TODO: ?? make it possible to create/update with the id only -> defaults to lastversion.
         assert self.table.is_versioned()
 
         # Allow empty body.

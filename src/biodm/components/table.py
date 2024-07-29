@@ -307,6 +307,7 @@ class Base(DeclarativeBase, AsyncAttrs):
     def is_versioned(cls):
         return issubclass(cls, Versioned)
 
+
 class S3File:
     """Class to use in order to have a file managed on S3 bucket associated to this table
         Defaults internal fields that are expected by S3Service."""
@@ -334,6 +335,7 @@ class S3File:
         TIMESTAMP(timezone=True), default=utcnow, nullable=False
     )
     validated_at = Column(TIMESTAMP(timezone=True))
+
 
 @dataclass
 class Permission:

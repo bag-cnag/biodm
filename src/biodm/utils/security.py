@@ -51,21 +51,21 @@ class UserInfo(aobject):
         decoded = await self.kc.decode_token(token)
 
         # Parse.
-        userid = decoded.get("preferred_username")
-        keycloak_id = (await User.svc.read(pk_val=[userid], fields=['id'])).id
+        username = decoded.get("preferred_username")
+        user: User = (await User.svc.read(pk_val=[username], fields=['id']))
         groups = [
             group['path'].replace("/", "__")[2:]
-            for group in await self.kc.get_user_groups(keycloak_id)
+            for group in await self.kc.get_user_groups(user.id)
         ] or ['no_groups']
         projects = parse_items(decoded, "group_projects", "no_projects")
-        return userid, groups, projects
+        return username, groups, projects
 
 
 def group_required(f, groups: List):
     """Decorator for function expecting groups: decorates a controller CRUD function."""
     @wraps(f)
     async def wrapper(controller, request, *args, **kwargs):
-        user_info = UserInfo(request)
+        user_info = await UserInfo(request)
 
         if user_info.info:
             _, user_groups, _ = user_info.info
