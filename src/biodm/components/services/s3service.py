@@ -77,7 +77,10 @@ class S3Service(UnaryEntityService):
                 k: v for k, v in zip(self.pk, pk_val)
             }, session=session
         )
-        file = await self.read(pk_val, fields=['filename', 'extension', 'dl_count'], session=session)
+        file = await self.read(pk_val, fields=[
+                'filename', 'extension', 'dl_count', 'ready', 'key_salt'
+            ], session=session
+        )
 
         assert isinstance(file, S3File) # mypy.
 
