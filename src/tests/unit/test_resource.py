@@ -265,7 +265,6 @@ def test_delete_resource(client):
     assert "Deleted." in response.text
 
 
-
 def test_update_resource_through_create(client):
     item = {'data': '1234'}
 

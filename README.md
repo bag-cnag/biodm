@@ -37,7 +37,7 @@ pip3 install git+https://github.com/bag-cnag/biodm
 ### Run app
 To run the API you will also need an ASGI server, **i.e.** uvicorn+uvloop by default:
 ```bash
-pip3 install uvicorn,uvloop
+pip3 install uvicorn uvloop
 ```
 OR
 ```bash

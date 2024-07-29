@@ -103,7 +103,7 @@ class EntityController(Controller):
                     raise PayloadValidationError("Wrong input JSON.")
 
             json_data = json.loads(data) # Accepts **kwargs in case support needed.
-            return cls.schema.load(json_data, many=many, partial=partial, unknown=RAISE)
+            return cls.schema.load(json_data, many=many, partial=partial)
 
         except json.JSONDecodeError as e:
             raise PayloadJSONDecodingError(cls.__name__) from e
@@ -154,7 +154,7 @@ class EntityController(Controller):
             ) from e
 
     @abstractmethod
-    async def write(self, request: Request) -> Response:
+    async def create(self, request: Request) -> Response:
         raise NotImplementedError
 
     @abstractmethod

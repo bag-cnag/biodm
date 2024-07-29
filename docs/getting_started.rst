@@ -258,7 +258,8 @@ Just like example, tests have to be run within their directory.
 
 To run a unit test in a debugging session, you may create the following ``.vscode/launch.json``
 file at the root of this repository. The ``run and debug`` tab should now ofer an extra option.
-If you installed sources in editable mode, that allows you to set breakpoints within BioDM codebase.
+If you installed sources in editable mode, that allows you to set breakpoints within
+``BioDM`` codebase.
 
 .. code-block:: json
     :caption: launch.json

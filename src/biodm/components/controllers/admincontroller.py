@@ -13,7 +13,7 @@ class AdminController(ResourceController):
         - CREATE/UPDATE/DELETE require an admin token
     """
     def __init__(self, *args, read_public=True, **kwargs) -> None:
-        self.write = admin_required(self.write)
+        self.create = admin_required(self.create)
         self.update = admin_required(self.update)
         self.delete = admin_required(self.delete)
 

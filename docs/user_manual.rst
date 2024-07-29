@@ -27,7 +27,7 @@ Yields full API schema in JSON form.
 
     curl ${SERVER_ENDPOINT}/live
 
-Returns ``'live'``
+Returns ``live`` with a ``200`` status code.
 
 * Login
 
@@ -256,10 +256,12 @@ When a Composition/One-to-Many relationship is flagged with permissions as descr
 **E.g.** Dataset resource in our example, would have an extra field ``perm_files``.
 
 A Permission is holding a ListGroup object for each enabled verbs.
-ListGroup being a routeless core table, allowing to manage lists of groups.
+ListGroup being a route-less core table, allowing to manage lists of groups.
 
 **E.g.** In our example, CREATE/READ/DOWNLOAD are enabled,
-hence a JSON representation of a dataset with its permissions looks like this:
+hence a JSON representation of a dataset with its permissions looks like this, where leaving
+"read" empty means it will only account for decorator permissions if provided and left public
+otherwise.
 
 .. code-block:: json
     

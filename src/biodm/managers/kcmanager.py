@@ -106,7 +106,6 @@ class KeycloakManager(ApiManager):
                     "temporary": False
                 }
             ]
-        self.admin.get_user
         return payload
 
     def _group_data_to_payload(self, data: Dict[str, Any]):

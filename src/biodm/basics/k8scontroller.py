@@ -31,7 +31,7 @@ class K8sController(ResourceController):
         :rtype: starlette.routing.Mount
         """
         m = Mount(self.prefix, routes=[
-            Route("/{manifest}",     self.write,         methods=[HttpMethod.POST.value]),
+            Route("/{manifest}",     self.create,         methods=[HttpMethod.POST.value]),
             Route("/",               self.list_instances, methods=[HttpMethod.GET.value]),
             Route("/instance/{id}",  self.instance_info,  methods=[HttpMethod.GET.value]),
             Route("/schema",         self.openapi_schema),
@@ -66,7 +66,7 @@ class K8sController(ResourceController):
         """
         return PlainTextResponse('{}')
 
-    async def write(self, request: Request) -> Response:
+    async def create(self, request: Request) -> Response:
         """Deploys K8s Instance.
 
         ---

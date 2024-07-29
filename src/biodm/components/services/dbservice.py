@@ -11,11 +11,12 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import load_only, selectinload, ONETOMANY, MANYTOONE, aliased, make_transient
 from sqlalchemy.sql import Insert, Delete, Select, Update
 from sqlalchemy.sql._typing import _DMLTableArgument
+from sqlalchemy.sql.dml import ReturningInsert
 from sqlalchemy.sql.selectable import Alias
 
 from biodm import config
 from biodm.component import ApiService
-from biodm.components import Base, Permission, Versioned
+from biodm.components import Base, Permission
 from biodm.exceptions import (
     FailedRead, FailedDelete, ImplementionError, UnauthorizedError
 )
@@ -38,13 +39,15 @@ class DatabaseService(ApiService):
     @property
     def _backend_specific_insert(
         self
-    ) -> Callable[[_DMLTableArgument], postgresql.Insert | sqlite.Insert]:
+    ) -> Callable[[_DMLTableArgument], Insert]:
         """Returns an insert statement builder according to DB backend."""
         match self.app.db.engine.dialect:
             case postgresql.asyncpg.dialect():
                 return postgresql.insert
             case sqlite.aiosqlite.dialect():
                 return sqlite.insert
+            case _: # Should not happen. Here to suppress mypy.
+                raise
 
     def _get_permissions(self, verb: str) -> List[Dict[Any, Any]] | None:
         """Retrieve entries indexed with self.table containing given verb in permissions."""
@@ -429,22 +432,28 @@ class UnaryEntityService(DatabaseService):
             for jtable in chain:
                 sub = sub.join(jtable)
 
-            inner = (
+            public = ( # Look for empty permissions.
                 sub
                 .join(
                     permission['table'],
                     onclause=unevalled_all([
                             pair[0] == pair[1]
                             for pair in entity.local_remote_pairs
-                        ] + ( # No groups: look for empty permissions (public).
-                            [] if groups else [lgverb == None]
-                        )
+                        ] + [lgverb == None]
                     )
                 )
             )
-            if groups: # Groups: fetch group names to apply condition.
-                inner = (
-                    inner
+            if groups:
+                protected = ( # Join the whole chain.
+                    sub
+                    .join(
+                        permission['table'],
+                        onclause=unevalled_all([
+                                pair[0] == pair[1]
+                                for pair in entity.local_remote_pairs
+                            ]
+                        )
+                    )
                     .join(
                         ListGroup,
                         onclause=lgverb == ListGroup.id,
@@ -458,6 +467,9 @@ class UnaryEntityService(DatabaseService):
                         ]),
                     )
                 )
+                inner = public.union(protected)
+            else:
+                inner = public
 
             stmt = stmt.join(inner.subquery())
         return stmt

@@ -5,17 +5,26 @@ from biodm.utils.security import admin_required
 class ProjectController(ResourceController):
     # @admin_required
     @overload_docstring
-    async def write(**kwargs):
+    async def create(**kwargs):
         """
-        description: Create new Project from request body.
+
+        ---
+
+        description: Create Project from request body.
+        requestBody:
+            description: payload.
+            required: true
+            content:
+                application/json:
+                    schema: ProjectSchema
         responses:
             201:
-                description: Create Project.
+                description: Project Created
                 examples: |
                     {"name": "pr_test_xyz"}
                 content:
-                  application/json:
-                    schema: ProjectSchema
+                    application/json:
+                        schema: ProjectSchema
             204:
-                description: Empty Payload
+                description: Empty Payload.
         """

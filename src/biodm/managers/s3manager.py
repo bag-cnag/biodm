@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from boto3 import client
 from botocore.config import Config
@@ -17,14 +17,14 @@ class S3Manager(ApiManager):
     def __init__(
         self,
         app: Api,
-        endpoint_url,
-        bucket_name,
-        access_key_id,
-        secret_access_key,
-        url_expiration,
-        pending_expiration,
-        region_name,
-        file_size_limit
+        endpoint_url: str,
+        bucket_name: str,
+        access_key_id: str,
+        secret_access_key: str,
+        url_expiration: int,
+        pending_expiration: int,
+        region_name: str,
+        file_size_limit: int
     ) -> None:
         super().__init__(app=app)
         self.endpoint_url = endpoint_url
@@ -47,13 +47,13 @@ class S3Manager(ApiManager):
         # self.s3_client.head_bucket(Bucket=self.bucket_name)
 
     @property
-    def endpoint(self):
+    def endpoint(self) -> str:
         return self.endpoint_url
 
     def create_presigned_post(self,
                               object_name,
                               callback,
-    ):
+    ) -> Any:
         """ Generates a presigned url + form fiels to upload a given file on s3 bucket.
 
         Relevant links:
@@ -95,7 +95,7 @@ class S3Manager(ApiManager):
             # TODO: better error
             raise e
 
-    def create_presigned_download_url(self, object_name):
+    def create_presigned_download_url(self, object_name) -> Any:
         """Generate a presigned URL to share an S3 object
 
         :param object_name: string

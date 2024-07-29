@@ -4,7 +4,9 @@ import json
 from functools import reduce
 import operator
 from os import path, utime
-from typing import Any, List, Callable, Tuple, TypeVar, Dict, Iterator
+from typing import (
+    Any, List, Callable, Tuple, TypeVar, Dict, Iterator, Self, Coroutine
+)
 
 from starlette.responses import Response
 
@@ -20,9 +22,9 @@ class aobject(object):
 
     Courtesy of: https://stackoverflow.com/a/45364670/6847689
     """
-    async def __new__(cls, *args, **kwargs):
+    async def __new__(cls, *args, **kwargs) -> Self: # type: ignore [misc]
         instance = super().__new__(cls)
-        await instance.__init__(*args, **kwargs)
+        await instance.__init__(*args, **kwargs) # type: ignore [misc]
         return instance
 
 
@@ -49,7 +51,7 @@ def json_bytes(d: Dict[Any, Any]) -> bytes:
     return json.dumps(d).encode('utf-8')
 
 
-def touch(fname: str):
+def touch(fname: str) -> None:
     """Python version of the unix shell touch function."""
     if path.exists(fname):
         utime(fname, None)
@@ -93,12 +95,12 @@ def partition(
     ], ls_false
 
 
-def unevalled_all(ls: Iterator[Any]):
+def unevalled_all(ls: Iterator[Any]) -> Any:
     """Build (ls[0] and ls[1] ... ls[n]) but does not evaluate like all() does."""
     return reduce(operator.and_, ls)
 
 
-def unevalled_or(ls: Iterator[Any]):
+def unevalled_or(ls: Iterator[Any]) -> Any:
     """Build (ls[0] or ls[1] ... ls[n]) but does not evaluate like or() does."""
     return reduce(operator.or_, ls)
 

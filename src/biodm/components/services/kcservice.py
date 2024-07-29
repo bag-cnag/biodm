@@ -1,8 +1,7 @@
 from abc import abstractmethod
-from typing import Any, Dict, List, Literal
+from typing import Any, Dict, List
 from pathlib import Path
 
-from biodm.components import Base
 from biodm.managers import KeycloakManager
 from biodm.tables import Group, User
 from biodm.utils.security import UserInfo
@@ -25,20 +24,23 @@ class KCService(CompositeEntityService):
 
 
 class KCGroupService(KCService):
+    @staticmethod
+    def kcpath(path) -> Path:
+        """Compute keycloak path from api path."""
+        return Path("/" + path.replace("__", "/"))
+
     async def read_or_create(self, data: Dict[str, Any]) -> None:
         """READ group from keycloak, create if not found.
 
         :param data: Group data
         :type data: Dict[str, Any]
         """
-        path = Path("/" + data['path'].replace("__", "/"))
-
+        path = self.kcpath(data['path'])
 
         group = await self.kc.get_group_by_path(str(path))
         if group:
             data["id"] = group["id"]
             return
-
 
         parent_id = None
         if not path.parent.parts == ('/',):
@@ -52,7 +54,8 @@ class KCGroupService(KCService):
 
     async def write(
         self,
-        data: Dict[str, Any] | List[Dict[str, Any]],
+        data: List[Dict[str, Any]] | Dict[str, Any],
+        partial_data: bool = False,
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs
@@ -69,7 +72,7 @@ class KCGroupService(KCService):
                 for user in group.get("users", []):
                     await User.svc.read_or_create(user, [group["path"]], [group["id"]],)
         # DB
-        return await super().write(data, stmt_only=stmt_only, **kwargs)
+        return await super().write(data, stmt_only=stmt_only, partial_data=partial_data, **kwargs)
 
     async def delete(self, pk_val: List[Any], user_info: UserInfo | None = None, **_) -> None:
         """DELETE Group from DB then from Keycloak."""
@@ -97,6 +100,7 @@ class KCUserService(KCService):
         :rtype: str
         """
         user = await self.kc.get_user_by_username(data["username"])
+        groups = [str(KCGroupService.kcpath(group)) for group in groups]
         if user:
             group_ids = group_ids or []
             for gid in group_ids:
@@ -110,6 +114,7 @@ class KCUserService(KCService):
     async def write(
         self,
         data: Dict[str, Any] | List[Dict[str, Any]],
+        partial_data: bool = False,
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs
@@ -128,7 +133,7 @@ class KCUserService(KCService):
                 # Then User.
                 await self.read_or_create(user, groups=group_paths, group_ids=group_ids)
 
-        return await super().write(data, stmt_only=stmt_only, **kwargs)
+        return await super().write(data, partial_data=partial_data, stmt_only=stmt_only, **kwargs)
 
     async def delete(self, pk_val: List[Any], user_info: UserInfo | None = None, **_) -> None:
         """DELETE User from DB then from keycloak."""
