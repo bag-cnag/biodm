@@ -80,7 +80,7 @@ building and execution.
             return Path("/" + path.replace("__", "/"))
 
         async def read_or_create(self, data: Dict[str, Any]) -> None:
-            """READ group from keycloak, create if not found.
+            """READ group from keycloak, create if missing.
 
             :param data: Group data
             :type data: Dict[str, Any]
@@ -112,13 +112,14 @@ building and execution.
             """Create entities on Keycloak Side before passing to parent class for DB."""
             # Check permissions
             await self._check_permissions("write", user_info, data)
+
             # Create on keycloak side
-            if not stmt_only:
-                for group in to_it(data):
-                    # Group first.
-                    await self.read_or_create(group)
-                    # Then Users.
-                    for user in group.get("users", []):
-                        await User.svc.read_or_create(user, [group["path"]], [group["id"]],)
-            # DB
+            for group in to_it(data):
+                # Group first.
+                await self.read_or_create(group)
+                # Then Users.
+                for user in group.get("users", []):
+                    await User.svc.read_or_create(user, [group["path"]], [group["id"]],)
+
+            # Send to DB
             return await super().write(data, stmt_only=stmt_only, partial_data=partial_data, **kwargs)

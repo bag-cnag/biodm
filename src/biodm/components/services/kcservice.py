@@ -30,7 +30,7 @@ class KCGroupService(KCService):
         return Path("/" + path.replace("__", "/"))
 
     async def read_or_create(self, data: Dict[str, Any]) -> None:
-        """READ group from keycloak, create if not found.
+        """READ group from keycloak, CREATE if missing.
 
         :param data: Group data
         :type data: Dict[str, Any]
@@ -63,15 +63,16 @@ class KCGroupService(KCService):
         """Create entities on Keycloak Side before passing to parent class for DB."""
         # Check permissions
         await self._check_permissions("write", user_info, data)
+
         # Create on keycloak side
-        if not stmt_only:
-            for group in to_it(data):
-                # Group first.
-                await self.read_or_create(group)
-                # Then Users.
-                for user in group.get("users", []):
-                    await User.svc.read_or_create(user, [group["path"]], [group["id"]],)
-        # DB
+        for group in to_it(data):
+            # Group first.
+            await self.read_or_create(group)
+            # Then Users.
+            for user in group.get("users", []):
+                await User.svc.read_or_create(user, [group["path"]], [group["id"]],)
+
+        # Send to DB
         return await super().write(data, stmt_only=stmt_only, partial_data=partial_data, **kwargs)
 
     async def delete(self, pk_val: List[Any], user_info: UserInfo | None = None, **_) -> None:
@@ -88,7 +89,7 @@ class KCUserService(KCService):
         groups: List[str] | None = None,
         group_ids: List[str] | None = None,
     ) -> None:
-        """READ entry from Database, CREATE it if not found.
+        """READ entry from Database, CREATE if missing.
 
         :param data: Entry object representation
         :type data: Dict[str, Any]
@@ -109,7 +110,7 @@ class KCUserService(KCService):
         else:
             data['id'] = await self.kc.create_user(data, groups)
         # Important to remove password as it is not stored locally, SQLA would throw error.
-        data.pop('password')
+        data.pop('password', None)
 
     async def write(
         self,
@@ -122,16 +123,15 @@ class KCUserService(KCService):
         """CREATE entities on Keycloak, before inserting in DB."""
         await self._check_permissions("write", user_info, data)
 
-        if not stmt_only:
-            for user in to_it(data):
-                # Groups first.
-                group_paths, group_ids = [], []
-                for group in user.get("groups", []):
-                    await Group.svc.read_or_create(group)
-                    group_paths.append(group['path'])
-                    group_ids.append(group['id'])
-                # Then User.
-                await self.read_or_create(user, groups=group_paths, group_ids=group_ids)
+        for user in to_it(data):
+            # Groups first.
+            group_paths, group_ids = [], []
+            for group in user.get("groups", []):
+                await Group.svc.read_or_create(group)
+                group_paths.append(group['path'])
+                group_ids.append(group['id'])
+            # Then User.
+            await self.read_or_create(user, groups=group_paths, group_ids=group_ids)
 
         return await super().write(data, partial_data=partial_data, stmt_only=stmt_only, **kwargs)
 

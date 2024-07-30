@@ -11,7 +11,6 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import load_only, selectinload, ONETOMANY, MANYTOONE, aliased, make_transient
 from sqlalchemy.sql import Insert, Delete, Select, Update
 from sqlalchemy.sql._typing import _DMLTableArgument
-from sqlalchemy.sql.dml import ReturningInsert
 from sqlalchemy.sql.selectable import Alias
 
 from biodm import config
@@ -493,6 +492,7 @@ class UnaryEntityService(DatabaseService):
         :rtype: Select
         """
         nested, fields = partition(fields, lambda x: x in self.relationships)
+        # Exclude hybrid properties. TODO: manage them ?
         _, fields = partition(
             fields,
             lambda x: isinstance(
@@ -500,7 +500,6 @@ class UnaryEntityService(DatabaseService):
                 hybrid_property
             )
         )
-        # TODO: manage hybrid properties ?
         stmt = self._apply_read_permissions(user_info, stmt)
 
         # Fields
@@ -535,16 +534,20 @@ class UnaryEntityService(DatabaseService):
                         isouter=True
                     )
                 else:
+                    # TODO: this bit could be improved.
+                    # In terms of statement optmization.
+                    # TODO: call recursively ?
+                    relstmt = select(target)
+                    relstmt = (
+                        target
+                        .svc
+                        ._apply_read_permissions(user_info, relstmt)
+                    )
                     stmt = stmt.join_from(
                         self.table,
-                        attr,
+                        relstmt.subquery(),
                         isouter=True
                     )
-                stmt = (
-                    target
-                    .svc
-                    ._apply_read_permissions(user_info, stmt)
-                )
             else:
                 stmt = stmt.options(
                     selectinload(
