@@ -1,14 +1,14 @@
 """Database service: Translates requests data into SQLA statements and execute."""
-from ast import stmt
-from functools import partial
 from operator import or_
-from typing import Callable, Iterable, List, Sequence, Any, Tuple, Dict, overload, Literal, Set, Type
+from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Set, Type
 
-from sqlalchemy import insert, select, delete, update, or_, func
+from sqlalchemy import select, delete, update, or_, func
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import load_only, selectinload, ONETOMANY, MANYTOONE, aliased, make_transient
+from sqlalchemy.orm import (
+    load_only, selectinload, ONETOMANY, MANYTOONE, aliased, make_transient
+)
 from sqlalchemy.sql import Insert, Delete, Select, Update
 from sqlalchemy.sql._typing import _DMLTableArgument
 from sqlalchemy.sql.selectable import Alias
@@ -17,10 +17,10 @@ from biodm import config
 from biodm.component import ApiService
 from biodm.components import Base, Permission
 from biodm.exceptions import (
-    FailedRead, FailedDelete, ImplementionError, UnauthorizedError
+    FailedRead, FailedDelete, UpdateVersionedError, UnauthorizedError
 )
 from biodm.managers import DatabaseManager
-from biodm.scope import Scope
+# from biodm.scope import Scope
 from biodm.tables import ListGroup, Group
 from biodm.tables.asso import asso_list_group
 from biodm.utils.security import UserInfo
@@ -50,7 +50,7 @@ class DatabaseService(ApiService):
 
     def _get_permissions(self, verb: str) -> List[Dict[Any, Any]] | None:
         """Retrieve entries indexed with self.table containing given verb in permissions."""
-        assert hasattr(self, 'table')
+        assert hasattr(self, 'table') # mypy.
 
         # Effectively disable permissions if Keycloak is disabled.
         if not hasattr(self.app, 'kc'):
@@ -130,6 +130,24 @@ class UnaryEntityService(DatabaseService):
     def __repr__(self) -> str:
         """ServiceName(TableName)."""
         return f"{self.__class__.__name__}({self.table.__name__})"
+
+    def _svc_from_rel_name(self, key: str) -> DatabaseService:
+        """Returns service associated to the relationship table, handles alias special case.
+
+        :param key: Relationship name.
+        :type key: str
+        :raises ValueError: does not exist, can happen when the key comes from user input.
+        :return: associated service
+        :rtype: DatabaseService
+        """
+        if key not in self.relationships.keys():
+            raise ValueError(f"Invalid nested collection name {key}.")
+
+        rel = self.relationships[key]
+        if hasattr(rel.target, 'original') and rel.target.original == self.table.__table__:
+            return self
+        else:
+            return rel.target.decl_class.svc
 
     @DatabaseManager.in_session
     async def _check_permissions(
@@ -211,7 +229,7 @@ class UnaryEntityService(DatabaseService):
         """Handle SQLite autoincrement for composite primary key.
             Which is a handy feature for a versioned entity. So we fetch the current max id in a
             separate request and prepopulate the dicts. This is not the most performant, but sqlite
-            support is for testing purposes mostly.
+            support is mostly for testing purposes.
         """
         async def get_max_id():
             max_id = await session.scalar(func.max(self.table.id))
@@ -243,7 +261,6 @@ class UnaryEntityService(DatabaseService):
     async def write(
         self,
         data: Dict[str, Any] | List[Dict[str, Any]],
-        partial_data: bool,
         stmt_only: Literal[True],
         user_info: UserInfo | None,
         **kwargs
@@ -253,7 +270,6 @@ class UnaryEntityService(DatabaseService):
     async def write(
         self,
         data: Dict[str, Any] | List[Dict[str, Any]],
-        partial_data: bool,
         stmt_only: Literal[False],
         user_info: UserInfo | None,
         **kwargs
@@ -262,7 +278,6 @@ class UnaryEntityService(DatabaseService):
     async def write(
         self,
         data: Dict[str, Any] | List[Dict[str, Any]],
-        partial_data: bool = False,
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs
@@ -283,17 +298,13 @@ class UnaryEntityService(DatabaseService):
         ):
             await self.populate_ids_sqlite(data)
 
-        stmts = []
-        for one in to_it(data):
-            stmts.append(self.upsert(one, partial_data=partial_data))
-
-        assert stmts
+        stmts = [self.upsert(one) for one in to_it(data)]
 
         if len(stmts) == 1:
             return stmts[0] if stmt_only else await self._insert(stmts[0], **kwargs)
         return stmts if stmt_only else await self._insert_list(stmts, **kwargs)
 
-    def upsert(self, data: Dict[Any, str], partial_data: bool=False) -> Insert | Update:
+    def upsert(self, data: Dict[Any, str]) -> Insert | Update:
         """Generates an upsert (Insert + .on_conflict_do_x) depending on data population.
             OR an explicit Update statement for partial data with full primary key.
 
@@ -314,34 +325,25 @@ class UnaryEntityService(DatabaseService):
 
         :param data: validated data, unit - i.e. one single entity, no depth - dictionary
         :type data: Dict[Any, str]
-        :param partial_data: partial data flag, enables conditional updates, defaults to False
-        :type partial_data: bool, optional
         :return: statement
         :rtype: Insert | Update
         """
-        if partial_data:
-            ## v Partial data support
-            required = set(
-                c.name for c in self.table.__table__.columns
-                if not (
-                    c.nullable or
-                    self.table.has_default(c.name) or
-                    self.table.is_autoincrement(c.name)
-                )
-            )
-            if required - data.keys(): # Some data missing.
-                pk = set(self.table.pk())
-                if all(k in data.keys() for k in pk): # pk present: UPDATE.
-                    values = {k: data.get(k) for k in data.keys() - pk}
-                    if values and self.table.is_versioned:
-                        raise # Not allowed.
-                    stmt = (
-                        update(self.table)
-                        .where(self.gen_cond([data.get(k) for k in pk]))
-                        .values(**values)
-                        .returning(self.table)
+        pk = self.table.pk()
+        if self.table.required() - data.keys(): # Some data missing.
+            if all(k in data.keys() for k in pk): # pk present: UPDATE.
+                values = {k: data.get(k) for k in data.keys() - pk}
+                if values and self.table.is_versioned:
+                    raise UpdateVersionedError(
+                        "Attempt at updating versioned resources via POST detected"
                     )
-                    return stmt
+
+                stmt = (
+                    update(self.table)
+                    .where(self.gen_cond([data.get(k) for k in pk]))
+                    .values(**values)
+                    .returning(self.table)
+                )
+                return stmt
             # Else: continue, if there is a problem error will be raised later.
         # Regular case
         stmt = self._backend_specific_insert(self.table)
@@ -349,48 +351,47 @@ class UnaryEntityService(DatabaseService):
 
         set_ = {
             key: data[key]
-            for key in data.keys() - self.pk
+            for key in data.keys() - pk
         }
 
         if not self.table.is_versioned():
             if set_: # upsert
-                stmt = stmt.on_conflict_do_update(index_elements=self.table.pk(), set_=set_)
+                stmt = stmt.on_conflict_do_update(index_elements=pk, set_=set_)
             else: # effectively a select.
-                stmt = stmt.on_conflict_do_nothing(index_elements=self.table.pk())
-        # Else: let conflict raise an error on versioned entities.
+                stmt = stmt.on_conflict_do_nothing(index_elements=pk)
+        # Else (implicit): on_conflict_do_error
 
         stmt = stmt.returning(self.table)
         return stmt
 
-    def _parse_int_operators(self, attr) -> Tuple[str, str]:
-        """"""
-        input_op: str = attr.pop()
-        match input_op.strip(')').split('('):
-            case [("gt" | "ge" | "lt" | "le") as op, arg]:
-                return (op, arg)
-            case _:
-                raise ValueError(
-                    f"Expecting either 'field=v1,v2' pairs or integrer"
-                    f" operators 'field.op(v)' op in {SUPPORTED_INT_OPERATORS}")
+    @DatabaseManager.in_session
+    async def getattr_in_session(
+        self,
+        item: Base,
+        attr: str,
+        session: AsyncSession,
+    ) -> List[Base]:
+        session.add(item)
+        await session.refresh(item, attr)
+        return getattr(item, attr)
 
-    def _filter_process_attr(self, attr: List[str]):
-        """Iterates over attribute parts to find the table that contains this attribute.
-
-        :param attr: attribute name parts of the querystring
-        :type attr: List[str]
-        :raises ValueError: When name or part of it is incorrect.
-        :return: Pointers to column object and its python type
-        :rtype: Tuple[Column, type]
-        """
-        table = self.table
-        for nested in attr[:-1]:
-            jtn = table.target_table(nested)
-            if jtn is None:
-                raise ValueError(f"Invalid nested entity name {nested}.")
-            jtable = jtn.decl_class
-            table = jtable
-
-        return table.colinfo(attr[-1])
+    @DatabaseManager.in_session
+    async def read_nested(
+        self,
+        pk_val: List[Any],
+        attribute: str,
+        session: AsyncSession,
+        user_info: UserInfo | None = None,
+    ):
+        """Read nested collection from an entity."""
+        # Read applies permissions on nested collection as well.
+        item = await self.read(
+            pk_val,
+            fields=list(pk.name for pk in self.pk) + [attribute],
+            user_info=user_info,
+            session=session
+        )
+        return getattr(item, attribute)
 
     def _apply_read_permissions(
         self,
@@ -431,7 +432,7 @@ class UnaryEntityService(DatabaseService):
             for jtable in chain:
                 sub = sub.join(jtable)
 
-            public = ( # Look for empty permissions.
+            inner = ( # Look for empty permissions.
                 sub
                 .join(
                     permission['table'],
@@ -466,10 +467,7 @@ class UnaryEntityService(DatabaseService):
                         ]),
                     )
                 )
-                inner = public.union(protected)
-            else:
-                inner = public
-
+                inner = inner.union(protected)
             stmt = stmt.join(inner.subquery())
         return stmt
 
@@ -534,9 +532,6 @@ class UnaryEntityService(DatabaseService):
                         isouter=True
                     )
                 else:
-                    # TODO: this bit could be improved.
-                    # In terms of statement optmization.
-                    # TODO: call recursively ?
                     relstmt = select(target)
                     relstmt = (
                         target
@@ -555,35 +550,6 @@ class UnaryEntityService(DatabaseService):
                     )
                 )
         return stmt
-
-    @DatabaseManager.in_session
-    async def getattr_in_session(
-        self,
-        item: Base,
-        attr: str,
-        session: AsyncSession,
-    ) -> List[Base]:
-        session.add(item)
-        await session.refresh(item, attr)
-        return getattr(item, attr)
-
-    @DatabaseManager.in_session
-    async def read_nested(
-        self,
-        pk_val: List[Any],
-        attribute: str,
-        session: AsyncSession,
-        user_info: UserInfo | None = None,
-    ):
-        """Read nested collection from an entity."""
-        # Read applies permissions on nested collection as well.
-        item = await self.read(
-            pk_val,
-            fields=list(pk.name for pk in self.pk) + [attribute],
-            user_info=user_info,
-            session=session
-        )
-        return getattr(item, attribute)
 
     async def read(
         self,
@@ -608,76 +574,127 @@ class UnaryEntityService(DatabaseService):
         stmt = self._restrict_select_on_fields(stmt, fields, user_info)
         return await self._select(stmt, **kwargs)
 
+    def _filter_parse_num_op(self, stmt: Select, field: str, operator: str) -> Select:
+        """Applies numeric operator on a select statement.
+
+        :param stmt: Statement under construction
+        :type stmt: Select
+        :param field: Field name to apply the operator on
+        :type field: str
+        :param operator: operator
+        :type operator: str
+        :raises ValueError: Wrong operator
+        :return: Select statement with operator condition applied.
+        :rtype: Select
+        """
+        match operator.strip(')').split('('):
+            case [("gt" | "ge" | "lt" | "le") as op, arg]:
+                col, ctype = self.table.colinfo(field)
+                op_fct: Callable = getattr(col, f"__{op}__")
+                return stmt.where(op_fct(ctype(arg)))
+            case _:
+                raise ValueError(
+                    f"Expecting either 'field=v1,v2' pairs or integrer"
+                    f" operators 'field.op(v)' op in {SUPPORTED_INT_OPERATORS}")
+
+    def _filter_parse_field_cond(self, stmt: Select, field: str, values: List[str]) -> Select:
+        """Applies field condition on a select statement.
+
+        :param stmt: Statement under construction
+        :type stmt: Select
+        :param field: Field name to apply the operator on
+        :type field: str
+        :param values: condition values, multiple shall be treated as OR.
+        :type values: List[str]
+        :raises ValueError: In case a wildcars is used on a non textual field.
+        :return: Select statement with field condition applied.
+        :rtype: Select
+        """
+        col, ctype = self.table.colinfo(field)
+        wildcards, values = partition(values, cond=lambda x: "*" in x)
+        if wildcards and ctype is not str:
+            raise ValueError(
+                "Using wildcard symbol '*' in /search is only allowed for text fields."
+            )
+
+        # Wildcards.
+        stmt = stmt.where(
+            unevalled_or([
+                col.like(str(w).replace("*", "%"))
+                for w in wildcards
+            ])
+        ) if wildcards else stmt
+
+        # Field equality conditions.
+        stmt = stmt.where(
+            unevalled_or([
+                col == ctype(v)
+                for v in values
+            ])
+        ) if values else stmt
+
+        return stmt
+
     async def filter(
         self,
         fields: List[str],
         params: Dict[str, str],
+        stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs
     ) -> List[Base]:
         """READ rows filted on query parameters."""
         # Get special parameters
-        # fields = params.pop('fields')
         offset = int(params.pop('start', 0))
         limit = int(params.pop('end', config.LIMIT))
         reverse = params.pop('reverse', None)
         # TODO: apply limit to nested lists as well.
-
         stmt = select(self.table)
-        stmt = self._restrict_select_on_fields(stmt, fields, user_info)
+
+        # For lower level(s) propagation.
+        propagate = {"start": offset, "end": limit, "reverse": reverse}
+        nested_conditions = {}
 
         for dskey, csval in params.items():
             attr, values = dskey.split("."), csval.split(",")
-            if len(attr) > 2:
-                raise ValueError("Filtering not supported for depth > 1.")
-            # exclude = False
-            # if attr == 'exclude' and values == 'True':
-            #     exclude = True
 
-            # In case no value is associated we should be in the case of a numerical operator.
-            operator = None if csval else self._parse_int_operators(attr)
-            # elif any(op in dskey for op in SUPPORTED_INT_OPERATORS):
-            #     raise ValueError("'field.op()=value' type of query is not yet supported.")
-            col, ctype = self._filter_process_attr(attr)
+            if len(attr) == 2 and not csval: # Numeric Operators.
+                stmt = self._filter_parse_num_op(stmt, *attr)
 
-            # Numerical operators.
-            if operator:
-                if ctype not in (int, float):
-                    raise ValueError(
-                        f"Using operators methods {SUPPORTED_INT_OPERATORS} in /search is"
-                        " only allowed for numerical fields."
-                    )
-                op, val = operator
-                op_fct: Callable = getattr(col, f"__{op}__")
-                stmt = stmt.where(op_fct(ctype(val)))
-                continue
+            elif len(attr) == 1: # Field conditions.
+                stmt = self._filter_parse_field_cond(stmt, attr[0], values)
 
-            # Filters
-            wildcards, values = partition(values, cond=lambda x: "*" in x)
-            if wildcards and ctype is not str:
-                raise ValueError(
-                    "Using wildcard symbol '*' in /search is only allowed for text fields."
-                )
+            else: # Nested filter case, prepare for recursive call below.
+                nested_attr = ".".join(attr[1::])
+                nested_conditions[attr[0]] = nested_conditions.get(attr[0], {})
+                nested_conditions[attr[0]][nested_attr] = csval
 
-            stmt = stmt.where(
-                unevalled_or([
-                    col.like(str(w).replace("*", "%"))
-                    for w in wildcards
+        # Get the fields without conditions normally
+        # Importantly, the joins in that method are outer -> Not filtering.
+        stmt = self._restrict_select_on_fields(stmt, fields - nested_conditions.keys(), user_info)
+
+        # Prepare recursive call for nested filters, and do an (inner) left join -> Filtering.
+        for nf_key, nf_conditions in nested_conditions.items():
+            nf_svc = self._svc_from_rel_name(nf_key)
+            nf_fields = nf_svc.table.pk() | set(nf_conditions.keys())
+            nf_conditions.update(propagate) # Take in special parameters.
+            nf_stmt = (
+                await nf_svc.filter(nf_fields, nf_conditions, stmt_only=True, user_info=user_info)
+            ).subquery()
+
+            stmt = stmt.join_from(
+                stmt,
+                nf_stmt,
+                onclause=unevalled_all([
+                    getattr(self.table, pair[0].name) == getattr(nf_stmt.columns, pair[1].name)
+                    for pair in self.relationships[nf_key].local_remote_pairs
                 ])
-            ) if wildcards else stmt
+            )
 
-            # Regular equality conditions.
-            stmt = stmt.where(
-                unevalled_or([
-                    col == ctype(v)
-                    for v in values
-                ])
-            ) if values else stmt
-
-            # if exclude:
-            #     stmt = select(self.table.not_in(stmt))
+        # if exclude:
+        #     stmt = select(self.table.not_in(stmt))
         stmt = stmt.offset(offset).limit(limit)
-        return await self._select_many(stmt, **kwargs)
+        return stmt if stmt_only else await self._select_many(stmt, **kwargs)
 
     async def delete(self, pk_val, user_info: UserInfo | None = None, **kwargs) -> None:
         """DELETE."""
@@ -769,7 +786,7 @@ class CompositeEntityService(UnaryEntityService):
         for key, delay in composite.delayed.items():
             # Load attribute.
             attr = await getattr(item.awaitable_attrs, key)
-            target_svc = rels[key].target.decl_class.svc
+            svc = self._svc_from_rel_name(key)
 
             # Populate remote_side if any.
             if rels[key].secondary is None and hasattr(rels[key], 'remote_side'):
@@ -782,19 +799,26 @@ class CompositeEntityService(UnaryEntityService):
                             fk.target_fullname.rsplit('.', maxsplit=1)[-1]
                         )
 
-                # Patch statements before inserting.
-                for one in to_it(delay):
-                    match one:
+                def patch(ins):
+                    match ins:
                         case CompositeInsert():
-                            one.item = one.item.values(**mapping)
+                            ins.item = ins.item.values(**mapping)
+                            return ins
                         case Insert() | Update():
-                            one = one.values(**mapping)
+                            return ins.values(**mapping)
+
+                # Patch statements before inserting.
+                if hasattr(delay, '__len__'):
+                    for i, ins in enumerate(delay):
+                        delay[i] = patch(ins)
+                else:
+                    delay = patch(delay)
 
             # Insert delayed and populate back into item.
             if rels[key].uselist:
                 match delay:
                     case list():
-                        delay = await target_svc._insert_list(delay, **kwargs)
+                        delay = await svc._insert_list(delay, **kwargs)
                         # Put in attribute the objects that are not already present.
                         delay, updated = partition(delay, lambda e: e not in getattr(item, key))
                         # Refresh objects that were present so item comes back with updated values.
@@ -804,13 +828,13 @@ class CompositeEntityService(UnaryEntityService):
                         attr.extend(delay)
 
                     case Insert():
-                        delay = await target_svc._insert(delay, **kwargs)
+                        delay = await svc._insert(delay, **kwargs)
                         if delay not in attr:
                             attr.append(delay)
                         else:
                             await session.refresh(delay)
             else:
-                setattr(item, key, await target_svc._insert(delay, **kwargs))
+                setattr(item, key, await svc._insert(delay, **kwargs))
 
         return item
 
@@ -838,7 +862,6 @@ class CompositeEntityService(UnaryEntityService):
     async def _parse_composite(
         self,
         data: Dict[str, Any],
-        partial_data: bool = False,
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs,
@@ -864,7 +887,7 @@ class CompositeEntityService(UnaryEntityService):
 
                 for verb in Permission.fields() & set(sub.keys()):
                     perm_delayed[str(verb)] = await ListGroup.svc.write(
-                        sub.get(verb), partial_data=partial_data, stmt_only=True,
+                        sub.get(verb), stmt_only=True,
                     )
 
             # Do nothing in case the entry already exists.
@@ -878,15 +901,11 @@ class CompositeEntityService(UnaryEntityService):
 
         # Remaining table relationships.
         for key in self.relationships.keys() & data.keys():
-            rel, sub = self.relationships[key], data.pop(key)
+            svc, sub = self._svc_from_rel_name(key), data.pop(key)
 
             # Get statement(s) for nested entity:
-            nested_stmt = await (
-                rel
-                .target
-                .decl_class
-                .svc
-                .write(sub, partial_data=partial_data, stmt_only=True, user_info=user_info)
+            nested_stmt = await svc.write(
+                sub, stmt_only=True, user_info=user_info
             )
 
             # Single nested entity.
@@ -897,7 +916,7 @@ class CompositeEntityService(UnaryEntityService):
                 delayed[key] = nested_stmt
 
         # Statement for original item.
-        stmt = await super().write(data, partial_data=partial_data, stmt_only=True, user_info=user_info)
+        stmt = await super().write(data, stmt_only=True, user_info=user_info)
 
         # Pack & return.
         composite = CompositeInsert(item=stmt, nested=nested, delayed=delayed)
@@ -907,14 +926,13 @@ class CompositeEntityService(UnaryEntityService):
     async def write(
         self,
         data: List[Dict[str, Any]] | Dict[str, Any],
-        partial_data: bool = False,
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs
     ) -> Base | List[Base] | UpsertStmt | List[UpsertStmt]:
         """CREATE, Handle list and single case."""
         kwargs.update( # Could be implicitely packed by the signature but then linters complain.
-            {"stmt_only": stmt_only, "user_info": user_info, "partial_data": partial_data}
+            {"stmt_only": stmt_only, "user_info": user_info}
         )
         if isinstance(data, list):
             return [

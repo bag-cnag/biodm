@@ -55,7 +55,6 @@ class KCGroupService(KCService):
     async def write(
         self,
         data: List[Dict[str, Any]] | Dict[str, Any],
-        partial_data: bool = False,
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs
@@ -73,7 +72,7 @@ class KCGroupService(KCService):
                 await User.svc.read_or_create(user, [group["path"]], [group["id"]],)
 
         # Send to DB
-        return await super().write(data, stmt_only=stmt_only, partial_data=partial_data, **kwargs)
+        return await super().write(data, stmt_only=stmt_only, **kwargs)
 
     async def delete(self, pk_val: List[Any], user_info: UserInfo | None = None, **_) -> None:
         """DELETE Group from DB then from Keycloak."""
@@ -115,7 +114,6 @@ class KCUserService(KCService):
     async def write(
         self,
         data: Dict[str, Any] | List[Dict[str, Any]],
-        partial_data: bool = False,
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs
@@ -133,7 +131,7 @@ class KCUserService(KCService):
             # Then User.
             await self.read_or_create(user, groups=group_paths, group_ids=group_ids)
 
-        return await super().write(data, partial_data=partial_data, stmt_only=stmt_only, **kwargs)
+        return await super().write(data, stmt_only=stmt_only, **kwargs)
 
     async def delete(self, pk_val: List[Any], user_info: UserInfo | None = None, **_) -> None:
         """DELETE User from DB then from keycloak."""

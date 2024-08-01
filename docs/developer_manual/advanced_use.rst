@@ -104,7 +104,6 @@ building and execution.
         async def write(
             self,
             data: List[Dict[str, Any]] | Dict[str, Any],
-            partial_data: bool = False,
             stmt_only: bool = False,
             user_info: UserInfo | None = None,
             **kwargs
@@ -122,4 +121,4 @@ building and execution.
                     await User.svc.read_or_create(user, [group["path"]], [group["id"]],)
 
             # Send to DB
-            return await super().write(data, stmt_only=stmt_only, partial_data=partial_data, **kwargs)
+            return await super().write(data, stmt_only=stmt_only, **kwargs)

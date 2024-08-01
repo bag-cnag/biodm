@@ -28,4 +28,4 @@ class K8Service(CompositeEntityService):
 
             # }
         # DB
-        return await super().write(data, stmt_only=stmt_only, **kwargs)
+        return await super().write(data, user_info=user_info, stmt_only=stmt_only, **kwargs)

@@ -272,9 +272,9 @@ class Base(DeclarativeBase, AsyncAttrs):
         return c.target if isinstance(c, Relationship) else None
 
     @classmethod
-    def pk(cls):
+    def pk(cls) -> Set[str]:
         """Return primary key names."""
-        return (
+        return set(
             str(pk).rsplit('.', maxsplit=1)[-1]
             for pk in cls.__table__.primary_key.columns
         )
@@ -306,6 +306,23 @@ class Base(DeclarativeBase, AsyncAttrs):
     @classmethod
     def is_versioned(cls):
         return issubclass(cls, Versioned)
+
+    # @property
+    @classmethod
+    def required(cls) -> Set[str]:
+        """Gets all required fields to create a new object.
+
+        :return: fields name list
+        :rtype: Set[str]
+        """
+        return set(
+            c.name for c in cls.__table__.columns
+            if not (
+                c.nullable or
+                cls.has_default(c.name) or
+                cls.is_autoincrement(c.name)
+            )
+        )
 
 
 class S3File:
