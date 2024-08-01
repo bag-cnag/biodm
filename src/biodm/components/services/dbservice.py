@@ -140,10 +140,11 @@ class UnaryEntityService(DatabaseService):
         :return: associated service
         :rtype: DatabaseService
         """
-        if key not in self.relationships.keys():
+        rels = self.table.relationships()
+        if key not in rels.keys():
             raise ValueError(f"Invalid nested collection name {key}.")
 
-        rel = self.relationships[key]
+        rel = rels[key]
         if hasattr(rel.target, 'original') and rel.target.original == self.table.__table__:
             return self
         else:
@@ -511,13 +512,9 @@ class UnaryEntityService(DatabaseService):
         ) if fields else stmt
 
         for n in nested:
-            relationship, attr = self.relationships[n], getattr(self.table, n)
+            relationship = self.relationships[n]
             target = relationship.target
-
-            if isinstance(target, Alias):
-                target = self.table
-            else:
-                target = target.decl_class
+            target = self.table if isinstance(target, Alias) else target.decl_class
 
             if relationship.direction in (MANYTOONE, ONETOMANY):
                 if target == self.table:
