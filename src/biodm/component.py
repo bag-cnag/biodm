@@ -43,7 +43,6 @@ class ApiService(ApiComponent, metaclass=ABCMeta):
     async def write(
         self,
         data: Dict[str, Any] | List[Dict[str, Any]],
-        partial_data: bool = False,
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs: Dict[str, Any]
@@ -65,6 +64,7 @@ class ApiService(ApiComponent, metaclass=ABCMeta):
         self,
         fields: List[str],
         params: Dict[str, str],
+        stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs: Dict[str, Any]
     ) -> List[Base]:

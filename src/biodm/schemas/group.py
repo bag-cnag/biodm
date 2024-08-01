@@ -9,8 +9,8 @@ class GroupSchema(Schema):
     n_members = Integer(required=False)
 
     users = List(Nested('UserSchema', exclude=['groups'])) # only=['username']
-    children = List(Nested('GroupSchema', only=['path', 'n_members']))# exclude=['users', 'children', 'parent']))
-    parent = Nested('GroupSchema', only=['path', 'n_members'])# exclude=['users', 'children', 'parent'], dump_only=True) # parent', 'users', 'children
+    children = List(Nested('GroupSchema', exclude=['children', 'parent'])) # exclude=['users', 'children', 'parent']))
+    parent = Nested('GroupSchema', exclude=['children', 'parent'])# exclude=['users', 'children', 'parent'], dump_only=True) # parent', 'users', 'children
 
     # @pre_load
     # def pre_load_process(self, data, many, **kwargs):

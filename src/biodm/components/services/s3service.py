@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from biodm.components.table import Base, S3File
 from biodm.exceptions import FailedRead
 from biodm.managers import DatabaseManager, S3Manager
-from biodm.utils.utils import to_it
+from biodm.utils.utils import utcnow
 from biodm.utils.security import UserInfo
 from .dbservice import UnaryEntityService
 
@@ -67,22 +67,21 @@ class S3Service(UnaryEntityService):
     @DatabaseManager.in_session
     async def upload_success(self, pk_val, session: AsyncSession):
         file = await self.read(pk_val, fields=['ready', 'upload_form'], session=session)
+        file.validated_at = utcnow()
         file.ready = True
         file.upload_form = ""
 
     @DatabaseManager.in_session
     async def download(self, pk_val: List[Any], user_info: UserInfo | None, session: AsyncSession):
-        await self._check_permissions(
-            "download", user_info, {
-                k: v for k, v in zip(self.pk, pk_val)
-            }, session=session
-        )
-        file = await self.read(pk_val, fields=[
-                'filename', 'extension', 'dl_count', 'ready', 'key_salt'
-            ], session=session
-        )
+        # File management.
+        fields = ['filename', 'extension', 'dl_count', 'ready', 'key_salt']
+        # Also fetch foreign keys, as they may be necessary for permission check.
+        fields += list(c.name for c in self.table.__table__.columns if c.foreign_keys)
+        file = await self.read(pk_val, fields=fields, session=session)
 
         assert isinstance(file, S3File) # mypy.
+
+        await self._check_permissions("download", user_info, file.__dict__, session=session)
 
         if not file.ready:
             raise FailedRead() # TODO: better error ?
@@ -107,7 +106,8 @@ class S3Service(UnaryEntityService):
             session=session,
             user_info=user_info
         )
-
+        item.created_at = utcnow()
+        item.validated_at = None
         item.ready = False
         item.dl_count = 0
         await self.gen_upload_form(item, session=session)

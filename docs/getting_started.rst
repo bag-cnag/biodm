@@ -274,9 +274,9 @@ If you installed sources in editable mode, that allows you to set breakpoints wi
                 "cwd": "${workspaceFolder}/src/tests/unit",
                 "subProcess": true,
                 "module": "pytest",
-                "python": "/path/to/myvenv/bin/python3", # Replace with your virtual environment
+                "python": "/path/to/myvenv/bin/python3", // Replace with your virtual environment
                 "args": [
-                    # "-k", "test_basics", # Optional: pick your tests
+                    // "-k", "test_basics", // Optional: pick your tests
                     "-vv"
                 ],
                 "justMyCode": false,
@@ -330,19 +330,19 @@ VSCode supports running both sessions at the same time from the ``run and debug`
                 "cwd": "${workspaceFolder}/src/example/",
                 "program": "app.py",
                 "console": "integratedTerminal",
-                "python": "/path/to/myvenv/bin/python3", # Replace with your virtual environment
+                "python": "/path/to/myvenv/bin/python3", // Replace with your virtual environment
                 "justMyCode": false,
             },
             {
                 "name": "PyTest: BioDM Integration tests",
                 "type": "debugpy",
                 "request": "launch",
-                "cwd": "${workspaceFolder}/src/tests/integration/kc|s3|k8", # pick one directory
+                "cwd": "${workspaceFolder}/src/tests/integration/kc|s3|k8", // pick one directory
                 "subProcess": true,
                 "module": "pytest",
-                "python": "/path/to/myvenv/bin/python3", # Replace with your virtual environment
+                "python": "/path/to/myvenv/bin/python3", // Replace with your virtual environment
                 "args": [
-                    # "-k", "some_test_name" # Optional: pick your tests
+                    // "-k", "some_test_name" // Optional: pick your tests
                     "-vv"
                 ],
                 "justMyCode": false,

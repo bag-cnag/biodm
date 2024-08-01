@@ -1,5 +1,7 @@
 # BioDM: A fast and RESTful Data Management framework
 
+<p align="center"><img src="logo.png" alt="logo" width="200"/></p>
+
 ---
 
 **Introduction Presentation**: <a href="https://www.overleaf.com/read/wxpdnptnkpsy" target="_blank">https://www.overleaf.com/read/wxpdnptnkpsy</a> 
@@ -62,6 +64,12 @@ once the server is running.
 
 ## About
 
+Developed at CNAG
+
 ## Contributing
 
+No contributing policy yet. However, issues and pull requests are welcome.
+
 ## Licence
+
+GNU/GPLv3

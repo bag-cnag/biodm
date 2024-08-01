@@ -60,5 +60,5 @@ class Dataset(Versioned, Base):
     # Special parameters.
     __permissions__ = (
         # Flag many-to-entity (composition pattern) with permissions. 
-        Permission(files, read=True, write=True),
+        Permission(files, read=True, write=True, download=True),
     )

@@ -21,6 +21,7 @@ class DatasetSchema(Schema):
     contact = Nested('UserSchema') # , only=('username', )
     project = Nested('ProjectSchema', exclude=('datasets', ))
     tags = List(Nested('TagSchema'))
+    files = List(Nested('FileSchema'))
 
     # id_ls_download = Integer()
     # ls_download = Nested('ListGroupSchema')
