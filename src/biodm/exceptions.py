@@ -56,6 +56,8 @@ class TokenDecodingError(RequestError):
 class UpdateVersionedError(RequestError):
     """Raised when an attempt at updating a versioned resource is detected."""
 
+class FileNotUploadedError(RequestError):
+    """Raised when trying to download a file that has not been uploaded yet."""
 
 ## Routing
 class InvalidCollectionMethod(RequestError):

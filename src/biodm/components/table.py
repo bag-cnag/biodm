@@ -15,9 +15,11 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
-    DeclarativeBase, relationship, Relationship, backref, ONETOMANY, mapped_column, MappedColumn, Mapped, make_transient
+    DeclarativeBase, relationship, Relationship, backref, ONETOMANY, mapped_column, MappedColumn, Mapped, make_transient, column_property
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from biodm import config
 from biodm.exceptions import ImplementionError
@@ -334,19 +336,7 @@ class S3File:
     upload_form = Column(String(2000)) # , nullable=False
     dl_count = Column(Integer, nullable=False, server_default='0')
 
-    # @declared_attr
-    # def id_user_uploader(_):
-    #     return Column(ForeignKey("USER.id"),    nullable=False)
-
-    # @declared_attr
-    # @classmethod
-    # def user(cls) -> Mapped["User"]:
-    #     return relationship(foreign_keys=[cls.id_user_uploader], lazy="select")
-
-    @declared_attr
-    @classmethod
-    def key_salt(cls) -> Mapped[str]:
-        return Column(String(36), nullable=False, default=lambda: str(uuid4()))
+    key_salt = Column(String, nullable=False, default=lambda: str(uuid4()))
 
     emited_at = Column(
         TIMESTAMP(timezone=True), default=utcnow, nullable=False

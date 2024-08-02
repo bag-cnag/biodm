@@ -1,3 +1,4 @@
+from asyncio import iscoroutine
 from typing import List, Any, Sequence, Dict
 
 from sqlalchemy import Insert
@@ -5,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 from biodm.components.table import Base, S3File
-from biodm.exceptions import FailedRead
+from biodm.exceptions import FileNotUploadedError
 from biodm.managers import DatabaseManager, S3Manager
 from biodm.utils.utils import utcnow
 from biodm.utils.security import UserInfo
@@ -33,13 +34,17 @@ class S3Service(UnaryEntityService):
         return f"{srv}{route}"
 
     async def gen_key(self, item, session: AsyncSession):
-        await session.refresh(item, ['key_salt', 'filename', 'extension'])
+        await session.refresh(item, ['filename', 'extension']) 
         version = ""
         if self.table.is_versioned():
             await session.refresh(item, ['version'])
-            version = "_"+str(item.version)
+            version = "_v" + str(item.version)
 
-        return f"{item.key_salt}_{item.filename}{version}.{item.extension}"
+        key_salt = await getattr(item.awaitable_attrs, 'key_salt')
+        if iscoroutine(key_salt):
+            item.__dict__['session'] = session
+            key_salt = await item.key_salt
+        return f"{key_salt}_{item.filename}_{version}.{item.extension}"
 
     async def gen_upload_form(self, item, session: AsyncSession):
         assert isinstance(item, S3File) # mypy.
@@ -74,8 +79,8 @@ class S3Service(UnaryEntityService):
     @DatabaseManager.in_session
     async def download(self, pk_val: List[Any], user_info: UserInfo | None, session: AsyncSession):
         # File management.
-        fields = ['filename', 'extension', 'dl_count', 'ready', 'key_salt']
-        # Also fetch foreign keys, as they may be necessary for permission check.
+        fields = ['filename', 'extension', 'dl_count', 'ready']
+        # Also fetch foreign keys, as some may be necessary for permission check.
         fields += list(c.name for c in self.table.__table__.columns if c.foreign_keys)
         file = await self.read(pk_val, fields=fields, session=session)
 
@@ -84,7 +89,7 @@ class S3Service(UnaryEntityService):
         await self._check_permissions("download", user_info, file.__dict__, session=session)
 
         if not file.ready:
-            raise FailedRead() # TODO: better error ?
+            raise FileNotUploadedError("File exists but has not been uploaded yet.")
 
         url = self.s3.create_presigned_download_url(await self.gen_key(file, session=session))
         file.dl_count += 1

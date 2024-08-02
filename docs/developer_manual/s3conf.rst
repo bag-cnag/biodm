@@ -19,17 +19,25 @@ The following variables have to be provided.
 File management
 ----------------
 To ensure bucket key uniqueness for uploaded files, the key gets prefixed by
-``S3File.key_salt`` column. By default this is an ``uuid4`` but in case you would like to
-manage this differently you could override this attribute in ``File`` class.
+``S3File.key_salt`` column. By default this is an ``uuid4``.
+
+In case you would like to have precise control over how your files are named on the bucket this
+can be done by overloading ``key_salt`` with a ``hybrid_property`` in the following way.
 
 .. code-block:: python
     :caption: demo.py
 
+    from sqlalchemy.ext.hybrid import hybrid_property
+
     class File(bd.components.S3File, bd.components.Base):
         class File()
             ...
-            @declared_attr
-            @classmethod
-            def key_salt(cls) -> Mapped[str]:
-                # Replace lambda below by a personalized function.
-                return Column(String(8), nullable=False, default=lambda: "myprefix")
+            @hybrid_property
+            async def key_salt(self) -> str:
+                # Pop session, populated by S3Service just before asking for that attr.
+                session = self.__dict__.pop('session')
+                # Use session to fetch what you need.
+                await session.refresh(self, ['dataset'])
+                await session.refresh(self.dataset, ['project'])
+                # Build your custom prefix.
+                return f"{self.dataset.project.name}_{self.dataset.name}"

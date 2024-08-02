@@ -1,7 +1,10 @@
 from typing import TYPE_CHECKING
+import uuid
 
 from sqlalchemy import Column, Integer, ForeignKey, Boolean, String, ForeignKeyConstraint, SmallInteger
 from sqlalchemy.orm import Mapped, relationship
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.ext.asyncio import AsyncSession
 from biodm.components.table import Base, S3File, Permission
 # from .asso import asso_dataset_tag
 
@@ -22,9 +25,16 @@ class File(S3File, Base):
         ),
     )
 
+    @hybrid_property
+    async def key_salt(self) -> str:
+        # Pop session, populated by S3Service just before asking for that attr.
+        session: AsyncSession = self.__dict__.pop('session')
+        await session.refresh(self, ['dataset'])
+        await session.refresh(self.dataset, ['project'])
+        return f"{self.dataset.project.name}_{self.dataset.name}"
+
     # relationships
     dataset: Mapped["Dataset"] = relationship(back_populates="files", foreign_keys=[id_dataset, version_dataset])
-
 
 #     # dataset: Mapped["Dataset"] = relationship(back_populates="files", foreign_keys=[id_dataset, version_dataset])
 #     # dataset: Mapped["Dataset"] = relationship('Dataset', primaryjoin="and_(Dataset.id == File.id_dataset, Dataset.version == File.version_dataset)")

@@ -22,10 +22,8 @@ class K8Service(CompositeEntityService):
     ) -> Base | List[Base] | UpsertStmt | List[UpsertStmt]:
         """Submits manifest to kubernetes cluster before inserting into DB."""
         # K8s
-        if not stmt_only:
-            pass
-            # data = {
+        # data = {
 
-            # }
+        # }
         # DB
         return await super().write(data, user_info=user_info, stmt_only=stmt_only, **kwargs)

@@ -21,7 +21,7 @@ from biodm.exceptions import (
 )
 from biodm.managers import DatabaseManager
 # from biodm.scope import Scope
-from biodm.tables import ListGroup, Group
+from biodm.tables import ListGroup, Group, user
 from biodm.tables.asso import asso_list_group
 from biodm.utils.security import UserInfo
 from biodm.utils.sqla import CompositeInsert, UpsertStmt
@@ -346,6 +346,7 @@ class UnaryEntityService(DatabaseService):
                 )
                 return stmt
             # Else: continue, if there is a problem error will be raised later.
+            # We do not raise here, because missing data could be provided in _insert_composite.
         # Regular case
         stmt = self._backend_specific_insert(self.table)
         stmt = stmt.values(**data)
@@ -373,26 +374,8 @@ class UnaryEntityService(DatabaseService):
         session: AsyncSession,
     ) -> List[Base]:
         session.add(item)
-        await session.refresh(item, attr)
+        await session.refresh(item, [attr])
         return getattr(item, attr)
-
-    @DatabaseManager.in_session
-    async def read_nested(
-        self,
-        pk_val: List[Any],
-        attribute: str,
-        session: AsyncSession,
-        user_info: UserInfo | None = None,
-    ):
-        """Read nested collection from an entity."""
-        # Read applies permissions on nested collection as well.
-        item = await self.read(
-            pk_val,
-            fields=list(pk.name for pk in self.pk) + [attribute],
-            user_info=user_info,
-            session=session
-        )
-        return getattr(item, attribute)
 
     def _apply_read_permissions(
         self,
@@ -552,6 +535,7 @@ class UnaryEntityService(DatabaseService):
         self,
         pk_val: List[Any],
         fields: List[str],
+        nested_attribute: str | None = None,
         user_info: UserInfo | None = None,
         **kwargs
     ) -> Base:
@@ -566,10 +550,31 @@ class UnaryEntityService(DatabaseService):
         :return: SQLAlchemy ORM item
         :rtype: Base
         """
+        if nested_attribute:
+            return await self.read_nested(pk_val, nested_attribute, user_info=user_info, **kwargs)
+
         stmt = select(self.table)
         stmt = stmt.where(self.gen_cond(pk_val))
         stmt = self._restrict_select_on_fields(stmt, fields, user_info)
         return await self._select(stmt, **kwargs)
+
+    @DatabaseManager.in_session
+    async def read_nested(
+        self,
+        pk_val: List[Any],
+        attribute: str,
+        session: AsyncSession,
+        user_info: UserInfo | None = None
+    ):
+        """Read nested collection from an entity."""
+        # Read applies permissions on nested collection as well.
+        item = await self.read(
+            pk_val,
+            fields=list(pk.name for pk in self.pk) + [attribute],
+            user_info=user_info,
+            session=session
+        )
+        return getattr(item, attribute)
 
     def _filter_parse_num_op(self, stmt: Select, field: str, operator: str) -> Select:
         """Applies numeric operator on a select statement.
