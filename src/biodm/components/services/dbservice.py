@@ -119,8 +119,8 @@ class DatabaseService(ApiService):
                 id = one['id'] + 1
 
     def _get_permissions(self, verb: str) -> List[Dict[str, Any]] | None:
-        """Retrieve entries indexed with self.table containing given verb in permissions."""
-        # Effectively disable permissions if Keycloak is disabled.
+        """Retrieve permission entries indexed by self.table containing given verb.
+        In case keycloak is disabled, returns None, effectively ignoring all permissions."""
         if not hasattr(self.app, 'kc'):
             return None
 
@@ -169,8 +169,8 @@ class DatabaseService(ApiService):
                         onclause=permission['table'].__table__.c[f'id_{verb}'] == ListGroup.id
                     )
                     .where(*[
-                        pair[0] == pair[1]
-                        for pair in entity.local_remote_pairs
+                        local == remote
+                        for local, remote in entity.local_remote_pairs
                     ])
                     .join(
                         link,
@@ -247,8 +247,8 @@ class DatabaseService(ApiService):
                 .join(
                     permission['table'],
                     onclause=unevalled_all([
-                            pair[0] == pair[1]
-                            for pair in entity.local_remote_pairs
+                            local == remote
+                            for local, remote in entity.local_remote_pairs
                         ] + [lgverb == None]
                     )
                 )
@@ -259,8 +259,8 @@ class DatabaseService(ApiService):
                     .join(
                         permission['table'],
                         onclause=unevalled_all([
-                                pair[0] == pair[1]
-                                for pair in entity.local_remote_pairs
+                                local == remote
+                                for local, remote in entity.local_remote_pairs
                             ]
                         )
                     )
@@ -376,7 +376,8 @@ class UnaryEntityService(DatabaseService):
         ):
             await self.populate_ids_sqlite(data)
 
-        stmts = [self.upsert(one, futures=kwargs.pop('futures', None)) for one in to_it(data)]
+        futures = kwargs.pop('futures', None)
+        stmts = [self.upsert(one, futures=futures) for one in to_it(data)]
 
         if len(stmts) == 1:
             return stmts[0] if stmt_only else await self._insert(stmts[0], **kwargs)
@@ -403,6 +404,8 @@ class UnaryEntityService(DatabaseService):
 
         :param data: validated data, unit - i.e. one single entity, no depth - dictionary
         :type data: Dict[Any, str]
+        :param futures: Fields that will get populated at insertion time, defaults to none
+        :type futures: List[str], optional
         :return: statement
         :rtype: Insert | Update
         """
@@ -509,8 +512,8 @@ class UnaryEntityService(DatabaseService):
                         self.table,
                         alias,
                         onclause=unevalled_all([
-                            getattr(self.table, pair[0].name) == getattr(alias, pair[1].name)
-                            for pair in relationship.local_remote_pairs
+                            getattr(self.table, local.name) == getattr(alias, remote.name)
+                            for local, remote in relationship.local_remote_pairs
                         ]),
                         isouter=True
                     )
@@ -691,8 +694,8 @@ class UnaryEntityService(DatabaseService):
                 stmt,
                 nf_stmt,
                 onclause=unevalled_all([
-                    getattr(self.table, pair[0].name) == getattr(nf_stmt.columns, pair[1].name)
-                    for pair in self.relationships[nf_key].local_remote_pairs
+                    getattr(self.table, local.name) == getattr(nf_stmt.columns, remote.name)
+                    for local, remote in self.relationships[nf_key].local_remote_pairs
                 ])
             )
 
@@ -766,18 +769,36 @@ class CompositeEntityService(UnaryEntityService):
         :return: Inserted item
         :rtype: Base
         """
+        def patch(ins, mapping):
+            """On the fly statement patcher."""
+            match ins:
+                case CompositeInsert():
+                    ins.item = ins.item.values(**mapping)
+                    return ins
+                case Insert() | Update():
+                    return ins.values(**mapping)
+
         rels = self.table.relationships()
         # Pack in session in kwargs for lower level calls.
         kwargs.update({'session': session})
 
         # Insert all nested objects.
         for key, sub in composite.nested.items():
+            rel = self.table.relationships()[key]
             composite.nested[key] = await (
                 rels[key]
                 .target
                 .decl_class
                 .svc
             )._insert(sub, **kwargs)
+
+            # Patch main statement with nested object info if needed.
+            if rel.secondary is None and hasattr(rel, 'local_columns'):
+                mapping = {
+                    local.name: getattr(composite.nested[key], remote.name)
+                    for local, remote in rel.local_remote_pairs
+                }
+                composite.item = patch(composite.item, mapping)
 
         # Insert main object.
         item = await self._insert(composite.item, **kwargs)
@@ -801,20 +822,12 @@ class CompositeEntityService(UnaryEntityService):
                         fk, = c.foreign_keys
                         mapping[c.name] = getattr(item, fk.column.name)
 
-                def patch(ins):
-                    match ins:
-                        case CompositeInsert():
-                            ins.item = ins.item.values(**mapping)
-                            return ins
-                        case Insert() | Update():
-                            return ins.values(**mapping)
-
                 # Patch statements before inserting.
                 if hasattr(delay, '__len__'):
                     for i, ins in enumerate(delay):
-                        delay[i] = patch(ins)
+                        delay[i] = patch(ins, mapping)
                 else:
-                    delay = patch(delay)
+                    delay = patch(delay, mapping)
 
             # Insert delayed and populate back into item.
             if rels[key].uselist:
@@ -905,7 +918,7 @@ class CompositeEntityService(UnaryEntityService):
         # Remaining table relationships.
         for key in self.relationships.keys() & data.keys():
             svc, sub = self._svc_from_rel_name(key), data.pop(key)
-            rel = self.relationships[key] 
+            rel = self.relationships[key]
 
             # Infer fields that will get populated at insertion time (for error detection).
             nested_futures = None

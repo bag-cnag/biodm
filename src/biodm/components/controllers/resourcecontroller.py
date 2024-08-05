@@ -454,7 +454,7 @@ class ResourceController(EntityController):
             target_rel = self.table.relationships().get(nested_attribute, {})
             if not target_rel or not getattr(target_rel, 'uselist', False):
                 raise ValueError(
-                    f"Unknown collection name {nested_attribute} of {self.table.__class__.__name__}"
+                    f"Unknown collection {nested_attribute} of {self.table.__class__.__name__}"
                 )
             # Serialization and field extraction done by target controller.
             ctrl: ResourceController = (
@@ -512,8 +512,7 @@ class ResourceController(EntityController):
                 description: Empty Payload
         """
         pk_val = self._extract_pk_val(request)
-        bod = await self._extract_body(request)
-        validated_data = self.validate(bod, partial=True)
+        validated_data = self.validate(await self._extract_body(request), partial=True)
 
         # Should be a single record.
         if not isinstance(validated_data, dict):
@@ -627,7 +626,6 @@ class ResourceController(EntityController):
             500:
                 description: Attempted update of primary key components.
         """
-        # TODO: ?? make it possible to create/update with the id only -> defaults to lastversion.
         assert self.table.is_versioned()
 
         # Allow empty body.

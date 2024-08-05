@@ -45,7 +45,6 @@ class KCGroupService(KCService):
         parent_id = None
         if not path.parent.parts == ('/',):
             parent = await self.kc.get_group_by_path(str(path.parent))
-            # TODO: better exception
             if not parent:
                 raise ValueError("Input path does not match any parent group.")
             parent_id = parent['id']
