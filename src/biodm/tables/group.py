@@ -42,9 +42,9 @@ class Group(Base):
     def path_parent(self) -> str:
         return self.path[:self.path.index('__', -1)]
 
-    # @hybrid_property
+    # @hybrid_property # TODO ?
     # def display_name(self) -> str:
-    #     return self.path[self.path.index('__', -1):] # TODO: ?
+    #     return self.path[self.path.index('__', -1):]
 
     @path_parent.inplace.expression
     @classmethod

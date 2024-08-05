@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, List
 
 from boto3 import client
 from botocore.config import Config
@@ -91,6 +91,7 @@ class S3Manager(ApiManager):
                 Conditions=conditions,
                 ExpiresIn=self.url_expiration
             )
+
         except ClientError as e:
             # TODO: better error
             raise e
@@ -110,6 +111,31 @@ class S3Manager(ApiManager):
                 },
                 ExpiresIn=self.url_expiration
             )
+
+        except ClientError as e:
+            # TODO: better error
+            raise e
+
+    def create_presigned_multipart_upload(self, object_name, n_parts) -> List[Any]:
+        try:
+            response = self.s3_client.create_multipart_upload(
+                Bucket=self.bucket_name,
+                Key=object_name,
+            )
+            parts = []
+            for i in range(1, n_parts+1):
+                parts[i] = self.s3_client.generate_presigned_url(
+                    'upload_part',
+                    Params={
+                        'Bucket': self.bucket_name,
+                        'Key': object_name,
+                        'PartNumber': i,
+                        'UploadId': response['UploadId']
+                    },
+                    ExpiresIn=self.url_expiration
+                )
+                return parts
+
         except ClientError as e:
             # TODO: better error
             raise e

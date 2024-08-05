@@ -532,10 +532,11 @@ class ResourceController(EntityController):
                 ),
                 status_code=201,
             )
-        except IntegrityError:
-            raise UpdateVersionedError(
-                "Attempt at updating versioned resources detected"
-            )
+        except IntegrityError as ie:
+            if 'UNIQUE' in ie.args[0] and 'version' in ie.args[0]: # Versioned case.
+                raise UpdateVersionedError(
+                    "Attempt at updating versioned resources via POST detected"
+                )
 
     async def delete(self, request: Request) -> Response:
         """Delete resource.

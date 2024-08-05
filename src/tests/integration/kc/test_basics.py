@@ -1,6 +1,5 @@
 import requests
 
-
 def test_live_endpoint(srv_endpoint):
     """"""
     response = requests.get(f'{srv_endpoint}/live')

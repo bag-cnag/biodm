@@ -20,8 +20,7 @@ from biodm.exceptions import (
     FailedRead, FailedDelete, UpdateVersionedError, UnauthorizedError
 )
 from biodm.managers import DatabaseManager
-# from biodm.scope import Scope
-from biodm.tables import ListGroup, Group, user
+from biodm.tables import ListGroup, Group
 from biodm.tables.asso import asso_list_group
 from biodm.utils.security import UserInfo
 from biodm.utils.sqla import CompositeInsert, UpsertStmt
@@ -33,12 +32,18 @@ SUPPORTED_INT_OPERATORS = ("gt", "ge", "lt", "le")
 
 class DatabaseService(ApiService):
     """DB Service class: manages database transactions for entities.
-        Holds atomic database statement execution functions.
+        This abstract class holds atomic database statement execution and utility functions plus
+        permission logic.
     """
+
+    table: Type[Base]
+
+    def __repr__(self) -> str:
+        """ServiceName(TableName)."""
+        return f"{self.__class__.__name__}({self.table.__name__})"
+
     @property
-    def _backend_specific_insert(
-        self
-    ) -> Callable[[_DMLTableArgument], Insert]:
+    def _backend_specific_insert(self) -> Callable[[_DMLTableArgument], Insert]:
         """Returns an insert statement builder according to DB backend."""
         match self.app.db.engine.dialect:
             case postgresql.asyncpg.dialect():
@@ -47,22 +52,6 @@ class DatabaseService(ApiService):
                 return sqlite.insert
             case _: # Should not happen. Here to suppress mypy.
                 raise
-
-    def _get_permissions(self, verb: str) -> List[Dict[Any, Any]] | None:
-        """Retrieve entries indexed with self.table containing given verb in permissions."""
-        assert hasattr(self, 'table') # mypy.
-
-        # Effectively disable permissions if Keycloak is disabled.
-        if not hasattr(self.app, 'kc'):
-            return None
-
-        if self.table in Base.permissions:
-            return [
-                perm
-                for perm in Base.permissions[self.table]
-                if verb in perm['verbs']
-            ]
-        return None
 
     @DatabaseManager.in_session
     async def _insert(self, stmt: Insert | Update, session: AsyncSession) -> Base:
@@ -108,47 +97,40 @@ class DatabaseService(ApiService):
         if result.rowcount == 0:
             raise FailedDelete("Query deleted no rows.")
 
-
-class UnaryEntityService(DatabaseService):
-    """Generic Database service class.
-
-    Called Unary. However, It effectively implements all methods except write for Composite
-    entities as their implementation is easy to make generic.
-    """
-    def __init__(self, app, table: Type[Base], *args, **kwargs) -> None:
-        # Entity info.
-        self.table = table
-        self.pk = set(table.col(name) for name in table.pk())
-        # Take a snapshot at declaration time, convenient to isolate runtime permissions.
-        self.relationships = table.relationships()
-        # Enable entity - service - table linkage so everything is conveniently available.
-        setattr(table, 'svc', self)
-        setattr(table.__table__, 'decl_class', table)
-
-        super().__init__(app, *args, **kwargs)
-
-    def __repr__(self) -> str:
-        """ServiceName(TableName)."""
-        return f"{self.__class__.__name__}({self.table.__name__})"
-
-    def _svc_from_rel_name(self, key: str) -> DatabaseService:
-        """Returns service associated to the relationship table, handles alias special case.
-
-        :param key: Relationship name.
-        :type key: str
-        :raises ValueError: does not exist, can happen when the key comes from user input.
-        :return: associated service
-        :rtype: DatabaseService
+    @DatabaseManager.in_session
+    async def populate_ids_sqlite(
+        self,
+        data: Dict[str, Any] | List[Dict[str, Any]],
+        session: AsyncSession
+    ):
+        """Handle SQLite autoincrement for composite primary key.
+            Which is a handy feature for a versioned entity. So we fetch the current max id in a
+            separate request and prepopulate the dicts. This is not the most performant, but sqlite
+            support is mostly for testing purposes.
         """
-        rels = self.table.relationships()
-        if key not in rels.keys():
-            raise ValueError(f"Invalid nested collection name {key}.")
+        async def get_max_id():
+            max_id = await session.scalar(func.max(self.table.id))
+            return (max_id or 0) + 1
 
-        rel = rels[key]
-        if hasattr(rel.target, 'original') and rel.target.original == self.table.__table__:
-            return self
-        else:
-            return rel.target.decl_class.svc
+        id = None
+        for one in to_it(data):
+            if 'id' not in one.keys():
+                one['id'] = id or await get_max_id() # Query if necessary.
+                id = one['id'] + 1
+
+    def _get_permissions(self, verb: str) -> List[Dict[str, Any]] | None:
+        """Retrieve entries indexed with self.table containing given verb in permissions."""
+        # Effectively disable permissions if Keycloak is disabled.
+        if not hasattr(self.app, 'kc'):
+            return None
+
+        if self.table in Base.permissions:
+            return [
+                perm
+                for perm in Base.permissions[self.table]
+                if verb in perm['verbs']
+            ]
+        return None
 
     @DatabaseManager.in_session
     async def _check_permissions(
@@ -220,162 +202,6 @@ class UnaryEntityService(DatabaseService):
 
                 if not check():
                     raise UnauthorizedError(f"No {verb} access.")
-
-    @DatabaseManager.in_session
-    async def populate_ids_sqlite(
-        self,
-        data: Dict[str, Any] | List[Dict[str, Any]],
-        session: AsyncSession
-    ):
-        """Handle SQLite autoincrement for composite primary key.
-            Which is a handy feature for a versioned entity. So we fetch the current max id in a
-            separate request and prepopulate the dicts. This is not the most performant, but sqlite
-            support is mostly for testing purposes.
-        """
-        async def get_max_id():
-            max_id = await session.scalar(func.max(self.table.id))
-            return (max_id or 0) + 1
-
-        id = None
-        for one in to_it(data):
-            if 'id' not in one.keys():
-                one['id'] = id or await get_max_id() # Query if necessary.
-                id = one['id'] + 1
-
-    def gen_cond(self, pk_val: List[Any]) -> Any:
-        """Generates (pk_1 == pk_1.type.python_type(val_1)) & (pk_2 == ...) ...).
-        Without evaluating at runtime, so it can be plugged in a where condition.
-
-        :param pk_val: Primary key values
-        :type pk_val: List[Any]
-        :return: CNF Clause
-        :rtype: Any
-        """
-        return unevalled_all(
-            [
-                pk == pk.type.python_type(val)
-                for pk, val in zip(self.pk, pk_val)
-            ]
-        )
-
-    @overload
-    async def write(
-        self,
-        data: Dict[str, Any] | List[Dict[str, Any]],
-        stmt_only: Literal[True],
-        user_info: UserInfo | None,
-        **kwargs
-    ) -> UpsertStmt: ...
-
-    @overload
-    async def write(
-        self,
-        data: Dict[str, Any] | List[Dict[str, Any]],
-        stmt_only: Literal[False],
-        user_info: UserInfo | None,
-        **kwargs
-    ) -> Base | List[Base]: ...
-
-    async def write(
-        self,
-        data: Dict[str, Any] | List[Dict[str, Any]],
-        stmt_only: bool = False,
-        user_info: UserInfo | None = None,
-        **kwargs
-    ) -> UpsertStmt | Base | List[Base]:
-        """WRITE validated input data into the db.
-            Supports input list and a mixin of new and passed by reference inserted data.
-
-        - Does UPSERTS behind the hood, hence this method is also called by UPDATE
-        - Perform permission check according to input data
-        """
-        await self._check_permissions("write", user_info, data)
-
-        # SQLite support for composite primary keys, with leading id.
-        if (
-            'sqlite' in config.DATABASE_URL and
-            hasattr(self.table, 'id') and
-            len(list(self.table.pk())) > 1
-        ):
-            await self.populate_ids_sqlite(data)
-
-        stmts = [self.upsert(one) for one in to_it(data)]
-
-        if len(stmts) == 1:
-            return stmts[0] if stmt_only else await self._insert(stmts[0], **kwargs)
-        return stmts if stmt_only else await self._insert_list(stmts, **kwargs)
-
-    def upsert(self, data: Dict[Any, str]) -> Insert | Update:
-        """Generates an upsert (Insert + .on_conflict_do_x) depending on data population.
-            OR an explicit Update statement for partial data with full primary key.
-
-        This statement builder is by design taking a unit entity dict and
-        cannot check if partial data is complete in case this is coming from upper resources
-        in the hierarchical structure.
-        In that case statements are patched on the fly at insertion time at
-        CompositeEntityService._insert_composite().
-
-        In case of actually incomplete data, some upserts will fail, and raise it up to controller
-        which has the details about initial validation fail.
-        Ultimately, the goal is to offer support for a more flexible and tolerant mode of writing
-        data, use of it is optional.
-
-        Versioned resource: in the case of a versioned resource, passing a reference is allowed
-        BUT an update is not as updates shall go through /release route.
-        Statement will still be emited but simply discard the update.
-
-        :param data: validated data, unit - i.e. one single entity, no depth - dictionary
-        :type data: Dict[Any, str]
-        :return: statement
-        :rtype: Insert | Update
-        """
-        pk = self.table.pk()
-        if self.table.required() - data.keys(): # Some data missing.
-            if all(k in data.keys() for k in pk): # pk present: UPDATE.
-                values = {k: data.get(k) for k in data.keys() - pk}
-                if values and self.table.is_versioned:
-                    raise UpdateVersionedError(
-                        "Attempt at updating versioned resources via POST detected"
-                    )
-
-                stmt = (
-                    update(self.table)
-                    .where(self.gen_cond([data.get(k) for k in pk]))
-                    .values(**values)
-                    .returning(self.table)
-                )
-                return stmt
-            # Else: continue, if there is a problem error will be raised later.
-            # We do not raise here, because missing data could be provided in _insert_composite.
-        # Regular case
-        stmt = self._backend_specific_insert(self.table)
-        stmt = stmt.values(**data)
-
-        set_ = {
-            key: data[key]
-            for key in data.keys() - pk
-        }
-
-        if not self.table.is_versioned():
-            if set_: # upsert
-                stmt = stmt.on_conflict_do_update(index_elements=pk, set_=set_)
-            else: # effectively a select.
-                stmt = stmt.on_conflict_do_nothing(index_elements=pk)
-        # Else (implicit): on_conflict_do_error
-
-        stmt = stmt.returning(self.table)
-        return stmt
-
-    @DatabaseManager.in_session
-    async def getattr_in_session(
-        self,
-        item: Base,
-        attr: str,
-        session: AsyncSession,
-    ) -> List[Base]:
-        session.add(item)
-        await session.refresh(item, [attr])
-        return getattr(item, attr)
 
     def _apply_read_permissions(
         self,
@@ -455,6 +281,183 @@ class UnaryEntityService(DatabaseService):
             stmt = stmt.join(inner.subquery())
         return stmt
 
+
+class UnaryEntityService(DatabaseService):
+    """Generic Database service class.
+
+    Called Unary. However, It effectively implements all methods except write for Composite
+    entities as their implementation is easy to make generic.
+    """
+    def __init__(self, app, table: Type[Base], *args, **kwargs) -> None:
+        # Entity info.
+        self.table = table
+        self.pk = set(table.col(name) for name in table.pk())
+        # Take a snapshot at declaration time, convenient to isolate runtime permissions.
+        self.relationships = table.relationships()
+        # Enable entity - service - table linkage so everything is conveniently available.
+        setattr(table, 'svc', self)
+        setattr(table.__table__, 'decl_class', table)
+
+        super().__init__(app, *args, **kwargs)
+
+    def _svc_from_rel_name(self, key: str) -> DatabaseService:
+        """Returns service associated to the relationship table, handles alias special case.
+
+        :param key: Relationship name.
+        :type key: str
+        :raises ValueError: does not exist, can happen when the key comes from user input.
+        :return: associated service
+        :rtype: DatabaseService
+        """
+        rels = self.table.relationships()
+        if key not in rels.keys():
+            raise ValueError(f"Invalid nested collection name {key}.")
+
+        rel = rels[key]
+        if hasattr(rel.target, 'original') and rel.target.original == self.table.__table__:
+            return self
+        else:
+            return rel.target.decl_class.svc
+
+    def gen_cond(self, pk_val: List[Any]) -> Any:
+        """Generates (pk_1 == pk_1.type.python_type(val_1)) & (pk_2 == ...) ...).
+        Without evaluating at runtime, so it can be plugged in a where condition.
+
+        :param pk_val: Primary key values
+        :type pk_val: List[Any]
+        :return: CNF Clause
+        :rtype: Any
+        """
+        return unevalled_all(
+            [
+                pk == pk.type.python_type(val)
+                for pk, val in zip(self.pk, pk_val)
+            ]
+        )
+
+    @overload
+    async def write(
+        self,
+        data: Dict[str, Any] | List[Dict[str, Any]],
+        stmt_only: Literal[True],
+        user_info: UserInfo | None,
+        **kwargs
+    ) -> UpsertStmt: ...
+
+    @overload
+    async def write(
+        self,
+        data: Dict[str, Any] | List[Dict[str, Any]],
+        stmt_only: Literal[False],
+        user_info: UserInfo | None,
+        **kwargs
+    ) -> Base | List[Base]: ...
+
+    async def write(
+        self,
+        data: Dict[str, Any] | List[Dict[str, Any]],
+        stmt_only: bool = False,
+        user_info: UserInfo | None = None,
+        **kwargs
+    ) -> UpsertStmt | Base | List[Base]:
+        """WRITE validated input data into the db.
+            Supports input list and a mixin of new and passed by reference inserted data.
+
+        - Does UPSERTS behind the hood, hence this method is also called by UPDATE
+        - Perform permission check according to input data
+        """
+        await self._check_permissions("write", user_info, data)
+
+        # SQLite support for composite primary keys, with leading id.
+        if (
+            'sqlite' in config.DATABASE_URL and
+            hasattr(self.table, 'id') and
+            len(list(self.table.pk())) > 1
+        ):
+            await self.populate_ids_sqlite(data)
+
+        stmts = [self.upsert(one, futures=kwargs.pop('futures', None)) for one in to_it(data)]
+
+        if len(stmts) == 1:
+            return stmts[0] if stmt_only else await self._insert(stmts[0], **kwargs)
+        return stmts if stmt_only else await self._insert_list(stmts, **kwargs)
+
+    def upsert(self, data: Dict[Any, str], futures: List[str] | None = None) -> Insert | Update:
+        """Generates an upsert (Insert + .on_conflict_do_x) depending on data population.
+            OR an explicit Update statement for partial data with full primary key.
+
+        This statement builder is by design taking a unit entity dict and
+        cannot check if partial data is complete in case this is coming from upper resources
+        in the hierarchical structure.
+        In that case statements are patched on the fly at insertion time at
+        CompositeEntityService._insert_composite().
+
+        In case of actually incomplete data, some upserts will fail, and raise it up to controller
+        which has the details about initial validation fail.
+        Ultimately, the goal is to offer support for a more flexible and tolerant mode of writing
+        data, use of it is optional.
+
+        Versioned resource: in the case of a versioned resource, passing a reference is allowed
+        BUT an update is not as updates shall go through /release route.
+        Statement will still be emited but simply discard the update.
+
+        :param data: validated data, unit - i.e. one single entity, no depth - dictionary
+        :type data: Dict[Any, str]
+        :return: statement
+        :rtype: Insert | Update
+        """
+        pk = self.table.pk()
+        pending_keys = (data.keys() | set(futures or []))
+        missing_data = self.table.required() - pending_keys
+
+        if missing_data:
+            if all(k in pending_keys for k in pk): # pk present: UPDATE.
+                values = {k: data.get(k) for k in data.keys() - pk}
+                if values and self.table.is_versioned:
+                    raise UpdateVersionedError(
+                        "Attempt at updating versioned resources via POST detected"
+                    )
+
+                stmt = (
+                    update(self.table)
+                    .where(self.gen_cond([data.get(k) for k in pk]))
+                    .values(**values)
+                    .returning(self.table)
+                )
+                return stmt
+            else:
+                raise ValueError(f"{self.table.__name__} missing the following: {missing_data}.")
+
+        # Regular case
+        stmt = self._backend_specific_insert(self.table)
+        stmt = stmt.values(**data)
+
+        set_ = {
+            key: data[key]
+            for key in data.keys() - pk
+        }
+
+        if not self.table.is_versioned():
+            if set_: # upsert
+                stmt = stmt.on_conflict_do_update(index_elements=pk, set_=set_)
+            else: # effectively a select.
+                stmt = stmt.on_conflict_do_nothing(index_elements=pk)
+        # Else (implicit): on_conflict_do_error -> catched by Controller.
+
+        stmt = stmt.returning(self.table)
+        return stmt
+
+    @DatabaseManager.in_session
+    async def getattr_in_session(
+        self,
+        item: Base,
+        attr: str,
+        session: AsyncSession,
+    ) -> List[Base]:
+        session.add(item)
+        await session.refresh(item, [attr])
+        return getattr(item, attr)
+
     def _restrict_select_on_fields(
         self,
         stmt: Select,
@@ -474,7 +477,7 @@ class UnaryEntityService(DatabaseService):
         :rtype: Select
         """
         nested, fields = partition(fields, lambda x: x in self.relationships)
-        # Exclude hybrid properties. TODO: manage them ?
+        # Exclude hybrid properties.
         _, fields = partition(
             fields,
             lambda x: isinstance(
@@ -796,10 +799,7 @@ class CompositeEntityService(UnaryEntityService):
                 for c in rels[key].remote_side:
                     if c.foreign_keys:
                         fk, = c.foreign_keys
-                        mapping[c.name] = getattr(
-                            item,
-                            fk.target_fullname.rsplit('.', maxsplit=1)[-1]
-                        )
+                        mapping[c.name] = getattr(item, fk.column.name)
 
                 def patch(ins):
                     match ins:
@@ -881,7 +881,7 @@ class CompositeEntityService(UnaryEntityService):
             # IMPORTANT: Create an entry even for empty permissions.
             # It is necessary in order to query permissions from nested entities.
             rel = self.table.relationships()[key]
-            stmt_perm = self._backend_specific_insert(rel.target.decl_class)
+            perm_stmt = self._backend_specific_insert(rel.target.decl_class)
 
             perm_delayed = {}
             if key in data.keys():
@@ -894,20 +894,31 @@ class CompositeEntityService(UnaryEntityService):
 
             # Do nothing in case the entry already exists.
             # potential updates of listgroups are ensured by _insert_composite.
-            stmt_perm = stmt_perm.on_conflict_do_nothing(
+            perm_stmt = perm_stmt.on_conflict_do_nothing(
                 index_elements=rel.target.decl_class.pk(), 
             )
 
-            stmt_perm = stmt_perm.returning(rel.target.decl_class)
-            delayed[key] = CompositeInsert(item=stmt_perm, nested={}, delayed=perm_delayed)
+            perm_stmt = perm_stmt.returning(rel.target.decl_class)
+            delayed[key] = CompositeInsert(item=perm_stmt, nested={}, delayed=perm_delayed)
 
+        futures = kwargs.pop('futures', [])
         # Remaining table relationships.
         for key in self.relationships.keys() & data.keys():
             svc, sub = self._svc_from_rel_name(key), data.pop(key)
+            rel = self.relationships[key] 
 
-            # Get statement(s) for nested entity:
+            # Infer fields that will get populated at insertion time (for error detection).
+            nested_futures = None
+            if rel.secondary is None:
+                if hasattr(rel, 'remote_side'):
+                    nested_futures = [c.name for c in rel.remote_side if c.foreign_keys]
+                if hasattr(rel, 'local_columns'):
+                    for col in rel.local_columns:
+                        futures.append(col.name)
+
+            # Get statement(s) for nested entity.
             nested_stmt = await svc.write(
-                sub, stmt_only=True, user_info=user_info
+                sub, stmt_only=True, user_info=user_info, futures=nested_futures
             )
 
             # Single nested entity.
@@ -918,7 +929,7 @@ class CompositeEntityService(UnaryEntityService):
                 delayed[key] = nested_stmt
 
         # Statement for original item.
-        stmt = await super().write(data, stmt_only=True, user_info=user_info)
+        stmt = await super().write(data, stmt_only=True, user_info=user_info, futures=futures)
 
         # Pack & return.
         composite = CompositeInsert(item=stmt, nested=nested, delayed=delayed)

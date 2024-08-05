@@ -136,14 +136,10 @@ class Base(DeclarativeBase, AsyncAttrs):
                 }
             )
 
-        # Declare table.
-        NewAsso = type(
-            new_asso_name,
-            (Base,), columns
-        )
-
-        # Setup svc.
+        # Declare table and setup svc.
+        NewAsso = type(new_asso_name, (Base,), columns)
         setattr(NewAsso, 'svc', CompositeEntityService(app=app, table=NewAsso))
+
         return rel_name, NewAsso
 
     @staticmethod
@@ -270,8 +266,8 @@ class Base(DeclarativeBase, AsyncAttrs):
     @classmethod
     def target_table(cls, name):
         """Return target table of a property."""
-        c = cls.col(name).property
-        return c.target if isinstance(c, Relationship) else None
+        col = cls.col(name).property
+        return col.target if isinstance(col, Relationship) else None
 
     @classmethod
     def pk(cls) -> Set[str]:
@@ -282,37 +278,46 @@ class Base(DeclarativeBase, AsyncAttrs):
         )
 
     @classmethod
-    def col(cls, name):
+    def col(cls, name: str):
         """Return columns object from name."""
         return cls.__dict__[name]
 
     @classmethod
-    def is_autoincrement(cls, name):
-        """Flag if column is autoincrement."""
+    def is_autoincrement(cls, name: str) -> bool:
+        """Flag if column is autoincrement.
+
+        Warning! This check is backend dependent and should be changed when supporting a new one.
+        E.g. Oracle backend will not react appropriately.
+        - https://groups.google.com/g/sqlalchemy/c/o5YQNH5UUko
+        """
         if name == 'id' and 'sqlite' in config.DATABASE_URL:
             return True
-        return cls.__dict__[name].autoincrement == True
+
+        if cls.__table__.columns[name] is cls.__table__.autoincrement_column:
+            return True
+
+        return cls.col(name).autoincrement == True
 
     @classmethod
-    def has_default(cls, name):
+    def has_default(cls, name: str) -> bool:
         """Flag if column has default value."""
-        col = cls.__dict__[name]
+        col = cls.col(name)
         return col.default or col.server_default
 
     @classmethod
-    def colinfo(cls, name):
+    def colinfo(cls, name: str) -> Tuple[Column, type]:
         """Return column and associated python type for conditions."""
-        c = cls.col(name)
-        return c, c.type.python_type
+        col = cls.col(name)
+        return col, col.type.python_type
 
     @classmethod
-    def is_versioned(cls):
+    def is_versioned(cls) -> bool:
         return issubclass(cls, Versioned)
 
     # @property
     @classmethod
     def required(cls) -> Set[str]:
-        """Gets all required fields to create a new object.
+        """Gets all required fields to create a new entry in this table.
 
         :return: fields name list
         :rtype: Set[str]
