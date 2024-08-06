@@ -132,7 +132,7 @@ class Api(Starlette):
 
         ## Controllers.
         classes = CORE_CONTROLLERS + (controllers or [])
-        if self.k8:
+        if hasattr(self, 'k8'):
             classes.append(K8sController)
         routes = self.adopt_controllers(classes)
 
