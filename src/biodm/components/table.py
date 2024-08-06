@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from biodm import config
 from biodm.exceptions import ImplementionError
-from biodm.utils.utils import utcnow
+from biodm.utils.utils import utcnow, classproperty
 
 if TYPE_CHECKING:
     from biodm import Api
@@ -97,7 +97,7 @@ class Base(DeclarativeBase, AsyncAttrs):
 
         columns: Dict[str, Column[Any] | MappedColumn[Any] | Relationship | Tuple[Any]] = {
             f"{pk}_{table.__name__.lower()}": Column(primary_key=True)
-            for pk in table.pk()
+            for pk in table.pk
         }
         columns['entity'] = relationship(
             table,
@@ -119,11 +119,11 @@ class Base(DeclarativeBase, AsyncAttrs):
             ForeignKeyConstraint(
                 [
                     f"{pk}_{table.__name__.lower()}"
-                    for pk in table.pk()
+                    for pk in table.pk
                 ],
                 [
                     f"{table.__tablename__}.{pk}"
-                    for pk in table.pk()
+                    for pk in table.pk
                 ],
             ),
         )
@@ -159,7 +159,7 @@ class Base(DeclarativeBase, AsyncAttrs):
         schema_columns = {
             key: value
             for key, value in table.ctrl.schema.declared_fields.items()
-            if key in table.pk()
+            if key in table.pk
         }
         for verb in verbs:
             schema_columns.update(
@@ -229,7 +229,7 @@ class Base(DeclarativeBase, AsyncAttrs):
                         "Permission should only be applied on One-to-Many relationships fields "
                         "A.K.A 'composition' pattern."
                     )
-                verbs = perm.enabled_verbs()
+                verbs = perm.enabled_verbs
                 if not verbs:
                     continue
 
@@ -269,7 +269,7 @@ class Base(DeclarativeBase, AsyncAttrs):
         col = cls.col(name).property
         return col.target if isinstance(col, Relationship) else None
 
-    @classmethod
+    @classproperty
     def pk(cls) -> Set[str]:
         """Return primary key names."""
         return set(
@@ -310,12 +310,11 @@ class Base(DeclarativeBase, AsyncAttrs):
         col = cls.col(name)
         return col, col.type.python_type
 
-    @classmethod
+    @classproperty
     def is_versioned(cls) -> bool:
         return issubclass(cls, Versioned)
 
-    # @property
-    @classmethod
+    @classproperty
     def required(cls) -> Set[str]:
         """Gets all required fields to create a new entry in this table.
 
@@ -362,6 +361,7 @@ class Permission:
     def fields(cls) -> Set[str]:
         return set(cls.__dataclass_fields__.keys() - 'fields')
 
+    @property
     def enabled_verbs(self) -> Set[str]:
         return set(
             verb

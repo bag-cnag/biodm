@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from biodm.components.table import Base, S3File
 from biodm.exceptions import FileNotUploadedError
 from biodm.managers import DatabaseManager, S3Manager
-from biodm.utils.utils import utcnow
+from biodm.utils.utils import utcnow, classproperty
 from biodm.utils.security import UserInfo
 from .dbservice import UnaryEntityService
 
@@ -16,14 +16,14 @@ from .dbservice import UnaryEntityService
 class S3Service(UnaryEntityService):
     """Class that manages AWS S3 bucket transactions.
     Automatically associated with files entities which in principle should be unary."""
-    @property
-    def s3(self) -> S3Manager:
-        return self.app.s3
+    @classproperty
+    def s3(cls) -> S3Manager:
+        return cls.app.s3
 
     def callback(self, item):
         mapping = { # Map primary key values to route elements.
             key: getattr(item, key)
-            for key in self.table.pk()
+            for key in self.table.pk
         }
 
         route = str(self.table.ctrl.route_upload_callback)
@@ -36,7 +36,7 @@ class S3Service(UnaryEntityService):
     async def gen_key(self, item, session: AsyncSession):
         await session.refresh(item, ['filename', 'extension']) 
         version = ""
-        if self.table.is_versioned():
+        if self.table.is_versioned:
             await session.refresh(item, ['version'])
             version = "_v" + str(item.version)
 

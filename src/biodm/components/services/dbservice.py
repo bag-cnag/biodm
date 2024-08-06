@@ -7,7 +7,7 @@ from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
-    load_only, selectinload, ONETOMANY, MANYTOONE, aliased, make_transient
+    load_only, selectinload, ONETOMANY, MANYTOONE, aliased, make_transient, Relationship
 )
 from sqlalchemy.sql import Insert, Delete, Select, Update
 from sqlalchemy.sql._typing import _DMLTableArgument
@@ -291,7 +291,7 @@ class UnaryEntityService(DatabaseService):
     def __init__(self, app, table: Type[Base], *args, **kwargs) -> None:
         # Entity info.
         self.table = table
-        self.pk = set(table.col(name) for name in table.pk())
+        self.pk = set(table.col(name) for name in table.pk)
         # Take a snapshot at declaration time, convenient to isolate runtime permissions.
         self.relationships = table.relationships()
         # Enable entity - service - table linkage so everything is conveniently available.
@@ -372,7 +372,7 @@ class UnaryEntityService(DatabaseService):
         if (
             'sqlite' in config.DATABASE_URL and
             hasattr(self.table, 'id') and
-            len(list(self.table.pk())) > 1
+            len(list(self.table.pk)) > 1
         ):
             await self.populate_ids_sqlite(data)
 
@@ -409,9 +409,9 @@ class UnaryEntityService(DatabaseService):
         :return: statement
         :rtype: Insert | Update
         """
-        pk = self.table.pk()
+        pk = self.table.pk
         pending_keys = (data.keys() | set(futures or []))
-        missing_data = self.table.required() - pending_keys
+        missing_data = self.table.required - pending_keys
 
         if missing_data:
             if all(k in pending_keys for k in pk): # pk present: UPDATE.
@@ -440,7 +440,7 @@ class UnaryEntityService(DatabaseService):
             for key in data.keys() - pk
         }
 
-        if not self.table.is_versioned():
+        if not self.table.is_versioned:
             if set_: # upsert
                 stmt = stmt.on_conflict_do_update(index_elements=pk, set_=set_)
             else: # effectively a select.
@@ -518,15 +518,15 @@ class UnaryEntityService(DatabaseService):
                         isouter=True
                     )
                 else:
-                    relstmt = select(target)
-                    relstmt = (
+                    rel_stmt = select(target)
+                    rel_stmt = (
                         target
                         .svc
-                        ._apply_read_permissions(user_info, relstmt)
+                        ._apply_read_permissions(user_info, rel_stmt)
                     )
                     stmt = stmt.join_from(
                         self.table,
-                        relstmt.subquery(),
+                        rel_stmt.subquery(),
                         isouter=True
                     )
             else:
@@ -684,7 +684,7 @@ class UnaryEntityService(DatabaseService):
         # Prepare recursive call for nested filters, and do an (inner) left join -> Filtering.
         for nf_key, nf_conditions in nested_conditions.items():
             nf_svc = self._svc_from_rel_name(nf_key)
-            nf_fields = nf_svc.table.pk() | set(nf_conditions.keys())
+            nf_fields = nf_svc.table.pk | set(nf_conditions.keys())
             nf_conditions.update(propagate) # Take in special parameters.
             nf_stmt = (
                 await nf_svc.filter(nf_fields, nf_conditions, stmt_only=True, user_info=user_info)
@@ -746,11 +746,14 @@ class CompositeEntityService(UnaryEntityService):
     This class is implementing methods in order to parse and insert such data.
     """
     @property
-    def permission_relationships(self) -> Set[str]:
+    def permission_relationships(self) -> Dict[str, Relationship]:
         """Get permissions relationships by computing the difference of between instanciation time
             and runtime, since those get populated later in Base.setup_permissions().
         """
-        return set(self.table.relationships().keys()) - set(self.relationships.keys())
+        return {
+            key: rel for key, rel in self.table.relationships().items()
+            if key not in self.relationships.keys()
+        }
 
     @DatabaseManager.in_session
     async def _insert_composite(
@@ -784,9 +787,9 @@ class CompositeEntityService(UnaryEntityService):
 
         # Insert all nested objects.
         for key, sub in composite.nested.items():
-            rel = self.table.relationships()[key]
+            rel = rels[key]
             composite.nested[key] = await (
-                rels[key]
+                rel
                 .target
                 .decl_class
                 .svc
@@ -808,16 +811,16 @@ class CompositeEntityService(UnaryEntityService):
             await getattr(item.awaitable_attrs, key)
             setattr(item, key, sub)
 
-        # Populate many-to-item fields with 'delayed' (because needing item id) objects.
+        # Populate many-to-item fields with 'delayed' (needing item id) objects.
         for key, delay in composite.delayed.items():
             # Load attribute.
             attr = await getattr(item.awaitable_attrs, key)
-            svc = self._svc_from_rel_name(key)
+            svc, rel = self._svc_from_rel_name(key), rels[key]
 
             # Populate remote_side if any.
-            if rels[key].secondary is None and hasattr(rels[key], 'remote_side'):
+            if rel.secondary is None and hasattr(rel, 'remote_side'):
                 mapping = {}
-                for c in rels[key].remote_side:
+                for c in rel.remote_side:
                     if c.foreign_keys:
                         fk, = c.foreign_keys
                         mapping[c.name] = getattr(item, fk.column.name)
@@ -829,28 +832,18 @@ class CompositeEntityService(UnaryEntityService):
                 else:
                     delay = patch(delay, mapping)
 
-            # Insert delayed and populate back into item.
-            if rels[key].uselist:
-                match delay:
-                    case list():
-                        delay = await svc._insert_list(delay, **kwargs)
-                        # Put in attribute the objects that are not already present.
-                        delay, updated = partition(delay, lambda e: e not in getattr(item, key))
-                        # Refresh objects that were present so item comes back with updated values.
-                        for u in updated:
-                            await session.refresh(u)
-                        # Add new stuff
-                        attr.extend(delay)
-
-                    case Insert():
-                        delay = await svc._insert(delay, **kwargs)
-                        if delay not in attr:
-                            attr.append(delay)
-                        else:
-                            await session.refresh(delay)
+            # Insert and populate back into item.
+            if rel.uselist:
+                delay = await svc._insert_list(to_it(delay), **kwargs)
+                # Isolate objects that are not already present.
+                delay, updated = partition(delay, lambda e: e not in getattr(item, key))
+                # Refresh objects that were present so item comes back with updated values.
+                for u in updated:
+                    await session.refresh(u)
+                # Add new stuff
+                attr.extend(delay)
             else:
                 setattr(item, key, await svc._insert(delay, **kwargs))
-
         return item
 
     async def _insert(
@@ -887,34 +880,27 @@ class CompositeEntityService(UnaryEntityService):
             Each service is responsible for building statements for its own associated table.
             Ultimately all statements are built by UnaryEntityService class.
         """
-        nested = {}
-        delayed = {}
+        nested, delayed, futures = {}, {}, kwargs.pop('futures', [])
 
-        for key in self.permission_relationships:
+        for key, rel in self.permission_relationships.items():
             # IMPORTANT: Create an entry even for empty permissions.
             # It is necessary in order to query permissions from nested entities.
-            rel = self.table.relationships()[key]
             perm_stmt = self._backend_specific_insert(rel.target.decl_class)
 
-            perm_delayed = {}
+            perm_listgroups = {}
             if key in data.keys():
                 sub = data.pop(key)
-
                 for verb in Permission.fields() & set(sub.keys()):
-                    perm_delayed[str(verb)] = await ListGroup.svc.write(
+                    perm_listgroups[str(verb)] = await ListGroup.svc.write(
                         sub.get(verb), stmt_only=True,
                     )
 
             # Do nothing in case the entry already exists.
             # potential updates of listgroups are ensured by _insert_composite.
-            perm_stmt = perm_stmt.on_conflict_do_nothing(
-                index_elements=rel.target.decl_class.pk(), 
-            )
-
+            perm_stmt = perm_stmt.on_conflict_do_nothing(index_elements=rel.target.decl_class.pk)
             perm_stmt = perm_stmt.returning(rel.target.decl_class)
-            delayed[key] = CompositeInsert(item=perm_stmt, nested={}, delayed=perm_delayed)
+            delayed[key] = CompositeInsert(item=perm_stmt, nested={}, delayed=perm_listgroups)
 
-        futures = kwargs.pop('futures', [])
         # Remaining table relationships.
         for key in self.relationships.keys() & data.keys():
             svc, sub = self._svc_from_rel_name(key), data.pop(key)

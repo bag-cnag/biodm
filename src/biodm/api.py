@@ -132,7 +132,8 @@ class Api(Starlette):
 
         ## Controllers.
         classes = CORE_CONTROLLERS + (controllers or [])
-        classes.append(K8sController)
+        if self.k8:
+            classes.append(K8sController)
         routes = self.adopt_controllers(classes)
 
         ## Schema Generator.
@@ -146,16 +147,13 @@ class Api(Starlette):
                 security=[{'Authorization': []}] # Same name as security_scheme arg below.
             )
         )
-
-        token = {
+        self.apispec.spec.components.security_scheme("Authorization", {
             "type": "http",
             "name": "authorization",
             "in": "header",
             "scheme": "bearer",
             "bearerFormat": "JWT"
-        }
-
-        self.apispec.spec.components.security_scheme("Authorization", token)
+        })
 
         """Headless Services
 

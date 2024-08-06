@@ -1,11 +1,11 @@
 """Utils."""
 import datetime as dt
 import json
-from functools import reduce
+from functools import reduce, update_wrapper
 import operator
 from os import path, utime
 from typing import (
-    Any, List, Callable, Tuple, TypeVar, Dict, Iterator, Self, Coroutine
+    Any, List, Callable, Tuple, TypeVar, Dict, Iterator, Self, Callable, Generic
 )
 
 from starlette.responses import Response
@@ -26,6 +26,22 @@ class aobject(object):
         instance = super().__new__(cls)
         await instance.__init__(*args, **kwargs) # type: ignore [misc]
         return instance
+
+
+class classproperty(Generic[_T]):
+    """Descriptor combining @classmethod and @property behaviours for python v3.11+.
+    note: only implements the getter.
+
+    Coutesy of: https://stackoverflow.com/a/76378416/6847689
+    """
+    def __init__(self, method: Callable[..., _T]):
+        self.method = method
+        update_wrapper(self, method) # type: ignore [misc]
+
+    def __get__(self, obj, cls=None) -> _T:
+        if cls is None:
+            cls = type(obj)
+        return self.method(cls)
 
 
 def utcnow() -> dt.datetime:

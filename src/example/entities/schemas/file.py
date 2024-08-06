@@ -4,11 +4,11 @@ from marshmallow.fields import String, List, Nested, Integer, Bool
 
 class FileSchema(Schema):
     id = Integer()
-    filename = String(required=True)
-    extension = String(required=True)
-    upload_form = String(required=False, dump_only=True)
-    ready = Bool(required=False, dump_only=True)
-    dl_count = Integer(required=False, dump_only=True)
+    filename = String()
+    extension = String()
+    upload_form = String(dump_only=True)
+    ready = Bool(dump_only=True)
+    dl_count = Integer(dump_only=True)
     id_dataset = Integer()
     version_dataset = Integer()
-    # dataset = Nested('DatasetSchema', required=True) # , load_only=True
+    # dataset = Nested('DatasetSchema') # , load_only=True

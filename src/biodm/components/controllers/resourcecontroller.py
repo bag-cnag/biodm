@@ -89,7 +89,7 @@ class ResourceController(EntityController):
         self.table = table if table else self._infer_table()
         self.table.ctrl = self
 
-        self.pk = set(self.table.pk())
+        self.pk = set(self.table.pk)
         self.svc: UnaryEntityService = self._infer_svc()(app=self.app, table=self.table)
         self.__class__.schema = (schema if schema else self._infer_schema())(unknown=RAISE)
         self._infuse_schema_in_apispec_docstrings()
@@ -292,7 +292,7 @@ class ResourceController(EntityController):
                 Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE.value]),
             ] + [(
                 Route(f"/{self.qp_id}/release",       self.release,        methods=[HttpMethod.POST.value])
-                if self.table.is_versioned() else
+                if self.table.is_versioned else
                 Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT.value])
             )])
         ]
@@ -626,7 +626,7 @@ class ResourceController(EntityController):
             500:
                 description: Attempted update of primary key components.
         """
-        assert self.table.is_versioned()
+        assert self.table.is_versioned
 
         # Allow empty body.
         validated_data = self.validate(await request.body() or b'{}', partial=True)

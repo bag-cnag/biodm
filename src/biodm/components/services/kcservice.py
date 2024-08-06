@@ -5,16 +5,16 @@ from pathlib import Path
 from biodm.managers import KeycloakManager
 from biodm.tables import Group, User
 from biodm.utils.security import UserInfo
-from biodm.utils.utils import to_it
+from biodm.utils.utils import to_it, classproperty
 from .dbservice import CompositeEntityService
 
 
 class KCService(CompositeEntityService):
     """Abstract class for local keycloak entities."""
-    @property
-    def kc(self) -> KeycloakManager:
+    @classproperty
+    def kc(cls) -> KeycloakManager:
         """Return KCManager instance."""
-        return self.app.kc
+        return cls.app.kc
 
     @abstractmethod
     async def read_or_create(self, data: Dict[str, Any], /) -> None:
