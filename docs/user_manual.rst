@@ -209,16 +209,28 @@ there through `boto3 presigned-urls <https://boto3.amazonaws.com/v1/documentatio
 
 * Upload
 
-On creating a file, the resource will contain a field named ``upload_form`` that is a presigned
-PUT request dictionary that you may use to perform direct upload.
+On creating a new ``/file`` resource, it is required that you pass in the size in ``bytes`` that
+you can obtain from its descriptor.
 
-The following snippet lets you upload via script:
+The resource shall contain a nested dictionary called ``upload`` composed of ``parts``,
+containing presigned form for direct file upload.
+
+Next we distinguish two cases:
+
+Small files
+~~~~~~~~~~~
+
+In the case of a `small` file, i.e. less than `100MB` there is a single ``part``, containing a
+presigned ``POST`` and you may simply use the ``form`` to perform the upload.
+
+The following snippet demonstrates how to do this in `python`:
 
 .. code-block:: python
-    :caption: up_bucket.py
+    :caption: upload_small_file.py
 
     import requests
 
+    # obtained from file['upload']['parts'][0]['form'] creation response
     post = {'url': ..., 'fields': ...}
 
     file_path = "/path/to/my_file.ext"
@@ -232,11 +244,71 @@ The following snippet lets you upload via script:
             files=files,
             verify=True,
             allow_redirects=True)
-        assert http_response.status_code == 201 
+        assert http_response.status_code == 201
+
+
+Upon completion, BioDM will be notified back via a callback, so the file is immediately available.
+
+
+Large files
+~~~~~~~~~~~
+
+For large files, several parts will be present. Each allowing you to upload a chunk of
+`size=100MB`, possibly less for the last one.
+
+For each part successfuly uploaded, the bucket will return you an ``ETag`` that you have to
+keep track of and associate with the correct ``part_number``.
+
+Ultimately, the process has to be completed by submitting that mapping in order for the bucket
+to aggregate all chunks into a file stored on the bucket. The bucket does not supports passing a
+callback for a ``part_upload``.
+
+Similarely here is an example using ``python``:
+
+.. code-block:: python
+    :caption: upload_large_file.py
+
+    import requests
+
+    CHUNK_SIZE = 100*1024**2 # 100MB
+    parts_etags = []
+    host: str = ... # Server instance endpoint
+    file_id = ... # obtained from file['id']
+    upload_forms = [{'part_number': 1, 'form': ...}, ...] # obtained from file['upload']['parts']
+
+    # Upload file
+    with open(big_file_path, 'rb') as file:
+        for part in upload_forms:
+            part_data = file.read(CHUNK_SIZE) # Fetch one chunk.
+            response = requests.put(
+                part['form'], data=part_data, headers={'Content-Encoding': 'gzip'}
+            )
+            assert response.status_code == 200
+
+            # Get etag and remove trailing quotes to not disturb subsequent (json) loading.
+            etag = response.headers.get('ETag', "").replace('"', '')
+            # Build mapping.
+            parts_etags.append({'PartNumber': part['part_number'], 'ETag': etag})
+
+    # Send completion notice with the mapping.
+    complete = requests.put(
+        f"{host}/files/{file_id}/complete_multipart",
+        data=json.dumps(parts_etags).encode('utf-8')
+    )
+    assert complete.status_code == 201
+    assert 'Completed.' in complete.text
+
+
+.. note::
+
+    This example above is a quite naive approach. For very large files, you should make use of a
+    concurrency library (such as ``concurrent.futures`` or ``multiprocessing`` in ``python``) in
+    order to speed up that process, as parts can be uploaded in any order.
 
 * Download
 
-Calling ``GET /my_file_resources`` will only return associated metadata
+Calling ``GET /my_file_resources`` will only return associated metadata (and the upload form(s)
+while it is still in prending state).
 
 To download a file use the following endpoint.
 
@@ -244,7 +316,12 @@ To download a file use the following endpoint.
 
     curl ${SERVER_ENDPOINT}/my_file_resources/{id}/download
 
-That will return a url to directly download the file via GET request.
+That will return a url to directly download the file via ``GET`` request.
+
+.. note::
+
+    Download urls are coming back with a redirect header, thus you may use
+    ``allow_redirects=True`` flag or equivalent when visiting this route to download in one go.
 
 
 User permissions

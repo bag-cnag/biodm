@@ -5,16 +5,16 @@ from pathlib import Path
 from biodm.managers import KeycloakManager
 from biodm.tables import Group, User
 from biodm.utils.security import UserInfo
-from biodm.utils.utils import to_it
+from biodm.utils.utils import to_it, classproperty
 from .dbservice import CompositeEntityService
 
 
 class KCService(CompositeEntityService):
     """Abstract class for local keycloak entities."""
-    @property
-    def kc(self) -> KeycloakManager:
+    @classproperty
+    def kc(cls) -> KeycloakManager:
         """Return KCManager instance."""
-        return self.app.kc
+        return cls.app.kc
 
     @abstractmethod
     async def read_or_create(self, data: Dict[str, Any], /) -> None:
@@ -45,7 +45,6 @@ class KCGroupService(KCService):
         parent_id = None
         if not path.parent.parts == ('/',):
             parent = await self.kc.get_group_by_path(str(path.parent))
-            # TODO: better exception
             if not parent:
                 raise ValueError("Input path does not match any parent group.")
             parent_id = parent['id']
@@ -60,7 +59,7 @@ class KCGroupService(KCService):
         **kwargs
     ):
         """Create entities on Keycloak Side before passing to parent class for DB."""
-        # Check permissions
+        # Check permissions beforehand.
         await self._check_permissions("write", user_info, data)
 
         # Create on keycloak side

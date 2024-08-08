@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, List
 
 from boto3 import client
 from botocore.config import Config
@@ -91,14 +91,16 @@ class S3Manager(ApiManager):
                 Conditions=conditions,
                 ExpiresIn=self.url_expiration
             )
+
         except ClientError as e:
             # TODO: better error
             raise e
 
-    def create_presigned_download_url(self, object_name) -> Any:
+    def create_presigned_download_url(self, object_name: str) -> Any:
         """Generate a presigned URL to share an S3 object
 
-        :param object_name: string
+        :param object_name: Object Key
+        :type object_name: String
         :return: Presigned URL as string.
         """
         try:
@@ -110,6 +112,66 @@ class S3Manager(ApiManager):
                 },
                 ExpiresIn=self.url_expiration
             )
+
         except ClientError as e:
             # TODO: better error
+            raise e
+
+    def create_multipart_upload(self, object_name) -> List[Any]:
+        """_summary_
+
+        - resource: https://vsgump.medium.com/enhancing-file-uploads-to-amazon-s3-with-pre-signed-urls-and-threaded-parallelism-23890b9d6c54
+
+        :param object_name: _description_
+        :type object_name: _type_
+        :raises e: _description_
+        :return: _description_
+        :rtype: List[Any]
+        """
+        try:
+            return self.s3_client.create_multipart_upload(
+                Bucket=self.bucket_name,
+                Key=object_name,
+            )
+
+        except ClientError as e:
+            raise e
+
+    def create_upload_part(self, object_name, upload_id, part_number):
+        try:
+            return self.s3_client.generate_presigned_url(
+                    'upload_part',
+                    Params={
+                        'Bucket': self.bucket_name,
+                        'Key': object_name,
+                        'PartNumber': part_number,
+                        'UploadId': upload_id
+                    },
+                    ExpiresIn=self.url_expiration
+                )
+
+        except ClientError as e:
+            raise e
+
+    def complete_multipart_upload(self, object_name, upload_id, parts):
+        try:
+            return self.s3_client.complete_multipart_upload(
+                Bucket=self.bucket_name,
+                Key=object_name,
+                UploadId=upload_id,
+                MultipartUpload={'Parts': parts}
+            )
+
+        except ClientError as e:
+            raise e
+
+    def abort_multipart_upload(self, object_name, upload_id):
+        try:
+            return self.s3_client.abort_multipart_upload(
+                Bucket=self.bucket_name,
+                Key=object_name,
+                UploadId=upload_id
+            )
+
+        except ClientError as e:
             raise e

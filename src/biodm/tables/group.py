@@ -1,17 +1,12 @@
-from typing import Optional, List, TYPE_CHECKING
-from uuid import UUID
+from typing import List, TYPE_CHECKING
 
-from httpx import get
-from sqlalchemy import Column, String, Integer, ForeignKey, and_, literal, SQLColumnExpression
+from sqlalchemy import String, literal, SQLColumnExpression
 from sqlalchemy.sql.functions import func
 from sqlalchemy.orm import Mapped, mapped_column, relationship, aliased, foreign
 from sqlalchemy.ext.hybrid import hybrid_property
-# from sqlalchemy.dialects.sqlite
-# from typing import Dict
 
 from biodm.components import Base
 from biodm import config
-from biodm.exceptions import ImplementionError
 from .asso import asso_user_group
 
 
@@ -42,9 +37,9 @@ class Group(Base):
     def path_parent(self) -> str:
         return self.path[:self.path.index('__', -1)]
 
-    # @hybrid_property
+    # @hybrid_property # TODO ?
     # def display_name(self) -> str:
-    #     return self.path[self.path.index('__', -1):] # TODO: ?
+    #     return self.path[self.path.index('__', -1):]
 
     @path_parent.inplace.expression
     @classmethod

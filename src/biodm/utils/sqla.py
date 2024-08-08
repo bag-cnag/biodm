@@ -16,8 +16,8 @@ class CompositeInsert:
     """
 
     item: Insert
-    nested: Dict[str, Insert | Self | Tuple[Insert | Self]] # InsertStmt, List[InsertStmt]
-    delayed: Dict[str, Insert | Self | Tuple[Insert | Self]] # Union[Insert | Self | List[Insert] | List[Self]]
+    nested: Dict[str, Insert | Self | Tuple[Insert | Self]]
+    delayed: Dict[str, Insert | Self | Tuple[Insert | Self]]
 
 
 UpsertStmt = TypeVar('UpsertStmt', CompositeInsert, Insert, Update)

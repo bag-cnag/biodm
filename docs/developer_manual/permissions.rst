@@ -97,3 +97,19 @@ with a nested collection and its elements.
 
     Those permissions will be taken into account when directly accessing ``/files`` API routes. 
 
+
+Strict composition
+~~~~~~~~~~~~~~~~~~
+
+Currently, ``BioDM`` assumes a strict composition pattern of resource for those permissions.
+Which allow them to be taken into account while directly accessing children resource routes
+like mentioned above.
+
+Unfortunately, that also means that distributing permissions from two, or more, parent level
+resources is currently not tested and shall most likely result in soft-locking those resources.
+
+This may or may not be supported in a future version of the Core, depending on technical
+feasibility.
+
+If you wish to achieve something in that vein, it is for now advised to create an identical
+resource with a different name.

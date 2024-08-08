@@ -28,7 +28,7 @@ from biodm.error import onerror
 from biodm.exceptions import RequestError
 from biodm.utils.security import UserInfo
 from biodm.utils.utils import to_it
-from biodm.tables import History, ListGroup
+from biodm.tables import History, ListGroup, Upload, UploadPart
 from biodm import __version__ as CORE_VERSION
 
 
@@ -132,7 +132,8 @@ class Api(Starlette):
 
         ## Controllers.
         classes = CORE_CONTROLLERS + (controllers or [])
-        classes.append(K8sController)
+        if hasattr(self, 'k8'):
+            classes.append(K8sController)
         routes = self.adopt_controllers(classes)
 
         ## Schema Generator.
@@ -146,28 +147,26 @@ class Api(Starlette):
                 security=[{'Authorization': []}] # Same name as security_scheme arg below.
             )
         )
-
-        token = {
+        self.apispec.spec.components.security_scheme("Authorization", {
             "type": "http",
             "name": "authorization",
             "in": "header",
             "scheme": "bearer",
             "bearerFormat": "JWT"
-        }
-
-        self.apispec.spec.components.security_scheme("Authorization", token)
+        })
 
         """Headless Services
 
             For entities that are managed internally: not exposing routes.
-            i.e. only ListGroups and History atm
 
             Since the controller normally instanciates the service, and it does so
             because the services needs to access the app instance.
             If more useful cases for this show up we might want to design a cleaner solution.
         """
-        History.svc = UnaryEntityService(app=self, table=History)
-        ListGroup.svc = CompositeEntityService(app=self, table=ListGroup)
+        History.svc    = UnaryEntityService(app=self, table=History)
+        UploadPart.svc = UnaryEntityService(app=self, table=UploadPart)
+        ListGroup.svc  = CompositeEntityService(app=self, table=ListGroup)
+        Upload.svc     = CompositeEntityService(app=self, table=Upload)
 
         super().__init__(debug, routes, *args, **kwargs)
 

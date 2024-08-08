@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from starlette.routing import Mount, Route, BaseRoute
 from starlette.requests import Request
 from starlette.responses import Response
+from yaml import serialize
 
 from biodm import Scope
 from biodm.components.services import (
@@ -88,7 +89,7 @@ class ResourceController(EntityController):
         self.table = table if table else self._infer_table()
         self.table.ctrl = self
 
-        self.pk = set(self.table.pk())
+        self.pk = set(self.table.pk)
         self.svc: UnaryEntityService = self._infer_svc()(app=self.app, table=self.table)
         self.__class__.schema = (schema if schema else self._infer_schema())(unknown=RAISE)
         self._infuse_schema_in_apispec_docstrings()
@@ -162,7 +163,7 @@ class ResourceController(EntityController):
                 else:
                     condition.append(f"description: {self.resource} {col.name}")
                 field_conditions.append(condition)
-            pass
+
             # Split.
             doc = abs_doc.split('---')
             if len(doc) > 1:
@@ -287,11 +288,11 @@ class ResourceController(EntityController):
             Mount(self.prefix, routes=[
                 Route('/schema',                      self.openapi_schema, methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}',               self.read,           methods=[HttpMethod.GET.value]),
-                Route(f'/{self.qp_id}/{{attribute}}', self.read_nested,    methods=[HttpMethod.GET.value]),
+                Route(f'/{self.qp_id}/{{attribute}}', self.read,           methods=[HttpMethod.GET.value]),
                 Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE.value]),
             ] + [(
                 Route(f"/{self.qp_id}/release",       self.release,        methods=[HttpMethod.POST.value])
-                if self.table.is_versioned() else
+                if self.table.is_versioned else
                 Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT.value])
             )])
         ]
@@ -432,7 +433,12 @@ class ResourceController(EntityController):
             name: id
           - in: query
             name: fields
-            description: a comma separated list of fields to query only a subset of the resource e.g. /datasets/1_1?name,description,contact,files
+            description: |
+                a comma separated list of fields to query only a subset of the resource
+                e.g. /datasets/1_1?name,description,contact,files
+          - in: path
+            name: attribute
+            description: Optional, nested collection name.
         responses:
             200:
                 description: Found matching item
@@ -441,16 +447,38 @@ class ResourceController(EntityController):
             404:
                 description: Not Found
         """
-        fields = self._extract_fields(dict(request.query_params))
+        # Read nested collection case:
+        nested_attribute = request.path_params.get('attribute', None)
+        ctrl, many = self, False
+        if nested_attribute:
+            target_rel = self.table.relationships().get(nested_attribute, {})
+            if not target_rel or not getattr(target_rel, 'uselist', False):
+                raise ValueError(
+                    f"Unknown collection {nested_attribute} of {self.table.__class__.__name__}"
+                )
+            # Serialization and field extraction done by target controller.
+            ctrl: ResourceController = (
+                target_rel
+                .target
+                .decl_class
+                .svc
+                .table
+                .ctrl
+            )
+            many = True
+
+        fields = ctrl._extract_fields(dict(request.query_params))
         return json_response(
             data=await self.svc.read(
                 pk_val=self._extract_pk_val(request),
                 fields=fields,
+                nested_attribute=nested_attribute,
                 user_info=await UserInfo(request),
-                serializer=partial(self.serialize, many=False, only=fields),
+                serializer=partial(ctrl.serialize, many=many, only=fields),
             ),
             status_code=200,
         )
+
 
     async def update(self, request: Request) -> Response:
         """UPDATE. Essentially calling create, as it perorm upserts.
@@ -484,8 +512,7 @@ class ResourceController(EntityController):
                 description: Empty Payload
         """
         pk_val = self._extract_pk_val(request)
-        bod = await self._extract_body(request)
-        validated_data = self.validate(bod, partial=True)
+        validated_data = self.validate(await self._extract_body(request), partial=True)
 
         # Should be a single record.
         if not isinstance(validated_data, dict):
@@ -504,10 +531,11 @@ class ResourceController(EntityController):
                 ),
                 status_code=201,
             )
-        except IntegrityError:
-            raise UpdateVersionedError(
-                "Attempt at updating versioned resources detected"
-            )
+        except IntegrityError as ie:
+            if 'UNIQUE' in ie.args[0] and 'version' in ie.args[0]: # Versioned case.
+                raise UpdateVersionedError(
+                    "Attempt at updating versioned resources via POST detected"
+                )
 
     async def delete(self, request: Request) -> Response:
         """Delete resource.
@@ -546,7 +574,9 @@ class ResourceController(EntityController):
             name: fields_conditions
           - in: query
             name: fields
-            description: a comma separated list of fields to query only a subset of the resource e.g. /datasets/1_1?name,description,contact,files
+            description: |
+                a comma separated list of fields to query only a subset of the resource
+                e.g. /datasets/1_1?name,description,contact,files
           - in: query
             name: offset
             description: page start
@@ -596,8 +626,7 @@ class ResourceController(EntityController):
             500:
                 description: Attempted update of primary key components.
         """
-        # TODO: ?? make it possible to create/update with the id only -> defaults to lastversion.
-        assert self.table.is_versioned()
+        assert self.table.is_versioned
 
         # Allow empty body.
         validated_data = self.validate(await request.body() or b'{}', partial=True)
@@ -617,50 +646,5 @@ class ResourceController(EntityController):
                     update=validated_data,
                     user_info=await UserInfo(request),
                 ), many=False, only=fields
-            ), status_code=200
-        )
-
-    async def read_nested(self, request: Request) -> Response:
-        """Reads a nested collection from parent primary key.
-
-        ---
-
-        description: Read nested collection from parent resource.
-        parameters:
-          - in: path
-            name: id
-          - in: path
-            name: attribute
-            description: nested collection name.
-        responses:
-          200:
-              description: Nested collection.
-          500:
-              description: Wrong attribute name.
-        """
-        attribute = request.path_params['attribute']
-        target_rel = self.table.relationships().get(attribute, {})
-        if not target_rel or not getattr(target_rel, 'uselist', False):
-            raise ValueError(
-                f"Unknown collection name {attribute} of {self.table.__class__.__name__}"
-            )
-
-        target_ctrl: ResourceController = (
-            target_rel
-            .target
-            .decl_class
-            .svc
-            .table
-            .ctrl
-        )
-        fields = target_ctrl._extract_fields(dict(request.query_params))
-        # TODO: try to rework so that it calls read instead.
-        return json_response(
-            data=target_ctrl.serialize(
-                data=await self.svc.read_nested(
-                    pk_val=self._extract_pk_val(request),
-                    attribute=attribute,
-                    user_info=await UserInfo(request),
-                ), many=True, only=fields
             ), status_code=200
         )

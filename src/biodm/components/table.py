@@ -15,19 +15,22 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
-    DeclarativeBase, relationship, Relationship, backref, ONETOMANY, mapped_column, MappedColumn, Mapped, make_transient
+    DeclarativeBase, relationship, Relationship, backref, ONETOMANY, mapped_column, MappedColumn, Mapped, make_transient, column_property, declared_attr
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from biodm import config
 from biodm.exceptions import ImplementionError
-from biodm.utils.utils import utcnow
+from biodm.utils.utils import utcnow, classproperty
 
 if TYPE_CHECKING:
     from biodm import Api
     from biodm.components.services import DatabaseService
     from biodm.components.controllers import ResourceController
     from sqlalchemy.orm import Relationship
+    from biodm.tables import Upload
 
 
 class Base(DeclarativeBase, AsyncAttrs):
@@ -95,7 +98,7 @@ class Base(DeclarativeBase, AsyncAttrs):
 
         columns: Dict[str, Column[Any] | MappedColumn[Any] | Relationship | Tuple[Any]] = {
             f"{pk}_{table.__name__.lower()}": Column(primary_key=True)
-            for pk in table.pk()
+            for pk in table.pk
         }
         columns['entity'] = relationship(
             table,
@@ -117,11 +120,11 @@ class Base(DeclarativeBase, AsyncAttrs):
             ForeignKeyConstraint(
                 [
                     f"{pk}_{table.__name__.lower()}"
-                    for pk in table.pk()
+                    for pk in table.pk
                 ],
                 [
                     f"{table.__tablename__}.{pk}"
-                    for pk in table.pk()
+                    for pk in table.pk
                 ],
             ),
         )
@@ -134,14 +137,10 @@ class Base(DeclarativeBase, AsyncAttrs):
                 }
             )
 
-        # Declare table.
-        NewAsso = type(
-            new_asso_name,
-            (Base,), columns
-        )
-
-        # Setup svc.
+        # Declare table and setup svc.
+        NewAsso = type(new_asso_name, (Base,), columns)
         setattr(NewAsso, 'svc', CompositeEntityService(app=app, table=NewAsso))
+
         return rel_name, NewAsso
 
     @staticmethod
@@ -161,7 +160,7 @@ class Base(DeclarativeBase, AsyncAttrs):
         schema_columns = {
             key: value
             for key, value in table.ctrl.schema.declared_fields.items()
-            if key in table.pk()
+            if key in table.pk
         }
         for verb in verbs:
             schema_columns.update(
@@ -231,7 +230,7 @@ class Base(DeclarativeBase, AsyncAttrs):
                         "Permission should only be applied on One-to-Many relationships fields "
                         "A.K.A 'composition' pattern."
                     )
-                verbs = perm.enabled_verbs()
+                verbs = perm.enabled_verbs
                 if not verbs:
                     continue
 
@@ -268,10 +267,10 @@ class Base(DeclarativeBase, AsyncAttrs):
     @classmethod
     def target_table(cls, name):
         """Return target table of a property."""
-        c = cls.col(name).property
-        return c.target if isinstance(c, Relationship) else None
+        col = cls.col(name).property
+        return col.target if isinstance(col, Relationship) else None
 
-    @classmethod
+    @classproperty
     def pk(cls) -> Set[str]:
         """Return primary key names."""
         return set(
@@ -280,37 +279,45 @@ class Base(DeclarativeBase, AsyncAttrs):
         )
 
     @classmethod
-    def col(cls, name):
+    def col(cls, name: str):
         """Return columns object from name."""
         return cls.__dict__[name]
 
     @classmethod
-    def is_autoincrement(cls, name):
-        """Flag if column is autoincrement."""
+    def is_autoincrement(cls, name: str) -> bool:
+        """Flag if column is autoincrement.
+
+        Warning! This check is backend dependent and should be changed when supporting a new one.
+        E.g. Oracle backend will not react appropriately.
+        - https://groups.google.com/g/sqlalchemy/c/o5YQNH5UUko
+        """
         if name == 'id' and 'sqlite' in config.DATABASE_URL:
             return True
-        return cls.__dict__[name].autoincrement == True
+
+        if cls.__table__.columns[name] is cls.__table__.autoincrement_column:
+            return True
+
+        return cls.col(name).autoincrement == True
 
     @classmethod
-    def has_default(cls, name):
+    def has_default(cls, name: str) -> bool:
         """Flag if column has default value."""
-        col = cls.__dict__[name]
+        col = cls.col(name)
         return col.default or col.server_default
 
     @classmethod
-    def colinfo(cls, name):
+    def colinfo(cls, name: str) -> Tuple[Column, type]:
         """Return column and associated python type for conditions."""
-        c = cls.col(name)
-        return c, c.type.python_type
+        col = cls.col(name)
+        return col, col.type.python_type
 
-    @classmethod
-    def is_versioned(cls):
+    @classproperty
+    def is_versioned(cls) -> bool:
         return issubclass(cls, Versioned)
 
-    # @property
-    @classmethod
+    @classproperty
     def required(cls) -> Set[str]:
-        """Gets all required fields to create a new object.
+        """Gets all required fields to create a new entry in this table.
 
         :return: fields name list
         :rtype: Set[str]
@@ -331,22 +338,18 @@ class S3File:
     filename = Column(String(100), nullable=False)
     extension = Column(String(10), nullable=False)
     ready = Column(BOOLEAN, nullable=False, server_default='0')
-    upload_form = Column(String(2000)) # , nullable=False
-    dl_count = Column(Integer, nullable=False, server_default='0')
+    size = Column(Integer, nullable=False)
 
-    # @declared_attr
-    # def id_user_uploader(_):
-    #     return Column(ForeignKey("USER.id"),    nullable=False)
-
-    # @declared_attr
-    # @classmethod
-    # def user(cls) -> Mapped["User"]:
-    #     return relationship(foreign_keys=[cls.id_user_uploader], lazy="select")
+    # upload_form = Column(String(2000)) # , nullable=False+
+    id_upload: Mapped[int]         = mapped_column(ForeignKey("UPLOAD.id"),       nullable=True)
 
     @declared_attr
-    @classmethod
-    def key_salt(cls) -> Mapped[str]:
-        return Column(String(36), nullable=False, default=lambda: str(uuid4()))
+    def upload(cls) -> Mapped["Upload"]:
+        return relationship(backref="file", foreign_keys=[cls.id_upload])
+
+    dl_count = Column(Integer, nullable=False, server_default='0')
+
+    key_salt = Column(String, nullable=False, default=lambda: str(uuid4()))
 
     emited_at = Column(
         TIMESTAMP(timezone=True), default=utcnow, nullable=False
@@ -363,10 +366,11 @@ class Permission:
     write: bool=False
     download: bool=False
 
-    @classmethod
+    @classproperty
     def fields(cls) -> Set[str]:
         return set(cls.__dataclass_fields__.keys() - 'fields')
 
+    @property
     def enabled_verbs(self) -> Set[str]:
         return set(
             verb

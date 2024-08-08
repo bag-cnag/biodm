@@ -24,8 +24,6 @@ class DatasetController(ResourceController):
         responses:
             201:
                 description: Create Dataset.
-                examples: |
-                    {"name": "instant_sc_1234", "", "contact": {"username": "Neo", "first_name": "Thomas", "last_name": "Anderson"}, "id_project": "1"}
                 content:
                     application/json:
                         schema: DatasetSchema

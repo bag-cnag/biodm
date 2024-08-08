@@ -16,4 +16,4 @@ COPY ${TEST_DIR_PATH} /tests
 
 WORKDIR /tests
 
-ENTRYPOINT ["pytest"]
+ENTRYPOINT ["python", "-m", "pytest"]

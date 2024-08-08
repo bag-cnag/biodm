@@ -4,6 +4,7 @@ from typing import List, Dict, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     import logging
+    from sqlalchemy.ext.asyncio import AsyncSession
     from biodm.api import Api
     from biodm.components import Base
     from biodm.utils import UserInfo
@@ -47,6 +48,17 @@ class ApiService(ApiComponent, metaclass=ABCMeta):
         user_info: UserInfo | None = None,
         **kwargs: Dict[str, Any]
     ) -> UpsertStmt | List[UpsertStmt] | Base | List[Base]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def release(
+        self,
+        pk_val: List[Any],
+        fields: List[str],
+        update: Dict[str, Any],
+        session: AsyncSession,
+        user_info: UserInfo | None = None,
+    ) -> Base:
         raise NotImplementedError
 
     @abstractmethod

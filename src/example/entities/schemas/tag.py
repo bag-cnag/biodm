@@ -6,6 +6,6 @@ from .dataset import DatasetSchema
 
 
 class TagSchema(Schema):
-    name = String(required=True)
+    name = String()
 
     # datasets = List(Nested(DatasetSchema))

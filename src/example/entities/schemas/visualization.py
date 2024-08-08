@@ -8,7 +8,7 @@ from .project import ProjectSchema
 
 class VisualizationSchema(Schema):
     id = Integer()
-    name = String(required=False)
+    name = String()
 
     # datasets = List(Nested(DatasetSchema))
 

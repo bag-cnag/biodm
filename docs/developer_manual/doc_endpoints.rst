@@ -37,9 +37,6 @@ decorators.
             responses:
             201:
                 description: Write Dataset resource.
-                examples: |
-                    # TODO:
-                    {"name": "instant_sc_1234", ""}
                 content:
                     application/json:
                         schema: DatasetSchema
