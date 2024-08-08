@@ -41,7 +41,7 @@ jobs:
     - name: Run unit tests
       run: |
         cd src/tests/unit
-        pytest
+        python -m pytest
         cd -
 
     - name: Analysing the code with pylint
