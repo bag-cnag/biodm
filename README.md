@@ -72,4 +72,4 @@ No contributing policy yet. However, issues and pull requests are welcome.
 
 ## Licence
 
-GNU/GPLv3
+GNU/AGPLv3
