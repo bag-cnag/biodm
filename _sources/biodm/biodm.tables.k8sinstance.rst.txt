@@ -1,0 +1,7 @@
+biodm.tables.k8sinstance module
+===============================
+
+.. automodule:: biodm.tables.k8sinstance
+   :members:
+   :undoc-members:
+   :show-inheritance:

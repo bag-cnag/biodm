@@ -1,0 +1,7 @@
+biodm.schemas.k8sinstance module
+================================
+
+.. automodule:: biodm.schemas.k8sinstance
+   :members:
+   :undoc-members:
+   :show-inheritance:
