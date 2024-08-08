@@ -59,7 +59,7 @@ class KCGroupService(KCService):
         **kwargs
     ):
         """Create entities on Keycloak Side before passing to parent class for DB."""
-        # Check permissions
+        # Check permissions beforehand.
         await self._check_permissions("write", user_info, data)
 
         # Create on keycloak side

@@ -21,6 +21,11 @@ class Utils:
         """Encodes python Dict as utf-8 bytes."""
         return json.dumps(d).encode('utf-8')
 
+    @staticmethod
+    def rand_file(filename, size):
+        """Generates a file of that size filling it with random values."""
+        with open('%s'%filename, 'wb') as fout:
+            fout.write(os.urandom(size))
 
 @pytest.fixture
 def utils():

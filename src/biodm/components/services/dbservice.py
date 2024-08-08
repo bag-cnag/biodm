@@ -890,7 +890,7 @@ class CompositeEntityService(UnaryEntityService):
             perm_listgroups = {}
             if key in data.keys():
                 sub = data.pop(key)
-                for verb in Permission.fields() & set(sub.keys()):
+                for verb in Permission.fields & set(sub.keys()):
                     perm_listgroups[str(verb)] = await ListGroup.svc.write(
                         sub.get(verb), stmt_only=True,
                     )

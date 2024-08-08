@@ -78,7 +78,7 @@ def touch(fname: str) -> None:
 
 # Collections
 def to_it(x: _T | Tuple[_T, ...] | List[_T]) -> Tuple[_T, ...] | List[_T]:
-    """Return identity list/tuple or pack atomic value in a tuple."""
+    """Return identity list/tuple or pack atomic value in an iterable tuple."""
     return x if isinstance(x, (tuple, list)) else (x,)
 
 

@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
-    DeclarativeBase, relationship, Relationship, backref, ONETOMANY, mapped_column, MappedColumn, Mapped, make_transient, column_property
+    DeclarativeBase, relationship, Relationship, backref, ONETOMANY, mapped_column, MappedColumn, Mapped, make_transient, column_property, declared_attr
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from biodm.components.services import DatabaseService
     from biodm.components.controllers import ResourceController
     from sqlalchemy.orm import Relationship
+    from biodm.tables import Upload
 
 
 class Base(DeclarativeBase, AsyncAttrs):
@@ -337,7 +338,15 @@ class S3File:
     filename = Column(String(100), nullable=False)
     extension = Column(String(10), nullable=False)
     ready = Column(BOOLEAN, nullable=False, server_default='0')
-    upload_form = Column(String(2000)) # , nullable=False
+    size = Column(Integer, nullable=False)
+
+    # upload_form = Column(String(2000)) # , nullable=False+
+    id_upload: Mapped[int]         = mapped_column(ForeignKey("UPLOAD.id"),       nullable=True)
+
+    @declared_attr
+    def upload(cls) -> Mapped["Upload"]:
+        return relationship(backref="file", foreign_keys=[cls.id_upload])
+
     dl_count = Column(Integer, nullable=False, server_default='0')
 
     key_salt = Column(String, nullable=False, default=lambda: str(uuid4()))
@@ -357,7 +366,7 @@ class Permission:
     write: bool=False
     download: bool=False
 
-    @classmethod
+    @classproperty
     def fields(cls) -> Set[str]:
         return set(cls.__dataclass_fields__.keys() - 'fields')
 

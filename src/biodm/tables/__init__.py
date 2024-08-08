@@ -5,3 +5,4 @@ from .listgroup import ListGroup
 from .history import History
 from .k8sinstance import K8sInstance
 from .asso import asso_user_group
+from .upload import Upload, UploadPart
