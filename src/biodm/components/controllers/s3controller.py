@@ -28,8 +28,8 @@ class S3Controller(ResourceController):
         table: type[Base] | None = None,
         schema: type[Schema] | None = None
     ) -> None:
-        if not hasattr(app, 's3'):
-            raise ImplementionError("S3 features demanded, but no configuration has been given.")
+        # if not hasattr(app, 's3'):
+        #     raise ImplementionError("S3 features demanded, but no configuration has been given.")
 
         # An extra schema to validate complete_multipart input.
         self.parts_etag_schema = PartsEtagSchema(many=True, partial=False, unknown=RAISE)
