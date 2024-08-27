@@ -5,7 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from biodm import config
 from biodm.components import K8sManifest, Base
 
-from example.entities import tables as tables
+from entities import tables
+
 
 ## Cellxgene config
 CXG_APP_NAME = 'cellxgene'

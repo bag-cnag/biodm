@@ -1,0 +1,4 @@
+biodm
+kubernetes==29.0.0
+uvicorn==0.29.0
+uvloop==0.19.0

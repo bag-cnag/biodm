@@ -1,4 +1,4 @@
-ARG PYTHON__V
+ARG PYTHON__V=3.11
 ARG PIP_CACHE_DIR=/root/.cache/pip
 
 FROM python:${PYTHON__V}-slim-bookworm
@@ -23,6 +23,8 @@ RUN find /biodm/src/example -name '.env' | xargs rm -rf
 RUN pip3 install .
 
 WORKDIR /biodm/src/example
+
+RUN pip3 install .
 
 EXPOSE 8000
 

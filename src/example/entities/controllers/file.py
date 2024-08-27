@@ -9,7 +9,7 @@ from starlette.requests import Request
 from starlette.responses import Response, PlainTextResponse #, RedirectResponse
 from starlette.routing import BaseRoute, Mount, Route
 
-from example.entities import tables
+from entities import tables
 
 class FileController(S3Controller):
     def routes(self, **_) -> List[Mount | Route] | List[Mount] | List[BaseRoute]:

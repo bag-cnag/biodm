@@ -1,24 +1,14 @@
 #!/usr/bin/env python
-import os
-import sys
 from typing import Literal
-# from pathlib import Path
 import uvicorn
 
 from biodm import config
 from biodm.api import Api
 
+from entities import tables as _ # import tables first to avoid duplicate imports.
+from entities import controllers
+import manifests
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-from example.entities import tables as _
-from example.entities import controllers
-import example.manifests as manifests
-
-# sys.path.append(Path(__file__).parent)
-# import controllers
-# from . import entities
-# from example import manifests
 
 def main():
     app = Api(
