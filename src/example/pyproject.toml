@@ -21,5 +21,8 @@ classifiers = [
 [project.urls]
 Repository = "https://github.com/bag-cnag/biodm.git"
 
+[tool.setuptools]
+packages = ["entities", "manifests"]
+
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
