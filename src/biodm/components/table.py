@@ -382,15 +382,9 @@ class Permission:
 class Versioned:
     """Versioned entity parent class.
 
-    - Populates id/version primary_key fields
-    - Enable release functionalities
+    - Populates version as primary_key column
+    - Disable /update, enable /release
     """
-    id = Column(
-        Integer,
-        nullable=False,
-        primary_key=True,
-        autoincrement=not 'sqlite' in config.DATABASE_URL,
-    )
     version = Column(Integer, server_default='1', nullable=False, primary_key=True)
 
     # def new_version(self, session):

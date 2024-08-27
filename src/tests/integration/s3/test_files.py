@@ -16,12 +16,12 @@ dataset = {
     },
 }
 
+CHUNK_SIZE = 100*1024**2
+
 small_file_name = "small.bin"
 small_file_path: Path
 small_file_upload_form: Dict[str, str]
 small_file = {}
-
-CHUNK_SIZE = 100*1024**2
 
 big_file_name = "big.bin"
 big_file_path: Path
@@ -188,7 +188,9 @@ def test_upload_large_file(srv_endpoint, utils):
 
 @pytest.mark.dependency(name="test_upload_large_file")
 def test_download_large_file(srv_endpoint, tmp_path):
-    response = requests.get(f"{srv_endpoint}/files/{big_file['id']}/download", allow_redirects=True, stream=True)
+    response = requests.get(
+        f"{srv_endpoint}/files/{big_file['id']}/download", allow_redirects=True, stream=True
+    )
     assert response.status_code == 200
 
     tmp_file = tmp_path / 'dl_big.bin'

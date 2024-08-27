@@ -1,22 +1,27 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 
 from biodm.components.table import Base
-from .asso import asso_dataset_tag
 
 if TYPE_CHECKING:
-    from .project import Project
-    from biodm.tables import K8sinstance
-
+    from biodm.tables import User
+    # from .project import Project
+    from .file import File
 
 class Visualization(Base):
     id = Column(Integer, primary_key=True)
-    name = Column(String)
+    name = Column(String(200), nullable=True)
 
-    id_project:      Mapped[int] = mapped_column(ForeignKey("PROJECT.id"))
-    id_k8sinstance:  Mapped[int] = mapped_column(ForeignKey("K8SINSTANCE.id"))
+    # Foreign Keys
+    username_user:   Mapped[str] = mapped_column(ForeignKey("USER.username"))
+    # id_project:      Mapped[int] = mapped_column(ForeignKey("PROJECT.id"))
+    id_file:         Mapped[int] = mapped_column(ForeignKey("FILE.id"))
+    # id_k8sinstance:  Mapped[int] = mapped_column(ForeignKey("K8SINSTANCE.id"))
 
-    # k8sinstance: Mapped["K8sinstance"] = relationship(foreign_keys=[id_k8sinstance], lazy="select")
-    project: Mapped["Project"]    = relationship(back_populates="visualizations", lazy="select")
+    # Relationships
+    user:    Mapped["User"]       = relationship(foreign_keys=[username_user])
+    # project: Mapped["Project"]    = relationship(back_populates="visualizations", lazy="select")
+    file:    Mapped["File"]       = relationship(foreign_keys=[id_file])
+    # k8sinstance: Mapped["K8sInstance"] = relationship(foreign_keys=[id_k8sinstance], lazy="select")

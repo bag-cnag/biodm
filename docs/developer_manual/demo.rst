@@ -1,8 +1,8 @@
 Minimal Demo
 ============
 
-Say you or your organization needs to store ``Datasets``, each containing a set of ``File`` we will go
-over the following minimal example.
+Say you or your organization needs to store ``Datasets``, each containing a set of ``File``
+we will go over the following minimal example.
 
 .. code-block:: python
     :caption: demo.py
@@ -15,11 +15,13 @@ over the following minimal example.
     import uvicorn
 
     import biodm as bd
+    from biodm import config
     from biodm.components.controllers import ResourceController, S3Controller
 
 
     # Tables
     class Dataset(bd.components.Versioned, bd.components.Base):
+        id = Column(Integer, primary_key=True, autoincrement=not 'sqlite' in config.DATABASE_URL)
         name          : sao.Mapped[str]          = sa.Column(sa.String(50),                   nullable=False)
         description   : sao.Mapped[str]          = sa.Column(sa.String(500),                  nullable=False)
         username_owner: sao.Mapped[int]          = sa.Column(sa.ForeignKey("USER.username"),  nullable=False)
@@ -45,6 +47,7 @@ over the following minimal example.
         id             = mf.Integer()
         filename       = mf.String(required=True)
         extension      = mf.String(required=True)
+        size           = mf.Integer(required=True)
         url            = mf.String(                 dump_only=True)
         ready          = mf.Bool(                   dump_only=True)
         id_dataset     = mf.Integer(required=True,  load_only=True)
@@ -128,9 +131,8 @@ From that point on, urls to download the file can be obtained by visiting
 
 Versioning
 -----------
-In the example above you may see that Dataset has no primary key.
-It is because it inherits from ``Versioned`` that populate
-``[id, version]`` as primary key.
+Dataset inheriting from ``Versioned`` will populate an extra
+``version`` column as primary key, making the overall key ``('id', 'version',)``
 
 Versioned resources are read-only, eventual updates have to pass by
 ``PUT /datasets/{id}_{version}/release`` route that will produce a new resource, incrementing version.
@@ -141,6 +143,7 @@ Versioned resources are read-only, eventual updates have to pass by
 
 .. warning::
 
-    SQLite doesn't support autoincrement in the case of a composite primary key.
-    ``BioDM`` supports the canonical leading ``id`` case at the cost of an extra request to fetch
-    max id before inserting. Other configuration will yield errors.
+    ``SQLite`` doesn't support autoincrement in the case of a composite primary key.
+    ``BioDM`` will populate the canonical leading ``id`` column at the cost of an extra request
+    to fetch max id before inserting. Other configuration will yield errors.
+

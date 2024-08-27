@@ -13,7 +13,6 @@ from sqlalchemy.exc import IntegrityError
 from starlette.routing import Mount, Route, BaseRoute
 from starlette.requests import Request
 from starlette.responses import Response
-from yaml import serialize
 
 from biodm import Scope
 from biodm.components.services import (
@@ -27,8 +26,7 @@ from biodm.exceptions import (
     InvalidCollectionMethod,
     PayloadEmptyError,
     PartialIndex,
-    UpdateVersionedError,
-    PayloadValidationError
+    UpdateVersionedError
 )
 from biodm.utils.utils import json_response
 from biodm.utils.security import UserInfo
@@ -280,20 +278,19 @@ class ResourceController(EntityController):
         Relevant doc:
         - https://restfulapi.net/http-methods/
         """
-        # child_routes = child_routes or []
         # flake8: noqa: E501  pylint: disable=line-too-long
         return [
-            Route(f"{self.prefix}",                   self.create,         methods=[HttpMethod.POST.value]),
-            Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET.value]),
+            Route(f"{self.prefix}",                   self.create,         methods=[HttpMethod.POST]),
+            Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET]),
             Mount(self.prefix, routes=[
-                Route('/schema',                      self.openapi_schema, methods=[HttpMethod.GET.value]),
-                Route(f'/{self.qp_id}',               self.read,           methods=[HttpMethod.GET.value]),
-                Route(f'/{self.qp_id}/{{attribute}}', self.read,           methods=[HttpMethod.GET.value]),
-                Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE.value]),
+                Route('/schema',                      self.openapi_schema, methods=[HttpMethod.GET]),
+                Route(f'/{self.qp_id}',               self.read,           methods=[HttpMethod.GET]),
+                Route(f'/{self.qp_id}/{{attribute}}', self.read,           methods=[HttpMethod.GET]),
+                Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE]),
             ] + [(
-                Route(f"/{self.qp_id}/release",       self.release,        methods=[HttpMethod.POST.value])
+                Route(f"/{self.qp_id}/release",       self.release,        methods=[HttpMethod.POST])
                 if self.table.is_versioned else
-                Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT.value])
+                Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT])
             )])
         ]
 

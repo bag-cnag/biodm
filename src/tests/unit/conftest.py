@@ -35,6 +35,7 @@ class A(Base):
 
 
 class B(Versioned, Base):
+    id = sa.Column(sa.Integer, primary_key=True, autoincrement=False)
     name = sa.Column(sa.String, nullable=False)
 
 
@@ -87,7 +88,6 @@ class CController(ResourceController):
 app = Api(
     debug=True,
     controllers=[AController, BController, CController],
-    instance={},
     test=True
 )
 

@@ -1,6 +1,6 @@
 """Database service: Translates requests data into SQLA statements and execute."""
-from operator import or_
-from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Set, Type
+from abc import ABCMeta
+from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type
 
 from sqlalchemy import select, delete, update, or_, func
 from sqlalchemy.dialects import postgresql, sqlite
@@ -30,12 +30,11 @@ from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 SUPPORTED_INT_OPERATORS = ("gt", "ge", "lt", "le")
 
 
-class DatabaseService(ApiService):
-    """DB Service class: manages database transactions for entities.
-        This abstract class holds atomic database statement execution and utility functions plus
+class DatabaseService(ApiService, metaclass=ABCMeta):
+    """DB Service abstract class: manages database transactions for entities.
+        This class holds atomic database statement execution and utility functions plus
         permission logic.
     """
-
     table: Type[Base]
 
     def __repr__(self) -> str:
@@ -720,9 +719,7 @@ class UnaryEntityService(DatabaseService):
         user_info: UserInfo | None = None,
     ) -> Base:
         await self._check_permissions(
-            "write", user_info, {
-                k: v for k, v in zip(self.pk, pk_val)
-            }, session=session
+            "write", user_info, dict(zip(self.pk, pk_val)), session=session
         )
 
         item = await self.read(pk_val, fields, session=session)
@@ -846,6 +843,7 @@ class CompositeEntityService(UnaryEntityService):
                 setattr(item, key, await svc._insert(delay, **kwargs))
         return item
 
+    # pylint: disable=arguments-differ
     async def _insert(
         self,
         stmt: UpsertStmt,
@@ -856,6 +854,7 @@ class CompositeEntityService(UnaryEntityService):
             return await super()._insert(stmt, **kwargs)
         return await self._insert_composite(stmt, **kwargs)
 
+    # pylint: disable=arguments-differ
     async def _insert_list(
         self,
         stmts: Sequence[UpsertStmt],
@@ -878,7 +877,7 @@ class CompositeEntityService(UnaryEntityService):
 
             Generate statement tree for all items in their hierarchical structure.
             Each service is responsible for building statements for its own associated table.
-            Ultimately all statements are built by UnaryEntityService class.
+            Ultimately all statements (except permissions) are built by UnaryEntityService class.
         """
         nested, delayed, futures = {}, {}, kwargs.pop('futures', [])
 
@@ -934,22 +933,17 @@ class CompositeEntityService(UnaryEntityService):
         composite = CompositeInsert(item=stmt, nested=nested, delayed=delayed)
         return composite if stmt_only else await self._insert_composite(composite, **kwargs)
 
+    # pylint: disable=arguments-differ
     @DatabaseManager.in_session
     async def write(
         self,
         data: List[Dict[str, Any]] | Dict[str, Any],
-        stmt_only: bool = False,
-        user_info: UserInfo | None = None,
         **kwargs
     ) -> Base | List[Base] | UpsertStmt | List[UpsertStmt]:
         """CREATE, Handle list and single case."""
-        kwargs.update( # Could be implicitely packed by the signature but then linters complain.
-            {"stmt_only": stmt_only, "user_info": user_info}
-        )
         if isinstance(data, list):
             return [
                 await self._parse_composite(one, **kwargs)
                 for one in data
             ]
-        else:
-            return await self._parse_composite(data, **kwargs)
+        return await self._parse_composite(data, **kwargs)

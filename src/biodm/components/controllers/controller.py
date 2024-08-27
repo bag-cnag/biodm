@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json
 from abc import abstractmethod
-from enum import Enum
+from enum import StrEnum
 from io import BytesIO
 from typing import Any, Iterable, List, Dict, TYPE_CHECKING, Optional
 
@@ -18,7 +18,7 @@ from starlette.routing import Mount, Route, BaseRoute
 from biodm import config
 from biodm.component import ApiComponent
 from biodm.exceptions import (
-    PayloadJSONDecodingError, PayloadValidationError, AsyncDBError, SchemaError
+    PayloadJSONDecodingError, AsyncDBError, SchemaError
 )
 from biodm.utils.utils import json_response
 
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from biodm.component import Base
 
 
-class HttpMethod(Enum):
+class HttpMethod(StrEnum):
     """HTTP Methods."""
     GET = "GET"
     POST = "POST"
@@ -100,7 +100,7 @@ class EntityController(Controller):
                 case b'[':
                     many = True
                 case _:
-                    raise PayloadValidationError("Wrong input JSON.")
+                    raise ValidationError("Wrong input JSON.")
 
             json_data = json.loads(data) # Accepts **kwargs in case support needed.
             return cls.schema.load(json_data, many=many, partial=partial)

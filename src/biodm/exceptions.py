@@ -41,10 +41,6 @@ class PayloadJSONDecodingError(RuntimeError):
     """Raised when payload data failed to be parsed in JSON format."""
 
 
-class PayloadValidationError(RuntimeError):
-    """Raised when input data can not be coerced into an entity."""
-
-
 class SchemaError(RuntimeError):
     """Raised when faulty schema pattern is detected."""
 

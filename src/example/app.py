@@ -10,20 +10,20 @@ from biodm.api import Api
 
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from entities import controllers
+
+from example.entities import tables as _
+from example.entities import controllers
+import example.manifests as manifests
 
 # sys.path.append(Path(__file__).parent)
 # import controllers
 # from . import entities
 # from example import manifests
 
-
 def main():
     app = Api(
         controllers=controllers.CONTROLLERS,
-        instance={
-            # 'manifests': manifests
-        },
+        manifests=manifests.MANIFESTS,
         debug=True,
         test=False
     )

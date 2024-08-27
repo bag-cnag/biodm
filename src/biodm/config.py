@@ -44,6 +44,9 @@ KC_JWT_OPTIONS     = config("KC_JWT_OPTIONS",     cast=dict,  default={'verify_e
                                                                        'verify_aud': False})
 
 # Kubernetes.
+
+K8_IP         = config("K8_IP",         cast=str,  default=None)
+K8_PORT       = config("K8_PORT",       cast=str,  default="8443")
 K8_HOST       = config("K8_HOST",       cast=str,  default=None)
 K8_CERT       = config("K8_CERT",       cast=str,  default=None)
 K8_TOKEN      = config("K8_TOKEN",      cast=str,  default=None)

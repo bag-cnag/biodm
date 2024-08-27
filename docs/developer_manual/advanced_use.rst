@@ -122,3 +122,24 @@ building and execution.
 
             # Send to DB
             return await super().write(data, stmt_only=stmt_only, **kwargs)
+
+
+Extending: Prefix vs. Postfix
+-----------------------------
+
+The above example describes a `Prefix feature extension`.
+
+Meaning, modifications are taking place **before** data gets inserted into the DB.
+In that case you typically do not have a handle on DB objects/session.
+
+A prefix feature extension shall make sure that the data dictionary sent down to ``DatabaseService``
+is respecting tables integrity.
+
+On the other hand, a `Postfix feature extension` happens **after** data gets inserted.
+This is the way to go in case you need to access entity relationships,
+database generated ids, and so on.
+
+S3 Files: a case study
+~~~~~~~~~~~~~~~~~~~~~~
+
+TODO: COMING UP

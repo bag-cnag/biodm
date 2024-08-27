@@ -77,8 +77,9 @@ which enables support for ``swagger-ui`` and the rest of the ecosystem.
 
 .. note::
 
-    The core patches abstract method docstrings at runtime in order to generate  that are left
-    undocumented. However, if you are using ``@overload_docstrings`` ensuring that it generates a
+    The core patches abstract method docstrings at runtime in order to generate valid documentation
+    for endpoints that are left undocumented.
+    However, if you are using ``@overload_docstrings`` ensuring that it generates a
     valid schema that works with the tools is up to you.
     To obtain the full generated docstring you may get it from a ``Controller`` after start phase
     using printing methods or a debug session.

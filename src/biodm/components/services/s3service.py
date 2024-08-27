@@ -67,7 +67,7 @@ class S3Service(CompositeEntityService):
         parts = await getattr(file.upload.awaitable_attrs, 'parts')
 
         key = await self.gen_key(file, session=session)
-        n_chunks = ceil(file.size/CHUNK_SIZE)
+        n_chunks = ceil(file.size / CHUNK_SIZE)
 
         if n_chunks > 1:
             res = self.s3.create_multipart_upload(key)
