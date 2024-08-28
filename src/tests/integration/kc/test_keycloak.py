@@ -15,16 +15,40 @@ user_with_groups = {
     ]
 }
 
+user_test = {"username": "u_test", "password": "1234", "firstName": "john", "lastName": "doe"}
 
 def test_create_user(srv_endpoint, utils):
     """"""
-    user = {"username": "u_test", "password": "1234"}
-    response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(user))
-    assert "u_test" in response.text
-    json_response = json.loads(response.text)
+    response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(user_test))
 
     assert response.status_code == 201
-    assert json_response["username"] == user["username"]
+    json_response = json.loads(response.text)
+
+    assert json_response["username"] == user_test["username"]
+    assert json_response["firstName"] == user_test["firstName"]
+    assert json_response["lastName"] == user_test["lastName"]
+
+
+@pytest.mark.dependency(name="test_create_user")
+def test_update_user(srv_endpoint, utils):
+    update = {"username": user_test['username'], "firstName": "jack"}
+    response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(update))
+
+    assert response.status_code == 201
+    json_response = json.loads(response.text)
+
+    assert json_response["username"] == user_test["username"]
+    assert json_response["username"] == update["username"]
+    assert json_response["firstName"] == update["firstName"]
+    assert json_response["lastName"] == user_test["lastName"]
+
+
+def test_create_user_no_passwd(srv_endpoint, utils):
+    user_no_passwd = {"username": "u_no_passwd"}
+    response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(user_no_passwd))
+
+    assert response.status_code == 400
+    assert "Missing password in order to create User." in response.text
 
 
 def test_create_group(srv_endpoint, utils):

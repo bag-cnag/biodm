@@ -14,7 +14,8 @@ from .exceptions import (
     UnauthorizedError,
     TokenDecodingError,
     UpdateVersionedError,
-    FileNotUploadedError
+    FileNotUploadedError,
+    MissingDataError
 )
 
 
@@ -46,6 +47,8 @@ async def onerror(_, exc):
             case ValidationError():
                 status = 400
                 detail = str(exc.messages)
+            case  MissingDataError():
+                status = 400
             case FailedDelete() | FailedRead() | FailedUpdate():
                 status = 404
             case InvalidCollectionMethod():

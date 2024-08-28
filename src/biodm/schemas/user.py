@@ -7,7 +7,7 @@ class UserSchema(Schema):
     username = String()
     password = String(load_only=True)
     email = String()
-    first_name = String()
-    last_name = String()
+    firstName = String()
+    lastName = String()
 
     groups = List(Nested('GroupSchema', exclude=['users', 'children', 'parent']))
