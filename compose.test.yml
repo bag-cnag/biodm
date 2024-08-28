@@ -8,8 +8,8 @@ services:
       dockerfile: docker/Dockerfile.biodm-test-api
       args:
         - PYTHON__V=3.11
-      extra_hosts:
-        - host.minikube.internal:10.10.0.3
+    extra_hosts:
+      - "host.minikube.internal:10.10.0.3"
     depends_on:
       api-db:
         condition: service_healthy
@@ -45,6 +45,8 @@ services:
       args:
         - PYTHON__V=3.11
         - TEST_DIR=kc
+    extra_hosts:
+      - "host.minikube.internal:10.10.0.3"
     depends_on:
       test-keycloak-env:
         condition: service_healthy

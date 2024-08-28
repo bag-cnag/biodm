@@ -65,7 +65,8 @@ def test_login_user_on_keycloak_and_get_token(srv_endpoint, utils):
     global token
     # Create User
     user = {"username": "u_test", "password": "1234"}
-    _ = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(user))
+    response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(user))
+    assert response.status_code == 201
 
     token = utils.keycloak_login(srv_endpoint, user['username'], user['password'])
 
