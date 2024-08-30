@@ -116,7 +116,7 @@ class KCUserService(KCService):
 
         :param data: Entry object representation
         :type data: Dict[str, Any]
-        :param groups: User groups, defaults to None
+        :param groups: User groups names, defaults to None
         :type groups: List[str], optional
         :param group_ids: User groups ids, defaults to None
         :type group_ids: List[str], optional

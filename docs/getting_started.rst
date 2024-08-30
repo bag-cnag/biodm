@@ -65,9 +65,11 @@ Development environment
 Quick dependency setup
 ~~~~~~~~~~~~~~~~~~~~~~
 
-To start all service dependnencies at once and skip individual configuration you may use
-the provided ``compose.yml``. Passing the flag --build it will also build for you an appropriate
-keycloak image with your local certificates in order to serve ``https://`` requests.
+To start all service dependnencies (except `minikube`, see below) at once and skip individual
+configuration you may use the provided ``compose.yml``. Passing the flag ``--build`` it will also
+build for you an appropriate keycloak image with your local certificates in order to serve
+``https://`` requests.
+
 
 .. code-block:: bash
 
@@ -75,15 +77,15 @@ keycloak image with your local certificates in order to serve ``https://`` reque
 
 Default configuration parameters are set on fixed IPs declared in this ``compose.yml`` file.
 
-**optional - strongly recommended for keycloak -:** for testing convenience you
-may add those lines to your host table.
+**optional - essential for keycloak/minikube -:** for testing convenience you
+should add those lines to your host table.
 
 .. code-block:: bash
 
     sudo cat >> /etc/hosts <<EOF
     # biodm-dev
     10.10.0.2       postgres.local
-    10.10.0.3       keycloak.local
+    10.10.0.3       keycloak.local host.minikube.internal
     10.10.0.4       s3bucket.local
     EOF
 
@@ -113,7 +115,7 @@ Individual configuration
 
 .. _Keycloak:
 
-First you need to build the image yourself according to the `documentation <https://www.keycloak.org/server/containers/>`_:
+First you need to build the image yourself according to `keycloak documentation <https://www.keycloak.org/server/containers/>`_:
 
 .. code-block:: bash
 
@@ -202,6 +204,46 @@ generate a key and populate:
     S3_BUCKET_NAME={bucket_name}
     S3_ACCESS_KEY_ID={access_key_id}
     S3_SECRET_ACCESS_KEY={access_key}
+
+Minikube
+--------
+
+In order to develop Kubernetes functionalities we use a ``Minikube`` server. 
+
+Setting it up is not as simple as adding a extra service in ``docker compose``.
+Hence, it needs to be done somewhat manually.
+
+First you need to install it one your distribution according to
+`minikube documentation <https://minikube.sigs.k8s.io/docs/start>`_.
+
+Then start server (at the beginning of each session).
+
+.. code-block:: bash
+
+    minikube start
+
+If done for the first time, enable `ingress-nginx-controller` like this:
+
+.. code-block:: bash
+
+    minikube addons enable ingress
+
+For convenience you may add the following alias to your shell. Setup scripts shall assume this.
+
+.. code-block:: shell
+
+    alias kubectl="minikube kubectl --"
+
+In order to use on demand visualization of ``.h5ad`` files feature integrated in our ``example``
+project you should run the following script.
+It leverages a proof of concept from ``bag-cnag/cxg_on_k8`` repository.
+
+.. code-block:: bash
+
+    ``bash minikube/setup-visualization.sh``
+
+This scrip takes a while and prepares everything that is necessary for the demo.
+Ultimately it will output a token that you should set for ``K8_TOKEN`` in ``src/example/.env``. 
 
 Documentation
 -------------
