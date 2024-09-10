@@ -243,7 +243,7 @@ It leverages a proof of concept from ``bag-cnag/cxg_on_k8`` repository.
     ``bash minikube/setup-visualization.sh``
 
 This scrip takes a while and prepares everything that is necessary for the demo.
-Ultimately it will output a token that you should set for ``K8_TOKEN`` in ``src/example/.env``. 
+Ultimately it will output a token that you should set as ``K8_TOKEN`` in ``src/example/.env``.
 
 Documentation
 -------------

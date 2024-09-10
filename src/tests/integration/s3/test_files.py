@@ -7,6 +7,10 @@ from math import ceil
 
 from typing import Dict, Any
 
+
+CHUNK_SIZE = 100*1024**2
+
+
 project = {"name": "pr_test"}
 dataset = {
     "name": "ds_test",
@@ -16,12 +20,12 @@ dataset = {
     },
 }
 
-CHUNK_SIZE = 100*1024**2
 
 small_file_name = "small.bin"
 small_file_path: Path
 small_file_upload_form: Dict[str, str]
 small_file = {}
+
 
 big_file_name = "big.bin"
 big_file_path: Path
@@ -155,6 +159,7 @@ def test_create_large_file(srv_endpoint, utils, tmpdir):
     big_file_upload_forms = upload['parts']
     assert len(big_file_upload_forms) == 3
 
+
 @pytest.mark.dependency(name="test_create_large_file")
 def test_upload_large_file(srv_endpoint, utils):
     global big_file, big_file_path, big_file_upload_forms
@@ -185,6 +190,7 @@ def test_upload_large_file(srv_endpoint, utils):
     )
     assert complete.status_code == 201
     assert 'Completed.' in complete.text
+
 
 @pytest.mark.dependency(name="test_upload_large_file")
 def test_download_large_file(srv_endpoint, tmp_path):

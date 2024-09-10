@@ -15,18 +15,16 @@ AWS_CLI_IMAGE = 'aws_cli:xsmall'
 CXG_PORT = 5005
 SERVICE_PORT = 38005
 NAMESPACE = "cellxgene"
-PROXY_BUFFER_SIZE = '64k'
 HOST_NAME = config.K8_HOST
-
-OAUTH2_CLIENT_ID = 'cellxgene'
-OAUTH2_CLIENT_SECRET = 'nO2u3UctaFesFRw4I3Cy7kfmhm3bCdag'
 OAUTH2_NAMESPACE = 'ingress-nginx'
 OAUTH2_APP_NAME = 'oauth2-proxy'
 OAUTH2_PORT = 8091
+PROXY_BUFFER_SIZE = '64k'
 
 
 class CellXGeneManifest(K8sManifest):
     table: Type[Base] = tables.Visualization
+    namespace = "cellxgene"
 
     async def gen_manifest(
         self,
@@ -35,12 +33,13 @@ class CellXGeneManifest(K8sManifest):
         **_
     ) -> Dict[str, str]:
         # 1. Get vis.user.username
-        # 2. Get vis.file.key
-        # 3. Instance name: for now uuid4
         username = vis.username_user
-        file = await vis.awaitable_attrs.file
+
+        # 2. Get vis.file.key
+        file: tables.File = await vis.awaitable_attrs.file
         file_key = await file.svc.gen_key(file, session)
-        # TODO: Introduce check for h5ad
+
+        # 3. Instance name: for now uuid4
         return self.cellxgene_manifest(f"{CXG_APP_NAME}-{str(uuid4())}", username, file_key)
 
     def cellxgene_manifest(self, instance_name: str, user_id: str, file_key: str):
@@ -74,12 +73,14 @@ class CellXGeneManifest(K8sManifest):
         Return the manifests needed to instanciate cellxgene as python dictionaries
         Sets the fields depending on variables
         """
-        # dataset = "https://github.com/chanzuckerberg/cellxgene/raw/main/example-dataset/pbmc3k.h5ad"
         bucket_path = f"s3://{config.S3_BUCKET_NAME}"
         dataset = f"{bucket_path}/{file_key}"
 
-        # extless_key = file_key.split('.')[0]
-        # anno_files_path = f"{bucket_path}/cxg_on_k8/{extless_key}/{user_id}/"
+        key_stem, key_ext = file_key.split('.', maxsplit=1)
+        if key_ext != "h5ad":
+            raise ValueError("Visualizer only supports h5ad files.")
+
+        anno_files_path = f"{bucket_path}/cxg_on_k8/{key_stem}/{user_id}/"
 
         deployment = {
             "apiVersion":"apps/v1",
@@ -114,7 +115,7 @@ class CellXGeneManifest(K8sManifest):
                             "image": AWS_CLI_IMAGE,
                             "command": [
                                 "/bin/sh", "-c", (
-                                    # f"aws s3 sync {anno_files_path} /data && "
+                                    f"aws s3 sync {anno_files_path} /data && "
                                     "touch /data/annotations.csv /data/gene_sets.csv"
                                 )
                             ],
@@ -141,12 +142,12 @@ class CellXGeneManifest(K8sManifest):
                                 "name": "data",
                                 "mountPath": "/data"
                             }],
-                            # "lifecycle": { "preStop": { "exec": { "command": [
-                            #     "/usr/local/bin/python", "-c",
-                            #     f"from fsspec import filesystem as fs; s3 = fs('s3');    \
-                            #     s3.upload('/data/annotations.csv', '{anno_files_path}'); \
-                            #     s3.upload('/data/gene_sets.csv', '{anno_files_path}')"
-                            # ]}}},
+                            "lifecycle": { "preStop": { "exec": { "command": [
+                                "/usr/local/bin/python", "-c",
+                                f"from fsspec import filesystem as fs; s3 = fs('s3');    \
+                                s3.upload('/data/annotations.csv', '{anno_files_path}'); \
+                                s3.upload('/data/gene_sets.csv', '{anno_files_path}')"
+                            ]}}},
                         }],
                         "volumes": [{
                             "name": "data",

@@ -27,6 +27,7 @@ class Utils:
         with open('%s'%filename, 'wb') as fout:
             fout.write(os.urandom(size))
 
+
 @pytest.fixture
 def utils():
     return Utils

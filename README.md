@@ -36,31 +36,52 @@ BioDM is a fast, modular, stateless and asynchronous REST API framework with the
 pip3 install git+https://github.com/bag-cnag/biodm
 ```
 
-### Run app
-To run the API you will also need an ASGI server, **i.e.** uvicorn+uvloop by default:
+To run an API instance you will also need an ASGI server, **e.g.** uvicorn+uvloop:
 ```bash
 pip3 install uvicorn uvloop
 ```
-OR
+
+### Run Example project
+
+Provided in biodm repository.
+
+_Note:_ Prior to this step,
+it is recommended to create and activate a new `python3` virtual environment.
+
 ```bash
 pip3 install -r src/requirements/dev.txt
+pip3 install .
 ```
 
-Then you may run our `example` after populating  `src/example/.env` with your desired configuration:
-```bash
-cd src/example/
-python3 src/example/app.py
-```
-
-Alternatively, if your goal is simply to run `example` locally
-you may use the following command beforehand in order to deploy the development stack:
+you may use the following in order to deploy the development stack:
 
 ```bash
 docker compose -f compose.yml up --build -d
 ```
 
+For proper integration it is recommended to give them hostnames.
+In particular keycloak does hard checks and login shall fail without this step.
+
+```bash
+sudo cat >> /etc/hosts <<EOF
+# biodm-dev
+10.10.0.2       postgres.local
+10.10.0.3       keycloak.local host.minikube.internal
+10.10.0.4       s3bucket.local
+EOF
+```
+
+Then you may run `example`:
+```bash
+cd src/example/
+python3 src/example/app.py
+```
+
 This stack comes with an interactive ``swagger-ui`` visitable at ``http://localhost:9080/``
 once the server is running.
+
+To use kubernetes functionalities or tweak default configuration you should visit
+[getting started](https://bag-cnag.github.io/biodm) section of the documentation.
 
 ## About
 

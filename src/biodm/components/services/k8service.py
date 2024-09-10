@@ -20,12 +20,16 @@ class K8Service(CompositeEntityService):
     def k8(cls) -> K8sManager:
         return cls.app.k8
 
-    async def _gen_manifest_and_deploy(self, db_obj: Base, session: AsyncSession) -> None:
+    async def _gen_and_submit_manifest(self, db_obj: Base, session: AsyncSession) -> None:
         manifest = await self.manifest.gen_manifest(db_obj, session)
 
+        # Set instance name.
         instance_name = manifest.get("metadata", {}).get("name", None)
         await db_obj.awaitable_attrs.name
         setattr(db_obj, 'name', instance_name)
+
+        # Ensure submitting happens in the proper namespace.
+        self.k8.change_namespace(self.manifest.namespace)
 
         f: Callable
         match manifest.get('kind', manifest.get('Kind')).lower():
@@ -43,7 +47,7 @@ class K8Service(CompositeEntityService):
     async def _insert(self, stmt: Insert, session: AsyncSession) -> (Any | None):
         """INSERT special case for file: populate url after getting entity id."""
         k8sinst = await super()._insert(stmt, session=session)
-        await self._gen_manifest_and_deploy(k8sinst, session=session)
+        await self._gen_and_submit_manifest(k8sinst, session=session)
         return k8sinst
 
     @DatabaseManager.in_session
@@ -51,6 +55,6 @@ class K8Service(CompositeEntityService):
         """INSERT many objects into the DB database, check token write permission before commit."""
         k8sinsts = await super()._insert_list(stmts, session=session)
         for k8sinst in k8sinsts:
-            await self._gen_manifest_and_deploy(k8sinst, session=session)
+            await self._gen_and_submit_manifest(k8sinst, session=session)
         return k8sinsts
  

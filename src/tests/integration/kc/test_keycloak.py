@@ -17,6 +17,7 @@ user_with_groups = {
 
 user_test = {"username": "u_test", "password": "1234", "firstName": "john", "lastName": "doe"}
 
+
 def test_create_user(srv_endpoint, utils):
     """"""
     response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(user_test))
