@@ -29,7 +29,6 @@ from biodm.exceptions import (
     UpdateVersionedError
 )
 from biodm.utils.utils import json_response
-from biodm.utils.security import UserInfo
 from biodm.components import Base
 from .controller import HttpMethod, EntityController
 
@@ -392,16 +391,13 @@ class ResourceController(EntityController):
                 description: Empty Payload.
         """
         body = await self._extract_body(request)
-        user_info = await UserInfo(request)
-
-        # TODO: tinker with this loose schema policy.
 
         try:
             validated_data = self.validate(body, partial=True)
             created = await self.svc.write(
                 data=validated_data,
                 stmt_only=False,
-                user_info=user_info,
+                user_info=request.state.user_info,
                 serializer=partial(self.serialize, many=isinstance(validated_data, list))
             )
         except IntegrityError as ie:
@@ -470,7 +466,7 @@ class ResourceController(EntityController):
                 pk_val=self._extract_pk_val(request),
                 fields=fields,
                 nested_attribute=nested_attribute,
-                user_info=await UserInfo(request),
+                user_info=request.state.user_info,
                 serializer=partial(ctrl.serialize, many=many, only=fields),
             ),
             status_code=200,
@@ -523,7 +519,7 @@ class ResourceController(EntityController):
                 data=await self.svc.write(
                     data=validated_data,
                     stmt_only=False,
-                    user_info=await UserInfo(request),
+                    user_info=request.state.user_info,
                     serializer=partial(self.serialize, many=isinstance(validated_data, list)),
                 ),
                 status_code=201,
@@ -556,7 +552,7 @@ class ResourceController(EntityController):
         """
         await self.svc.delete(
             pk_val=self._extract_pk_val(request),
-            user_info=await UserInfo(request),
+            user_info=request.state.user_info,
         )
         return json_response("Deleted.", status_code=200)
 
@@ -593,7 +589,7 @@ class ResourceController(EntityController):
             await self.svc.filter(
                 fields=fields,
                 params=params,
-                user_info=await UserInfo(request),
+                user_info=request.state.user_info,
                 serializer=partial(self.serialize, many=True, only=fields),
             ),
             status_code=200,
@@ -641,7 +637,7 @@ class ResourceController(EntityController):
                     pk_val=self._extract_pk_val(request),
                     fields=fields,
                     update=validated_data,
-                    user_info=await UserInfo(request),
+                    user_info=request.state.user_info,
                 ), many=False, only=fields
             ), status_code=200
         )

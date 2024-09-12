@@ -14,8 +14,6 @@ CXG_IMAGE = 'cellxgene:1.1.2-python3.11-slim-bookworm'
 AWS_CLI_IMAGE = 'aws_cli:xsmall'
 CXG_PORT = 5005
 SERVICE_PORT = 38005
-NAMESPACE = "cellxgene"
-HOST_NAME = config.K8_HOST
 OAUTH2_NAMESPACE = 'ingress-nginx'
 OAUTH2_APP_NAME = 'oauth2-proxy'
 OAUTH2_PORT = 8091
@@ -32,6 +30,15 @@ class CellXGeneManifest(K8sManifest):
         session: AsyncSession,
         **_
     ) -> Dict[str, str]:
+        """Generate SingleUserInstance (CRD) manifest for a CellxGene instance visualizing a File.
+
+        :param vis: Newly inserted visualization
+        :type vis: tables.Visualization
+        :param session: Session handle
+        :type session: AsyncSession
+        :return: manifest to submit
+        :rtype: Dict[str, str]
+        """
         # 1. Get vis.user.username
         username = vis.username_user
 
@@ -45,7 +52,7 @@ class CellXGeneManifest(K8sManifest):
     def cellxgene_manifest(self, instance_name: str, user_id: str, file_key: str):
         """
         Return the SingleUserInstance manifest combining the deployment, service 
-        and ingress with an extra field for the lifespan  
+        and ingress with an extra field for the lifespan.
         """
         deployment, service, ingress = self._cellxgene_manifests(instance_name, user_id, file_key)
 
@@ -193,14 +200,14 @@ class CellXGeneManifest(K8sManifest):
                     "nginx.ingress.kubernetes.io/configuration-snippet": f"rewrite ^/{name}$ /{name}/ redirect;\n",
                     "nginx.ingress.kubernetes.io/auth-response-headers": "Authorization",
                     "nginx.ingress.kubernetes.io/auth-url": f"http://{OAUTH2_APP_NAME}.{OAUTH2_NAMESPACE}.svc.cluster.local:{OAUTH2_PORT}/oauth2/auth",
-                    "nginx.ingress.kubernetes.io/auth-signin": f"https://{HOST_NAME}/oauth2/sign_in?rd=$escaped_request_uri",
+                    "nginx.ingress.kubernetes.io/auth-signin": f"https://{config.K8_HOST}/oauth2/sign_in?rd=$escaped_request_uri",
                     "nginx.ingress.kubernetes.io/proxy-buffer-size": PROXY_BUFFER_SIZE,
                 },
             },
             "spec": {
                 "ingressClassName": "nginx",
                 "rules": [{
-                    "host": HOST_NAME,
+                    "host": config.K8_HOST,
                     "http": {
                         "paths": [{
                             "pathType": "ImplementationSpecific",

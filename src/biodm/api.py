@@ -1,5 +1,6 @@
 """BioDM Server Class."""
 from asyncio import wait_for
+from datetime import datetime
 from inspect import getfullargspec
 import logging
 import logging.config
@@ -26,7 +27,7 @@ from biodm.components.controllers import Controller
 from biodm.components.services import UnaryEntityService, CompositeEntityService
 from biodm.error import onerror
 from biodm.exceptions import RequestError
-from biodm.utils.security import UserInfo
+from biodm.utils.security import AuthenticationMiddleware
 from biodm.utils.utils import to_it
 from biodm.tables import History, ListGroup, Upload, UploadPart
 from biodm import __version__ as CORE_VERSION
@@ -47,19 +48,25 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
 
 # pylint: disable=too-few-public-methods
 class HistoryMiddleware(BaseHTTPMiddleware):
-    """Logins in authenticated user requests in History."""
+    """Log incomming requests into History table AND stdout."""
     def __init__(self, app: ASGIApp, server_host: str) -> None:
         self.server_host = server_host
         super().__init__(app, self.dispatch)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Any:
-        user_info = await UserInfo(request)
-        username = user_info.info[0] if user_info.info else "anon" # Needs a key.
+        if request.state.user_info.info:
+            user_id = request.state.user_info.info[0]
+            user_groups = request.state.user_info.info[1]
+        else:
+            user_id = "anon"
+            user_groups = ['no_groups']
 
+        # TODO: request.method (api:dispatch) ?
+        endpoint = str(request.url).rsplit(self.server_host, maxsplit=1)[-1]
         body = await request.body()
         entry = {
-            'username_user': username,
-            'endpoint': str(request.url).rsplit(self.server_host, maxsplit=1)[-1],
+            'username_user': user_id,
+            'endpoint': endpoint,
             'method': request.method,
             'content': str(body) if body else ""
         }
@@ -71,8 +78,16 @@ class HistoryMiddleware(BaseHTTPMiddleware):
                 sleep(0.1)
                 await History.svc.write(entry)
             except Exception as _:
+                # Keep going in any case. History feature should not be blocking.
                 pass
-         # Keep going in any case. History feature should not be blocking.
+
+        # Log
+        timestamp = datetime.now().strftime("%I:%M%p on %B %d, %Y")
+        History.svc.app.logger.info(
+            f'{timestamp}\t{user_id}\t{",".join(user_groups)}\t'
+            f'{endpoint}\t-\t{request.method}'
+        )
+
         return await call_next(request)
 
 
@@ -153,7 +168,6 @@ class Api(Starlette):
         super().__init__(debug, routes, *args, **kwargs)
 
         ## Middlewares
-        self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
             allow_origins=self._network_ips + ["http://localhost:9080"], # + swagger-ui.
@@ -161,6 +175,8 @@ class Api(Starlette):
             allow_headers=["*"],
             max_age=config.CACHE_MAX_AGE
         )
+        self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
+        self.add_middleware(AuthenticationMiddleware)
         if self.scope is Scope.PROD:
             self.add_middleware(TimeoutMiddleware, timeout=config.SERVER_TIMEOUT)
 

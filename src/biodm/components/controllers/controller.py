@@ -170,5 +170,9 @@ class EntityController(Controller):
         raise NotImplementedError
 
     @abstractmethod
+    async def release(self, request: Request) -> Response:
+        raise NotImplementedError
+
+    @abstractmethod
     async def filter(self, request: Request) -> Response:
         raise NotImplementedError

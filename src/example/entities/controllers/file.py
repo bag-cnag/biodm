@@ -13,6 +13,11 @@ from entities import tables
 
 class FileController(S3Controller):
     def routes(self, **_) -> List[Mount | Route] | List[Mount] | List[BaseRoute]:
+        """Adds a /files/id/visualize route.
+
+        :return: Extended route list.
+        :rtype: List[Mount | Route] | List[Mount] | List[BaseRoute]
+        """
         return [
             Route(f"{self.prefix}/{self.qp_id}/visualize", self.visualize, methods=[HttpMethod.PUT])
         ] + super().routes(**_)

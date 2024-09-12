@@ -1,9 +1,10 @@
 """Security convenience functions."""
-from datetime import datetime
 from functools import wraps
-from typing import List, Tuple
+from typing import List, Tuple, Callable, Awaitable
 
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.responses import Response
 
 from biodm.exceptions import UnauthorizedError
 from .utils import aobject
@@ -61,14 +62,26 @@ class UserInfo(aobject):
         return username, groups, projects
 
 
+# pylint: disable=too-few-public-methods
+class AuthenticationMiddleware(BaseHTTPMiddleware):
+    """Handle token decoding for incoming requests, populate request object with result."""
+    async def dispatch(
+            self,
+            request: Request,
+            call_next: Callable[[Request], Awaitable[Response]]
+        ) -> Response:
+        request.state.user_info = await UserInfo(request)
+        return await call_next(request)
+
+
 def group_required(f, groups: List):
-    """Decorator for function expecting groups: decorates a controller CRUD function."""
+    """Decorator for endpoints expecting authenticated user to belong to a certain group."""
+    # TODO: all mode ?
+    # TODO: extend to nested mode.
     @wraps(f)
     async def wrapper(controller, request, *args, **kwargs):
-        user_info = await UserInfo(request)
-
-        if user_info.info:
-            _, user_groups, _ = user_info.info
+        if request.state.user_info.info:
+            _, user_groups, _ = request.state.user_info.info
             if any((ug in groups for ug in user_groups)):
                 return f(controller, request, *args, **kwargs)
 
@@ -83,27 +96,12 @@ def admin_required(f):
 
 
 def login_required(f):
-    """Docorator for function expecting header 'Authorization: Bearer <token>'"""
+    """Docorator for endpoints expecting header 'Authorization: Bearer <token>'"""
 
     @wraps(f)
     async def wrapper(controller, request, *args, **kwargs):
-        user_info = await UserInfo(request)
-        if user_info.info:
-            userid, groups, _ = user_info.info
-            timestamp = datetime.now().strftime("%I:%M%p on %B %d, %Y")
-            controller.app.logger.info(
-                f'{timestamp}\t{userid}\t{",".join(groups)}\t'
-                f"{str(request.url)}-{request.method}"
-            )
-
-            return await f(
-                controller,
-                request,
-                user_info=user_info,
-                *args,
-                **kwargs,
-            )
-
+        if request.state.user_info.info:
+            return await f(controller, request, *args, **kwargs)
         raise UnauthorizedError("Authentication required.")
 
     return wrapper

@@ -1,8 +1,9 @@
 import json
 from typing import List
 
-from starlette.routing import Route
+from starlette.requests import Request
 from starlette.responses import PlainTextResponse
+from starlette.routing import Route
 
 from biodm import config
 from biodm.components.controllers import Controller
@@ -71,7 +72,7 @@ class RootController(Controller):
         auth_url = await self.app.kc.auth_url(redirect_uri=self.handshake())
         return PlainTextResponse(auth_url)
 
-    async def syn_ack(self, request):
+    async def syn_ack(self, request: Request):
         """Login callback function when the user logs in through the browser.
             We get an authorization code that we redeem to keycloak for a token.
             This way the client_secret remains hidden to the user.
@@ -89,7 +90,7 @@ class RootController(Controller):
         return PlainTextResponse(token['access_token'] + '\n')
 
     @login_required
-    async def authenticated(self, _, user_info: UserInfo):
+    async def authenticated(self, request: Request):
         """Token verification endpoint.
 
         ---
@@ -101,6 +102,6 @@ class RootController(Controller):
             description: Unauthorized.
 
         """
-        assert user_info.info
-        user_id, groups, projects = user_info.info 
+        assert request.state.user_info.info
+        user_id, groups, projects = request.state.user_info.info
         return PlainTextResponse(f"{user_id}, {groups}, {projects}\n")

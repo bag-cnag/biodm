@@ -10,8 +10,9 @@ from .dbservice import CompositeEntityService
 
 
 class K8Service(CompositeEntityService):
-    """Manages kubernetes instances."""
+    """Manage kubernetes instances associated to one manifest."""
     manifest: K8sManifest
+
     def __init__(self, app, table: Base, manifest: K8sManifest, *args, **kwargs) -> None:
         self.manifest = manifest
         super().__init__(app, table, *args, **kwargs)
