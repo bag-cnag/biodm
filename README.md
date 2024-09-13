@@ -43,10 +43,10 @@ pip3 install uvicorn uvloop
 
 ### Run Example project
 
-Provided in biodm repository.
+Provided within this repository.
 
 _Note:_ Prior to this step,
-it is recommended to create and activate a new `python3` virtual environment.
+it is recommended to create and activate a new `python3` (>=3.11) virtual environment.
 
 ```bash
 pip3 install -r src/requirements/dev.txt
@@ -59,7 +59,7 @@ you may use the following in order to deploy the development stack:
 docker compose -f compose.yml up --build -d
 ```
 
-For proper integration it is recommended to give them hostnames.
+It is recommended to give them hostnames.
 In particular keycloak does hard checks and login shall fail without this step.
 
 ```bash

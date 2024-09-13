@@ -10,6 +10,9 @@ from biodm.exceptions import UnauthorizedError
 from .utils import aobject
 
 
+
+
+
 class UserInfo(aobject):
     """Hold user info for a given request.
 
@@ -74,10 +77,41 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-def group_required(f, groups: List):
+def login_required(f):
+    """Docorator for endpoints expecting header 'Authorization: Bearer <token>'"""
+    # Handle special cases for nested compatiblity.
+    @wraps(f)
+    async def wrapper(controller, request, *args, **kwargs):
+        return await f(controller, request, *args, **kwargs)
+
+    if f.__name__ == "create":
+        wrapper.login_required = 'write'
+        return wrapper
+
+    # Else hardcheck here is enough.
+    @wraps(f)
+    async def wrapper(controller, request, *args, **kwargs):
+        if request.state.user_info.info:
+            return await f(controller, request, *args, **kwargs)
+        raise UnauthorizedError("Authentication required.")
+
+    # Read is protected on its endpoint and is handled specifically for nested cases in codebase.
+    if f.__name__ == "read":
+        wrapper.login_required = 'read'
+
+    return wrapper
+
+
+def group_required(f, groups: List[str]):
     """Decorator for endpoints expecting authenticated user to belong to a certain group."""
-    # TODO: all mode ?
-    # TODO: extend to nested mode.
+    @wraps(f)
+    async def wrapper(controller, request, *args, **kwargs):
+        return await f(controller, request, *args, **kwargs)
+
+    if f.__name__ == "create":
+        wrapper.group_required = {'write', groups}
+        return wrapper
+
     @wraps(f)
     async def wrapper(controller, request, *args, **kwargs):
         if request.state.user_info.info:
@@ -87,21 +121,12 @@ def group_required(f, groups: List):
 
         raise UnauthorizedError("Insufficient group privileges for this operation.")
 
+    if f.__name__ == "read":
+        wrapper.group_required = {'read', groups}
+
     return wrapper
 
 
 def admin_required(f):
     """group_required special case for admin group."""
     return group_required(f, groups=["admin"])
-
-
-def login_required(f):
-    """Docorator for endpoints expecting header 'Authorization: Bearer <token>'"""
-
-    @wraps(f)
-    async def wrapper(controller, request, *args, **kwargs):
-        if request.state.user_info.info:
-            return await f(controller, request, *args, **kwargs)
-        raise UnauthorizedError("Authentication required.")
-
-    return wrapper

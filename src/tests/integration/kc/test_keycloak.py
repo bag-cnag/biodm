@@ -17,6 +17,7 @@ user_with_groups = {
 
 user_test = {"username": "u_test", "password": "1234", "firstName": "john", "lastName": "doe"}
 
+tag = {"name": "xyz"}
 
 def test_create_user(srv_endpoint, utils):
     """"""
@@ -164,3 +165,39 @@ def test_create_group_with_parent(srv_endpoint, utils):
 
     assert len(json_parent['children']) == 1
     assert json_parent['children'][0]['path'] == child['path']
+
+
+def test_create_tag_no_auth(srv_endpoint, utils):
+    response = requests.post(f'{srv_endpoint}/tags', data=utils.json_bytes(tag))
+
+    assert response.status_code == 511
+
+
+@pytest.mark.dependency(name="test_login_user_on_keycloak_and_get_token")
+def test_create_tag_auth(srv_endpoint, utils):
+    headers = {'Authorization': f'Bearer {token}'}
+
+    response = requests.post(f'{srv_endpoint}/tags', data=utils.json_bytes(tag), headers=headers)
+
+    assert response.status_code == 201
+
+    json_tag = json.loads(response.text)
+    assert tag == json_tag
+
+
+@pytest.mark.dependency(name="test_create_tag_auth")
+def test_read_tag_no_auth(srv_endpoint):
+    response = requests.get(f'{srv_endpoint}/tags/{tag["name"]}')
+
+    assert response.status_code == 511
+
+
+@pytest.mark.dependency(name="test_create_tag_auth")
+def test_read_tag_auth(srv_endpoint, utils):
+    headers = {'Authorization': f'Bearer {token}'}
+    response = requests.get(f'{srv_endpoint}/tags/{tag["name"]}', data=utils.json_bytes(tag), headers=headers)
+
+    assert response.status_code == 200
+
+    json_tag = json.loads(response.text)
+    assert tag == json_tag

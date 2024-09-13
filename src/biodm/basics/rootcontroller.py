@@ -2,12 +2,12 @@ import json
 from typing import List
 
 from starlette.requests import Request
-from starlette.responses import PlainTextResponse
+from starlette.responses import Response, PlainTextResponse
 from starlette.routing import Route
 
 from biodm import config
 from biodm.components.controllers import Controller
-from biodm.utils.security import UserInfo, login_required
+from biodm.utils.security import login_required
 from biodm.utils.utils import json_response
 
 
@@ -24,7 +24,7 @@ class RootController(Controller):
         ]
 
     @staticmethod
-    async def live(_):
+    async def live(_) -> Response:
         """Liveness endpoint.
 
         ---
@@ -32,7 +32,7 @@ class RootController(Controller):
         """
         return PlainTextResponse("live\n")
 
-    async def openapi_schema(self, _):
+    async def openapi_schema(self, _) -> Response:
         """Generates openapi schema.
 
         ---
@@ -44,7 +44,8 @@ class RootController(Controller):
             indent=config.INDENT
         ), status_code=200)
 
-    def handshake(self):
+    @staticmethod
+    def handshake() -> str:
         """Login handshake function.
 
         :return: Syn_Ack url
@@ -58,7 +59,7 @@ class RootController(Controller):
             f"{config.SERVER_PORT}/syn_ack"
         )
 
-    async def login(self, _):
+    async def login(self, _) -> Response:
         """Login endpoint.
 
         ---
@@ -72,7 +73,7 @@ class RootController(Controller):
         auth_url = await self.app.kc.auth_url(redirect_uri=self.handshake())
         return PlainTextResponse(auth_url)
 
-    async def syn_ack(self, request: Request):
+    async def syn_ack(self, request: Request) -> Response:
         """Login callback function when the user logs in through the browser.
             We get an authorization code that we redeem to keycloak for a token.
             This way the client_secret remains hidden to the user.
@@ -90,7 +91,7 @@ class RootController(Controller):
         return PlainTextResponse(token['access_token'] + '\n')
 
     @login_required
-    async def authenticated(self, request: Request):
+    async def authenticated(self, request: Request) -> Response:
         """Token verification endpoint.
 
         ---

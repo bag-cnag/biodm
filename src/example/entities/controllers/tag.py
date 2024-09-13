@@ -1,7 +1,9 @@
 from biodm.components.controllers import ResourceController, overload_docstring
+from biodm.utils.security import login_required
 
 
 class TagController(ResourceController):
+    @login_required
     @overload_docstring
     async def create(**kwargs):
         """
@@ -23,6 +25,7 @@ class TagController(ResourceController):
               description: Empty Payload    
         """
 
+    @login_required
     @overload_docstring
     async def read(**kwargs):
         """

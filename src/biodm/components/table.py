@@ -6,6 +6,7 @@
 from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass
+from inspect import getmembers, ismethod
 from typing import TYPE_CHECKING, Any, List, Dict, Tuple, Type, Set, ClassVar, Type, Self
 from uuid import uuid4
 
@@ -40,15 +41,22 @@ class Base(DeclarativeBase, AsyncAttrs):
     :type svc: DatabaseService
     :param ctrl: Enable entity - controller linkage -> Resources tables only
     :type ctrl: ResourceController
-    :param raw_permissions: Stores rules for user defined permissions on hierarchical entities
+    :param raw_permissions: Store rules for user defined permissions on hierarchical entities
     :type raw_permissions: Dict
-    :param permissions: Stores processed permissions with hierarchical linkage.
+    :param permissions: Store processed permissions with hierarchical linkage info
     :type permissions: Dict
+    :param login_required: Handle @login_required nested cases (create, read_nested)
+    :type login_required: Dict
+    :param group_required: Handle @group_required nested cases (create, read_nested)
+    :type group_required: Dict
     """
     svc: ClassVar[Type[DatabaseService]]
     ctrl: ClassVar[Type[ResourceController]]
+
     raw_permissions: ClassVar[Dict[str, Tuple[Type[Self], Tuple[Permission]]]] = {}
-    permissions: ClassVar[Dict[Any, Any]] = {}
+    permissions: ClassVar[Dict[Type[Self], Any]] = {}
+    login_required: ClassVar[Dict[Type[Self], Any]] = {}
+    group_required: ClassVar[Dict[Type[Self], Any]] = {}
 
     def __init_subclass__(cls, **kw: Any) -> None:
         """Populates permission dict in a first pass."""
@@ -144,7 +152,7 @@ class Base(DeclarativeBase, AsyncAttrs):
         return rel_name, NewAsso
 
     @staticmethod
-    def _gen_perm_schema(table: Base, field: Column, verbs: List[str]):
+    def _gen_perm_schema(table: Type[Base], field: Column, verbs: List[str]):
         """Generates permission schema for a permission table. 
 
         :param table: Table object
@@ -181,8 +189,8 @@ class Base(DeclarativeBase, AsyncAttrs):
     def _propagate_perm(
         cls,
         lut: Dict[Base, List[Dict[str, Any]]],
-        origin: Base,
-        target: Base,
+        origin: Type[Base],
+        target: Type[Base],
         entry: Dict[str, Any]
     ) -> None:
         """Propagates origin permissions on target permissions.
@@ -253,6 +261,20 @@ class Base(DeclarativeBase, AsyncAttrs):
                     entry=entry
                 )
         Base.permissions = lut
+
+        # Check if methods have those attributes set for [login|group]_required nested cases.
+        for controller in app.controllers:
+            for func in [f for _, f in getmembers(controller, predicate=ismethod)]:
+                if hasattr(func, 'login_required'):
+                    Base.login_required[controller.table] = (
+                        Base.login_required.get(controller.table, [])
+                    )
+                    Base.login_required[controller.table].append(func.login_required)
+                if hasattr(func, 'group_required'):
+                    Base.group_required[controller.table] = (
+                        Base.group_required.get(controller.table, {})
+                    )
+                    Base.group_required[controller.table].update(func.group_required)
 
     @declared_attr
     def __tablename__(cls):

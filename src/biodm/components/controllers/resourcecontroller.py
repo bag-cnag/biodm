@@ -14,7 +14,6 @@ from starlette.routing import Mount, Route, BaseRoute
 from starlette.requests import Request
 from starlette.responses import Response
 
-from biodm import Scope
 from biodm.components.services import (
     DatabaseService,
     UnaryEntityService,
@@ -28,6 +27,7 @@ from biodm.exceptions import (
     PartialIndex,
     UpdateVersionedError
 )
+from biodm.utils.security import UserInfo
 from biodm.utils.utils import json_response
 from biodm.components import Base
 from .controller import HttpMethod, EntityController
@@ -338,7 +338,8 @@ class ResourceController(EntityController):
     def _extract_fields(
         self,
         query_params: Dict[str, Any],
-        no_depth: bool = False
+        user_info: UserInfo,
+        no_depth: bool = False,
     ) -> Set[str]:
         """Extracts fields from request query parameters.
            Defaults to ``self.schema.dump_fields.keys()``.
@@ -350,13 +351,18 @@ class ResourceController(EntityController):
         """
         fields = query_params.pop('fields', None)
         fields = fields.split(',') if fields else None
-        if fields:
+        if fields: # User input case, check and raise.
             fields = set(fields) | self.pk
-        else:
+            for field in fields:
+                if field not in self.schema.dump_fields.keys():
+                    raise ValueError(f"Requested field {field} does not exists.")
+            self.svc._check_allowed_nested(fields, user_info=user_info)
+        else: # Default case, permissive population.
             fields = [
                 k for k,v in self.schema.dump_fields.items()
                 if not no_depth or not (hasattr(v, 'nested') or hasattr(v, 'inner'))
             ]
+            fields = self.svc._takeout_unallowed_nested(fields, user_info=user_info)
         return fields
 
     async def create(self, request: Request) -> Response:
@@ -460,7 +466,10 @@ class ResourceController(EntityController):
             )
             many = True
 
-        fields = ctrl._extract_fields(dict(request.query_params))
+        fields = ctrl._extract_fields(
+            dict(request.query_params),
+            user_info=request.state.user_info
+        )
         return json_response(
             data=await self.svc.read(
                 pk_val=self._extract_pk_val(request),
@@ -584,7 +593,7 @@ class ResourceController(EntityController):
                         schema: Schema
         """
         params = dict(request.query_params)
-        fields = self._extract_fields(params)
+        fields = self._extract_fields(params, user_info=request.state.user_info)
         return json_response(
             await self.svc.filter(
                 fields=fields,
@@ -628,7 +637,11 @@ class ResourceController(EntityController):
         if any([pk in validated_data.keys() for pk in self.pk]):
             raise ValueError("Cannot edit versioned resource primary key.")
 
-        fields = self._extract_fields(dict(request.query_params), no_depth=True)
+        fields = self._extract_fields(
+            dict(request.query_params),
+            user_info=request.state.user_info,
+            no_depth=True
+        )
 
         # Note: serialization is delayed. Hence the no_depth.
         return json_response(

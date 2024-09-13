@@ -1,5 +1,5 @@
 from biodm.components.controllers import ResourceController, overload_docstring
-from biodm.utils.security import admin_required
+from biodm.utils.security import admin_required, login_required
 
 
 class ProjectController(ResourceController):

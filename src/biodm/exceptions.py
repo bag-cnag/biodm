@@ -33,15 +33,15 @@ class KeycloakUnavailableError(RuntimeError):
 
 
 ## Payload
-class PayloadEmptyError(RuntimeError):
+class PayloadEmptyError(RequestError):
     """Raised when a route expecting a payload, is reached without one."""
 
 
-class PayloadJSONDecodingError(RuntimeError):
+class PayloadJSONDecodingError(RequestError):
     """Raised when payload data failed to be parsed in JSON format."""
 
 
-class SchemaError(RuntimeError):
+class SchemaError(ImplementionError):
     """Raised when faulty schema pattern is detected."""
 
 

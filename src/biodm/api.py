@@ -61,7 +61,6 @@ class HistoryMiddleware(BaseHTTPMiddleware):
             user_id = "anon"
             user_groups = ['no_groups']
 
-        # TODO: request.method (api:dispatch) ?
         endpoint = str(request.url).rsplit(self.server_host, maxsplit=1)[-1]
         body = await request.body()
         entry = {
@@ -122,10 +121,11 @@ class Api(Starlette):
         self.scope = Scope.PROD
         self.scope |= Scope.DEBUG if debug else self.scope
         self.scope |= Scope.TEST if test else self.scope
+
         # Declare trusted ips.
         self._network_ips = [self.server_endpoint]
 
-        ## Logger.
+        # Logger.
         logging.basicConfig(
             level=logging.DEBUG if Scope.DEBUG in self.scope else logging.INFO,
             format=(
@@ -134,17 +134,17 @@ class Api(Starlette):
         )
         logging.info("Intializing server.")
 
-        ## Managers
+        # Managers
         self.deploy_managers()
 
-        ## Controllers.
+        # Controllers.
         routes: List[Route] = []
         for ctrl in CORE_CONTROLLERS + (controllers or []):
             routes.extend(self.adopt_controller(ctrl))
         if hasattr(self, 'k8') and manifests:
             routes.extend(self.adopt_controller(K8sController, manifests=manifests))
 
-        ## Schema Generator.
+        # Schema Generator.
         self.apispec = APISpecSchemaGenerator(
             APISpec(
                 title=config.API_NAME,
@@ -163,11 +163,14 @@ class Api(Starlette):
             "bearerFormat": "JWT"
         })
 
+        # Final setup.
         self._declare_headless_services()
 
         super().__init__(debug, routes, *args, **kwargs)
 
-        ## Middlewares
+        # Middlewares -> Stack goes in reverse order.
+        self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
+        self.add_middleware(AuthenticationMiddleware)
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
             allow_origins=self._network_ips + ["http://localhost:9080"], # + swagger-ui.
@@ -175,8 +178,6 @@ class Api(Starlette):
             allow_headers=["*"],
             max_age=config.CACHE_MAX_AGE
         )
-        self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
-        self.add_middleware(AuthenticationMiddleware)
         if self.scope is Scope.PROD:
             self.add_middleware(TimeoutMiddleware, timeout=config.SERVER_TIMEOUT)
 
