@@ -20,26 +20,27 @@ class K8sManager(ApiManager):
     Each api has access to a subset of the ressources.
     """
     # APIs
-    _AppsV1Api: client.AppsV1Api
-    _CoreV1Api: client.CoreV1Api
-    _NetworkingV1Api: client.NetworkingApi
-    _CustomObjectsApi: client.CustomObjectsApi
+    _AppsV1Api: client.AppsV1Api = None
+    _CoreV1Api: client.CoreV1Api = None
+    _NetworkingV1Api: client.NetworkingApi = None
+    _CustomObjectsApi: client.CustomObjectsApi = None
 
     def __init__(
         self,
         app,
+        ip,
+        port,
         host,
         cert,
         token,
         namespace,
-        # manifests=None
     ) -> None:
         super().__init__(app=app)
         self._config = client.Configuration()
-        self._client = client.ApiClient(self._config)
+        self.host = host
         self.namespace = namespace
-        self.authenticate(token, host, cert)
-        # self.manifests = manifests
+        self.authenticate(token, f"https://{ip}:{port}", cert)
+        self._client = client.ApiClient(self._config)
 
     def authenticate(self, token, host, cert):
         """Set configuration with the credentials and certificate"""
@@ -89,7 +90,7 @@ class K8sManager(ApiManager):
             self._CustomObjectsApi = client.CustomObjectsApi(self._client)
         return self._CustomObjectsApi
 
-    def read_deployment(self, name, **kwargs) -> list:
+    def read_deployment(self, name: str, **kwargs) -> list:
         return self.AppsV1Api.read_namespaced_deployment(
             name=name, namespace=self.namespace, **kwargs
         )
@@ -116,7 +117,7 @@ class K8sManager(ApiManager):
         return ret
 
     @staticmethod
-    def get_name_in_manifest(manifest: Dict[str, Any]) -> str:
+    def get_name_in_manifest(manifest: Dict[str, str]) -> str:
         """Try to find and return metadata.name field from a manifest"""
         metadata = manifest.get("metadata", None)
         kind = manifest.get("kind", "ressource")
@@ -124,7 +125,7 @@ class K8sManager(ApiManager):
             return metadata.get("name", None)
         raise Exception(f"field metadata.name required in {kind} manifest")
 
-    def create_deployment(self, manifest: Dict[str, Any]) -> None:
+    def create_deployment(self, manifest: Dict[str, str]) -> None:
         """Create a deployment"""
         resp = None
         name = self.get_name_in_manifest(manifest)
@@ -149,12 +150,12 @@ class K8sManager(ApiManager):
         self.log(f"Deployment {name} up.")
 
     @staticmethod
-    def get_custom_resource_params(manifest: dict) -> Tuple[str, str, str]:
+    def get_custom_resource_params(manifest: Dict[str, str]) -> Tuple[str, str, str]:
         group, version = manifest['apiVersion'].split('/')
         plural = str(manifest['kind']).lower() + 's'
         return group, version, plural
 
-    def create_custom_resource(self, manifest: dict) -> None:
+    def create_custom_resource(self, manifest: Dict[str, str]) -> None:
         """Create a custom resource."""
         name = self.get_name_in_manifest(manifest)
         group, version, plural = self.get_custom_resource_params(manifest)
@@ -169,13 +170,13 @@ class K8sManager(ApiManager):
         self.log(f"Response: {resp}")
         self.log(f"Custom object {manifest['kind']} with name: {name} up.")
 
-    def read_ingress(self, name) -> None:
+    def read_ingress(self, name: str) -> None:
         return self.NetworkingV1Api.read_namespaced_ingress(
             name=name,
             namespace=self.namespace
         )
 
-    def list_custom_object(self, manifest: dict, label_selector) -> List[Any]:
+    def list_custom_object(self, manifest: Dict[str, str], label_selector) -> List[Any]:
         group, version, plural = self.get_custom_resource_params(manifest)
         return self.CustomObjectsApi.list_namespaced_custom_object(
             group=group,
@@ -188,7 +189,7 @@ class K8sManager(ApiManager):
     def delete_custom_object(
         self,
         name: str,
-        manifest: Dict[str, Any],
+        manifest: Dict[str, str],
         group='cnag.eu',
         version='v1',
         plural='suis'
@@ -202,7 +203,7 @@ class K8sManager(ApiManager):
             namespace=self.namespace,
             name=name)
 
-    def create_service(self, manifest: dict):
+    def create_service(self, manifest: Dict[str, str]):
         """Create a service"""
         name = self.get_name_in_manifest(manifest)
         resp = self.CoreV1Api.create_namespaced_service(
@@ -212,14 +213,14 @@ class K8sManager(ApiManager):
         time.sleep(1)
         self.log(f"Service {name} up - msg: {resp}.")
 
-    def read_service_status(self, name):
+    def read_service_status(self, name: str):
         resp = self.CoreV1Api.read_namespaced_service_status(
             name=name,
             namespace=self.namespace
         )
         self.log(resp)
 
-    def create_ingress(self, manifest: dict):
+    def create_ingress(self, manifest: Dict[str, str]):
         """Create an ingress"""
         name = self.get_name_in_manifest(manifest)
         resp = self.NetworkingV1Api.create_namespaced_ingress(

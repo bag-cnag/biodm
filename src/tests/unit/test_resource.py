@@ -14,9 +14,9 @@ def test_resource_schema(client):
 
     assert response.status_code == 200
     assert "/as" in json_response['paths']
-    # assert "/as/search" in json_response['paths']
     assert "/as/schema" in json_response['paths']
     assert "/as/{id}" in json_response['paths']
+
 
 def test_create_unary_resource(client):
     """"""

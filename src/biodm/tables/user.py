@@ -19,8 +19,8 @@ class User(Base):
     id: Mapped[str] = mapped_column(nullable=True) # unique=True
     username = Column(String(50), nullable=False, primary_key=True)
     email = Column(String(100))
-    first_name = Column(String(50))
-    last_name = Column(String(50))
+    firstName = Column(String(50))
+    lastName = Column(String(50))
 
     groups: Mapped[List["Group"]] = relationship(
         secondary=asso_user_group,

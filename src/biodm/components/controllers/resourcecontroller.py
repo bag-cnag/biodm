@@ -13,9 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from starlette.routing import Mount, Route, BaseRoute
 from starlette.requests import Request
 from starlette.responses import Response
-from yaml import serialize
 
-from biodm import Scope
 from biodm.components.services import (
     DatabaseService,
     UnaryEntityService,
@@ -27,11 +25,10 @@ from biodm.exceptions import (
     InvalidCollectionMethod,
     PayloadEmptyError,
     PartialIndex,
-    UpdateVersionedError,
-    PayloadValidationError
+    UpdateVersionedError
 )
-from biodm.utils.utils import json_response
 from biodm.utils.security import UserInfo
+from biodm.utils.utils import json_response
 from biodm.components import Base
 from .controller import HttpMethod, EntityController
 
@@ -280,20 +277,19 @@ class ResourceController(EntityController):
         Relevant doc:
         - https://restfulapi.net/http-methods/
         """
-        # child_routes = child_routes or []
         # flake8: noqa: E501  pylint: disable=line-too-long
         return [
-            Route(f"{self.prefix}",                   self.create,         methods=[HttpMethod.POST.value]),
-            Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET.value]),
+            Route(f"{self.prefix}",                   self.create,         methods=[HttpMethod.POST]),
+            Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET]),
             Mount(self.prefix, routes=[
-                Route('/schema',                      self.openapi_schema, methods=[HttpMethod.GET.value]),
-                Route(f'/{self.qp_id}',               self.read,           methods=[HttpMethod.GET.value]),
-                Route(f'/{self.qp_id}/{{attribute}}', self.read,           methods=[HttpMethod.GET.value]),
-                Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE.value]),
+                Route('/schema',                      self.openapi_schema, methods=[HttpMethod.GET]),
+                Route(f'/{self.qp_id}',               self.read,           methods=[HttpMethod.GET]),
+                Route(f'/{self.qp_id}/{{attribute}}', self.read,           methods=[HttpMethod.GET]),
+                Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE]),
             ] + [(
-                Route(f"/{self.qp_id}/release",       self.release,        methods=[HttpMethod.POST.value])
+                Route(f"/{self.qp_id}/release",       self.release,        methods=[HttpMethod.POST])
                 if self.table.is_versioned else
-                Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT.value])
+                Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT])
             )])
         ]
 
@@ -336,13 +332,14 @@ class ResourceController(EntityController):
         """
         body = await request.body()
         if body in (b'{}', b'[]', b'[{}]'):
-            raise PayloadEmptyError
+            raise PayloadEmptyError("No input data.")
         return body
 
     def _extract_fields(
         self,
         query_params: Dict[str, Any],
-        no_depth: bool = False
+        user_info: UserInfo,
+        no_depth: bool = False,
     ) -> Set[str]:
         """Extracts fields from request query parameters.
            Defaults to ``self.schema.dump_fields.keys()``.
@@ -354,13 +351,18 @@ class ResourceController(EntityController):
         """
         fields = query_params.pop('fields', None)
         fields = fields.split(',') if fields else None
-        if fields:
+        if fields: # User input case, check and raise.
             fields = set(fields) | self.pk
-        else:
+            for field in fields:
+                if field not in self.schema.dump_fields.keys():
+                    raise ValueError(f"Requested field {field} does not exists.")
+            self.svc._check_allowed_nested(fields, user_info=user_info)
+        else: # Default case, permissive population.
             fields = [
                 k for k,v in self.schema.dump_fields.items()
                 if not no_depth or not (hasattr(v, 'nested') or hasattr(v, 'inner'))
             ]
+            fields = self.svc._takeout_unallowed_nested(fields, user_info=user_info)
         return fields
 
     async def create(self, request: Request) -> Response:
@@ -395,16 +397,13 @@ class ResourceController(EntityController):
                 description: Empty Payload.
         """
         body = await self._extract_body(request)
-        user_info = await UserInfo(request)
-
-        # TODO: tinker with this loose schema policy.
 
         try:
             validated_data = self.validate(body, partial=True)
             created = await self.svc.write(
                 data=validated_data,
                 stmt_only=False,
-                user_info=user_info,
+                user_info=request.state.user_info,
                 serializer=partial(self.serialize, many=isinstance(validated_data, list))
             )
         except IntegrityError as ie:
@@ -467,13 +466,16 @@ class ResourceController(EntityController):
             )
             many = True
 
-        fields = ctrl._extract_fields(dict(request.query_params))
+        fields = ctrl._extract_fields(
+            dict(request.query_params),
+            user_info=request.state.user_info
+        )
         return json_response(
             data=await self.svc.read(
                 pk_val=self._extract_pk_val(request),
                 fields=fields,
                 nested_attribute=nested_attribute,
-                user_info=await UserInfo(request),
+                user_info=request.state.user_info,
                 serializer=partial(ctrl.serialize, many=many, only=fields),
             ),
             status_code=200,
@@ -526,7 +528,7 @@ class ResourceController(EntityController):
                 data=await self.svc.write(
                     data=validated_data,
                     stmt_only=False,
-                    user_info=await UserInfo(request),
+                    user_info=request.state.user_info,
                     serializer=partial(self.serialize, many=isinstance(validated_data, list)),
                 ),
                 status_code=201,
@@ -559,7 +561,7 @@ class ResourceController(EntityController):
         """
         await self.svc.delete(
             pk_val=self._extract_pk_val(request),
-            user_info=await UserInfo(request),
+            user_info=request.state.user_info,
         )
         return json_response("Deleted.", status_code=200)
 
@@ -591,12 +593,12 @@ class ResourceController(EntityController):
                         schema: Schema
         """
         params = dict(request.query_params)
-        fields = self._extract_fields(params)
+        fields = self._extract_fields(params, user_info=request.state.user_info)
         return json_response(
             await self.svc.filter(
                 fields=fields,
                 params=params,
-                user_info=await UserInfo(request),
+                user_info=request.state.user_info,
                 serializer=partial(self.serialize, many=True, only=fields),
             ),
             status_code=200,
@@ -635,7 +637,11 @@ class ResourceController(EntityController):
         if any([pk in validated_data.keys() for pk in self.pk]):
             raise ValueError("Cannot edit versioned resource primary key.")
 
-        fields = self._extract_fields(dict(request.query_params), no_depth=True)
+        fields = self._extract_fields(
+            dict(request.query_params),
+            user_info=request.state.user_info,
+            no_depth=True
+        )
 
         # Note: serialization is delayed. Hence the no_depth.
         return json_response(
@@ -644,7 +650,7 @@ class ResourceController(EntityController):
                     pk_val=self._extract_pk_val(request),
                     fields=fields,
                     update=validated_data,
-                    user_info=await UserInfo(request),
+                    user_info=request.state.user_info,
                 ), many=False, only=fields
             ), status_code=200
         )

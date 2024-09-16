@@ -15,16 +15,42 @@ user_with_groups = {
     ]
 }
 
+user_test = {"username": "u_test", "password": "1234", "firstName": "john", "lastName": "doe"}
+
+tag = {"name": "xyz"}
 
 def test_create_user(srv_endpoint, utils):
     """"""
-    user = {"username": "u_test", "password": "1234"}
-    response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(user))
-    assert "u_test" in response.text
-    json_response = json.loads(response.text)
+    response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(user_test))
 
     assert response.status_code == 201
-    assert json_response["username"] == user["username"]
+    json_response = json.loads(response.text)
+
+    assert json_response["username"] == user_test["username"]
+    assert json_response["firstName"] == user_test["firstName"]
+    assert json_response["lastName"] == user_test["lastName"]
+
+
+@pytest.mark.dependency(name="test_create_user")
+def test_update_user(srv_endpoint, utils):
+    update = {"username": user_test['username'], "firstName": "jack"}
+    response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(update))
+
+    assert response.status_code == 201
+    json_response = json.loads(response.text)
+
+    assert json_response["username"] == user_test["username"]
+    assert json_response["username"] == update["username"]
+    assert json_response["firstName"] == update["firstName"]
+    assert json_response["lastName"] == user_test["lastName"]
+
+
+def test_create_user_no_passwd(srv_endpoint, utils):
+    user_no_passwd = {"username": "u_no_passwd"}
+    response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(user_no_passwd))
+
+    assert response.status_code == 400
+    assert "Missing password in order to create User." in response.text
 
 
 def test_create_group(srv_endpoint, utils):
@@ -41,7 +67,8 @@ def test_login_user_on_keycloak_and_get_token(srv_endpoint, utils):
     global token
     # Create User
     user = {"username": "u_test", "password": "1234"}
-    _ = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(user))
+    response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(user))
+    assert response.status_code == 201
 
     token = utils.keycloak_login(srv_endpoint, user['username'], user['password'])
 
@@ -138,3 +165,39 @@ def test_create_group_with_parent(srv_endpoint, utils):
 
     assert len(json_parent['children']) == 1
     assert json_parent['children'][0]['path'] == child['path']
+
+
+def test_create_tag_no_auth(srv_endpoint, utils):
+    response = requests.post(f'{srv_endpoint}/tags', data=utils.json_bytes(tag))
+
+    assert response.status_code == 511
+
+
+@pytest.mark.dependency(name="test_login_user_on_keycloak_and_get_token")
+def test_create_tag_auth(srv_endpoint, utils):
+    headers = {'Authorization': f'Bearer {token}'}
+
+    response = requests.post(f'{srv_endpoint}/tags', data=utils.json_bytes(tag), headers=headers)
+
+    assert response.status_code == 201
+
+    json_tag = json.loads(response.text)
+    assert tag == json_tag
+
+
+@pytest.mark.dependency(name="test_create_tag_auth")
+def test_read_tag_no_auth(srv_endpoint):
+    response = requests.get(f'{srv_endpoint}/tags/{tag["name"]}')
+
+    assert response.status_code == 511
+
+
+@pytest.mark.dependency(name="test_create_tag_auth")
+def test_read_tag_auth(srv_endpoint, utils):
+    headers = {'Authorization': f'Bearer {token}'}
+    response = requests.get(f'{srv_endpoint}/tags/{tag["name"]}', data=utils.json_bytes(tag), headers=headers)
+
+    assert response.status_code == 200
+
+    json_tag = json.loads(response.text)
+    assert tag == json_tag

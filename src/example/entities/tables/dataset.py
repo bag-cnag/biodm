@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped, relationship, mapped_column
 
 from biodm.components.table import Base, Permission, Versioned
 from biodm.tables import Group, User
+from biodm import config
 from .asso import asso_dataset_tag
 from .file import File
 from .tag import Tag
@@ -12,6 +13,7 @@ from .project import Project
 
 
 class Dataset(Versioned, Base):
+    id = Column(Integer, primary_key=True, autoincrement=not 'sqlite' in config.DATABASE_URL)
     # data fields
     name:        Mapped[str] = mapped_column(String(50), nullable=False)
     description: Mapped[str] = mapped_column(Text,       nullable=True)

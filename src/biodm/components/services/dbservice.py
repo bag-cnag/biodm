@@ -1,6 +1,7 @@
 """Database service: Translates requests data into SQLA statements and execute."""
-from operator import or_
-from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Set, Type
+from abc import ABCMeta
+from functools import partial
+from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type, Set
 
 from sqlalchemy import select, delete, update, or_, func
 from sqlalchemy.dialects import postgresql, sqlite
@@ -20,7 +21,7 @@ from biodm.exceptions import (
     FailedRead, FailedDelete, UpdateVersionedError, UnauthorizedError
 )
 from biodm.managers import DatabaseManager
-from biodm.tables import ListGroup, Group
+from biodm.tables import ListGroup, Group, user
 from biodm.tables.asso import asso_list_group
 from biodm.utils.security import UserInfo
 from biodm.utils.sqla import CompositeInsert, UpsertStmt
@@ -30,12 +31,11 @@ from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 SUPPORTED_INT_OPERATORS = ("gt", "ge", "lt", "le")
 
 
-class DatabaseService(ApiService):
-    """DB Service class: manages database transactions for entities.
-        This abstract class holds atomic database statement execution and utility functions plus
+class DatabaseService(ApiService, metaclass=ABCMeta):
+    """DB Service abstract class: manages database transactions for entities.
+        This class holds atomic database statement execution and utility functions plus
         permission logic.
     """
-
     table: Type[Base]
 
     def __repr__(self) -> str:
@@ -118,6 +118,39 @@ class DatabaseService(ApiService):
                 one['id'] = id or await get_max_id() # Query if necessary.
                 id = one['id'] + 1
 
+    @staticmethod
+    def _group_path_matching(allowed_groups: Set[str], user_groups: Set[str]):
+        """Performs path matching between allowed groups and requesting user groups as members of
+        children groups are also allowed from their parent groups."""
+        for allowedgroup in allowed_groups:
+            for usergroup in user_groups:
+                if allowedgroup in usergroup:
+                    return True
+        return False
+
+    def _login_required(self, verb: str) -> bool:
+        """Login required nested cases."""
+        if not hasattr(self.app, 'kc'):
+            return False
+
+        if self.table in Base.login_required:
+            return verb in Base.login_required[self.table]
+
+        return False
+
+    def _group_required(self, verb: str, groups: List[str]) -> bool:
+        """Group required nested cases"""
+        if not hasattr(self.app, 'kc'):
+            return True
+
+        if self.table in Base.group_required:
+            if verb in Base.group_required[self.table].keys():
+                return self._group_path_matching(
+                    set(Base.group_required[self.table][verb]), set(groups)
+                )
+
+        return True
+
     def _get_permissions(self, verb: str) -> List[Dict[str, Any]] | None:
         """Retrieve permission entries indexed by self.table containing given verb.
         In case keycloak is disabled, returns None, effectively ignoring all permissions."""
@@ -150,12 +183,21 @@ class DatabaseService(ApiService):
         :type session: AsyncSession
         :raises UnauthorizedError: Insufficient permissions detected.
         """
-        perms = self._get_permissions(verb)
-
-        if not perms or not user_info:
+        if not user_info:
             return
 
+        if self._login_required(verb) and not user_info.info:
+            raise UnauthorizedError("Authentication required.")
+
         groups = user_info.info[1] if user_info.info else []
+
+        if not self._group_required(verb, groups):
+            raise UnauthorizedError("Insufficient group privileges for this operation.")
+
+        perms = self._get_permissions(verb)
+
+        if not perms:
+            return
 
         for permission in perms:
             for one in to_it(pending):
@@ -192,15 +234,7 @@ class DatabaseService(ApiService):
                     # Empty perm list: public.
                     continue
 
-                def check() -> bool:
-                    """Path matching."""
-                    for allowedgroup in set(g.path for g in allowed.groups):
-                        for usergroup in set(groups):
-                            if allowedgroup in usergroup:
-                                return True
-                    return False
-
-                if not check():
+                if not self._group_path_matching(set(g.path for g in allowed.groups), set(groups)):
                     raise UnauthorizedError(f"No {verb} access.")
 
     def _apply_read_permissions(
@@ -318,6 +352,35 @@ class UnaryEntityService(DatabaseService):
             return self
         else:
             return rel.target.decl_class.svc
+
+    def _check_allowed_nested(self, fields, user_info: UserInfo) -> None:
+        nested, _ = partition(fields, lambda x: x in self.relationships)
+        for name in nested:
+            target_svc = self._svc_from_rel_name(name)
+            if target_svc._login_required("read") and not user_info.info:
+                raise UnauthorizedError("Authentication required.")
+
+            groups = user_info.info[1] if user_info.info else []
+
+            if not self._group_required("read", groups):
+                raise UnauthorizedError(f"Insufficient group privileges to retrieve {name}.")
+
+    def _takeout_unallowed_nested(self, fields, user_info: UserInfo) -> List[str]:
+        nested, fields = partition(fields, lambda x: x in self.relationships)
+
+        def ncheck(name):
+            target_svc = self._svc_from_rel_name(name)
+            if target_svc._login_required("read") and not user_info.info:
+                return False
+
+            groups = user_info.info[1] if user_info.info else []
+
+            if not self._group_required("read", groups):
+                return False
+            return True
+
+        allowed_nested, _ = partition(nested, ncheck)
+        return fields + allowed_nested
 
     def gen_cond(self, pk_val: List[Any]) -> Any:
         """Generates (pk_1 == pk_1.type.python_type(val_1)) & (pk_2 == ...) ...).
@@ -573,7 +636,19 @@ class UnaryEntityService(DatabaseService):
         user_info: UserInfo | None = None
     ):
         """Read nested collection from an entity."""
-        # Read applies permissions on nested collection as well.
+        if user_info:
+            # Special cases for nested, as endpoint protection is not enough.
+            target_svc = self._svc_from_rel_name(attribute)
+
+            if target_svc._login_required("read") and not user_info.info:
+                raise UnauthorizedError("Authentication required.")
+
+            groups = user_info.info[1] if user_info.info else []
+
+            if not target_svc._group_required("read", groups):
+                raise UnauthorizedError("Insufficient group privileges for this operation.")
+
+        # Dynamic permissions are covered by read.
         item = await self.read(
             pk_val,
             fields=list(pk.name for pk in self.pk) + [attribute],
@@ -655,7 +730,7 @@ class UnaryEntityService(DatabaseService):
         # Get special parameters
         offset = int(params.pop('start', 0))
         limit = int(params.pop('end', config.LIMIT))
-        reverse = params.pop('reverse', None)
+        reverse = params.pop('reverse', None) # TODO: ?
         # TODO: apply limit to nested lists as well.
         stmt = select(self.table)
 
@@ -720,9 +795,7 @@ class UnaryEntityService(DatabaseService):
         user_info: UserInfo | None = None,
     ) -> Base:
         await self._check_permissions(
-            "write", user_info, {
-                k: v for k, v in zip(self.pk, pk_val)
-            }, session=session
+            "write", user_info, dict(zip(self.pk, pk_val)), session=session
         )
 
         item = await self.read(pk_val, fields, session=session)
@@ -846,6 +919,7 @@ class CompositeEntityService(UnaryEntityService):
                 setattr(item, key, await svc._insert(delay, **kwargs))
         return item
 
+    # pylint: disable=arguments-differ
     async def _insert(
         self,
         stmt: UpsertStmt,
@@ -856,6 +930,7 @@ class CompositeEntityService(UnaryEntityService):
             return await super()._insert(stmt, **kwargs)
         return await self._insert_composite(stmt, **kwargs)
 
+    # pylint: disable=arguments-differ
     async def _insert_list(
         self,
         stmts: Sequence[UpsertStmt],
@@ -878,7 +953,7 @@ class CompositeEntityService(UnaryEntityService):
 
             Generate statement tree for all items in their hierarchical structure.
             Each service is responsible for building statements for its own associated table.
-            Ultimately all statements are built by UnaryEntityService class.
+            Ultimately all statements (except permissions) are built by UnaryEntityService class.
         """
         nested, delayed, futures = {}, {}, kwargs.pop('futures', [])
 
@@ -934,22 +1009,17 @@ class CompositeEntityService(UnaryEntityService):
         composite = CompositeInsert(item=stmt, nested=nested, delayed=delayed)
         return composite if stmt_only else await self._insert_composite(composite, **kwargs)
 
+    # pylint: disable=arguments-differ
     @DatabaseManager.in_session
     async def write(
         self,
         data: List[Dict[str, Any]] | Dict[str, Any],
-        stmt_only: bool = False,
-        user_info: UserInfo | None = None,
         **kwargs
     ) -> Base | List[Base] | UpsertStmt | List[UpsertStmt]:
         """CREATE, Handle list and single case."""
-        kwargs.update( # Could be implicitely packed by the signature but then linters complain.
-            {"stmt_only": stmt_only, "user_info": user_info}
-        )
         if isinstance(data, list):
             return [
                 await self._parse_composite(one, **kwargs)
                 for one in data
             ]
-        else:
-            return await self._parse_composite(data, **kwargs)
+        return await self._parse_composite(data, **kwargs)

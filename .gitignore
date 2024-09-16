@@ -16,3 +16,6 @@ build/
 dist/
 *.egg-info/
 docs/biodm/
+
+# Minikube
+cxg_on_k8/

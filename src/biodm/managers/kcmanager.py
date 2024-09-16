@@ -134,8 +134,7 @@ class KeycloakManager(ApiManager):
     async def update_user(self, user_id: str, data: Dict[str, Any]):
         """Update user."""
         try:
-            payload = self._user_data_to_payload(data)
-            return self.admin.update_user(user_id=user_id, payload=payload)
+            return self.admin.update_user(user_id=user_id, payload=data)
         except KeycloakError as e:
             raise FailedUpdate(
                 "Could not update Keycloak "
@@ -168,8 +167,7 @@ class KeycloakManager(ApiManager):
     async def update_group(self, group_id: str, data: Dict[str, Any]):
         """Update group."""
         try:
-            payload = self._group_data_to_payload(data)
-            return self.admin.update_group(group_id=group_id, payload=payload)
+            return self.admin.update_group(group_id=group_id, payload=data)
         except KeycloakError as e:
             raise FailedUpdate(
                 "Could not update Keycloak "

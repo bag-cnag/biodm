@@ -114,7 +114,6 @@ class S3Manager(ApiManager):
             )
 
         except ClientError as e:
-            # TODO: better error
             raise e
 
     def create_multipart_upload(self, object_name) -> List[Any]:

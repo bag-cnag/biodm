@@ -14,12 +14,13 @@ from .exceptions import (
     UnauthorizedError,
     TokenDecodingError,
     UpdateVersionedError,
-    FileNotUploadedError
+    FileNotUploadedError,
+    MissingDataError
 )
 
 
 class Error:
-    """Error class."""
+    """Error printing class."""
     def __init__(self, status, detail=None) -> None:
         self.status = status
         self.detail = detail
@@ -32,6 +33,7 @@ class Error:
     @property
     def response(self):
         return json_response(data=json.dumps(self.__dict__), status_code=self.status)
+
 
 async def onerror(_, exc):
     """Error event handler.
@@ -46,6 +48,8 @@ async def onerror(_, exc):
             case ValidationError():
                 status = 400
                 detail = str(exc.messages)
+            case  MissingDataError():
+                status = 400
             case FailedDelete() | FailedRead() | FailedUpdate():
                 status = 404
             case InvalidCollectionMethod():
@@ -58,6 +62,7 @@ async def onerror(_, exc):
                 status = 503
             case UnauthorizedError():
                 status = 511
-            case _:
-                status = 500
+    else:
+        detail = "Server Error. Contact an administrator about it."
+
     return Error(status, detail).response

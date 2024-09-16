@@ -1,9 +1,10 @@
 """Security convenience functions."""
-from datetime import datetime
 from functools import wraps
-from typing import List, Tuple
+from typing import List, Tuple, Callable, Awaitable
 
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.responses import Response
 
 from biodm.exceptions import UnauthorizedError
 from .utils import aobject
@@ -61,18 +62,65 @@ class UserInfo(aobject):
         return username, groups, projects
 
 
-def group_required(f, groups: List):
-    """Decorator for function expecting groups: decorates a controller CRUD function."""
+# pylint: disable=too-few-public-methods
+class AuthenticationMiddleware(BaseHTTPMiddleware):
+    """Handle token decoding for incoming requests, populate request object with result."""
+    async def dispatch(
+            self,
+            request: Request,
+            call_next: Callable[[Request], Awaitable[Response]]
+        ) -> Response:
+        request.state.user_info = await UserInfo(request)
+        return await call_next(request)
+
+
+def login_required(f):
+    """Docorator for endpoints requiring a valid header 'Authorization: Bearer <token>'"""
+    # Handle special cases for nested compatiblity.
     @wraps(f)
     async def wrapper(controller, request, *args, **kwargs):
-        user_info = await UserInfo(request)
+        return await f(controller, request, *args, **kwargs)
 
-        if user_info.info:
-            _, user_groups, _ = user_info.info
+    if f.__name__ == "create":
+        wrapper.login_required = 'write'
+        return wrapper
+
+    # Else hardcheck here is enough.
+    @wraps(f)
+    async def wrapper(controller, request, *args, **kwargs):
+        if request.state.user_info.info:
+            return await f(controller, request, *args, **kwargs)
+        raise UnauthorizedError("Authentication required.")
+
+    # Read is protected on its endpoint and is handled specifically for nested cases in codebase.
+    if f.__name__ == "read":
+        wrapper.login_required = 'read'
+
+    return wrapper
+
+
+def group_required(f, groups: List[str]):
+    """Decorator for endpoints requiring authenticated user to be part of one of the list of paths.
+    """
+    @wraps(f)
+    async def wrapper(controller, request, *args, **kwargs):
+        return await f(controller, request, *args, **kwargs)
+
+    if f.__name__ == "create":
+        wrapper.group_required = {'write', groups}
+        return wrapper
+
+    @wraps(f)
+    async def wrapper(controller, request, *args, **kwargs):
+        if request.state.user_info.info:
+            _, user_groups, _ = request.state.user_info.info
             if any((ug in groups for ug in user_groups)):
                 return f(controller, request, *args, **kwargs)
 
         raise UnauthorizedError("Insufficient group privileges for this operation.")
+
+    if f.__name__ == "read":
+        wrapper.group_required = {'read', groups}
 
     return wrapper
 
@@ -80,30 +128,3 @@ def group_required(f, groups: List):
 def admin_required(f):
     """group_required special case for admin group."""
     return group_required(f, groups=["admin"])
-
-
-def login_required(f):
-    """Docorator for function expecting header 'Authorization: Bearer <token>'"""
-
-    @wraps(f)
-    async def wrapper(controller, request, *args, **kwargs):
-        user_info = await UserInfo(request)
-        if user_info.info:
-            userid, groups, _ = user_info.info
-            timestamp = datetime.now().strftime("%I:%M%p on %B %d, %Y")
-            controller.app.logger.info(
-                f'{timestamp}\t{userid}\t{",".join(groups)}\t'
-                f"{str(request.url)}-{request.method}"
-            )
-
-            return await f(
-                controller,
-                request,
-                user_info=user_info,
-                *args,
-                **kwargs,
-            )
-
-        raise UnauthorizedError("Authentication required.")
-
-    return wrapper

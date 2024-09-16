@@ -30,7 +30,8 @@ on Controller endpoints in order to apply static permissions directly within the
 
 * ``@group_required(groups=[gpath_1,... gpath_n])``
 
-  *  Like token_required, plus assesses that requesting ``User`` is part of one of those ``Groups``.
+  *  Like token_required, plus assesses that requesting ``User`` is part of one of those ``Groups``
+  *  A group path: starts with no leading delimiter and has ``/`` replaced by ``__``
 
 * ``@admin_required()``
 
@@ -49,10 +50,23 @@ On our example, this is how you could apply those on `DatasetController`:
             super().__init__(app=app)
             self.write = group_required(self.create, ['my_team'])
             self.update = group_required(self.update, ['my_team'])
+            self.release = group_required(self.release, ['my_team__data_owners'])
             self.delete = admin_required(self.delete)
 
-Here we restricted the creation and updating of datasets to ``my_team``, deletion is ``admin``
-priviledge and reading data is left public.
+Here we restricted the creation and updating of datasets to ``my_team``, publishing a new release
+is reserved to ``data_owners`` subgroup of and deletion is ``admin`` priviledge.
+Implicitely reading data is left public.
+
+
+Nested propagation
+~~~~~~~~~~~~~~~~~~
+
+For some endpoints, those decorators shall also affect nested behaviour.
+**I.e.**
+
+  * The check is applied when creating a resource whose ``create`` endpoint is protected by those decorators from a composite upper level resource.
+
+  * filtering/reading a nested collocation will also need to pass the check if that given resource has its ``read`` endpoint protected.
 
 
 .. _dev-user-permissions:

@@ -8,7 +8,7 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
 from biodm.components import S3File
-from biodm.components.services import S3Service, CompositeEntityService, UnaryEntityService
+from biodm.components.services import S3Service
 from biodm.components.table import Base
 from biodm.schemas import PartsEtagSchema
 from biodm.exceptions import ImplementionError
@@ -48,9 +48,9 @@ class S3Controller(ResourceController):
         # flake8: noqa: E501  pylint: disable=line-too-long
         prefix = f'{self.prefix}/{self.qp_id}/'
         file_routes = [
-            Route(f'{prefix}download',           self.download,           methods=[HttpMethod.GET.value]),
-            Route(f'{prefix}post_success',       self.post_success,       methods=[HttpMethod.GET.value]),
-            Route(f'{prefix}complete_multipart', self.complete_multipart, methods=[HttpMethod.PUT.value]),
+            Route(f'{prefix}download',           self.download,           methods=[HttpMethod.GET]),
+            Route(f'{prefix}post_success',       self.post_success,       methods=[HttpMethod.GET]),
+            Route(f'{prefix}complete_multipart', self.complete_multipart, methods=[HttpMethod.PUT]),
         ]
         self.post_upload_callback = Path(file_routes[1].path)
 

@@ -33,19 +33,15 @@ class KeycloakUnavailableError(RuntimeError):
 
 
 ## Payload
-class PayloadEmptyError(RuntimeError):
+class PayloadEmptyError(RequestError):
     """Raised when a route expecting a payload, is reached without one."""
 
 
-class PayloadJSONDecodingError(RuntimeError):
+class PayloadJSONDecodingError(RequestError):
     """Raised when payload data failed to be parsed in JSON format."""
 
 
-class PayloadValidationError(RuntimeError):
-    """Raised when input data can not be coerced into an entity."""
-
-
-class SchemaError(RuntimeError):
+class SchemaError(ImplementionError):
     """Raised when faulty schema pattern is detected."""
 
 
@@ -56,8 +52,14 @@ class TokenDecodingError(RequestError):
 class UpdateVersionedError(RequestError):
     """Raised when an attempt at updating a versioned resource is detected."""
 
+
 class FileNotUploadedError(RequestError):
     """Raised when trying to download a file that has not been uploaded yet."""
+
+
+class MissingDataError(RequestError):
+    """Raised when data is missing for resource creation."""
+
 
 ## Routing
 class InvalidCollectionMethod(RequestError):

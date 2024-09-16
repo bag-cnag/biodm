@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, List
 from sqlalchemy import CHAR, TIMESTAMP, Column, Integer, ForeignKey, Boolean, String, ForeignKeyConstraint, SmallInteger, text
 from sqlalchemy.orm import Mapped, relationship
 from biodm.components.table import Base, S3File, Permission
-from biodm.tables import K8sInstance
 # from .asso import asso_dataset_tag
 
 if TYPE_CHECKING:
@@ -21,7 +20,7 @@ class Project(Base):
 
     # relationshipsNoneNone
     datasets: Mapped[List["Dataset"]] = relationship(back_populates="project")
-    visualizations: Mapped[List["Visualization"]] = relationship(back_populates="project")
+    # visualizations: Mapped[List["Visualization"]] = relationship(back_populates="project")
     # analyses: Mapped[List["Analysis"]] = relationship(back_populates="project")
 
     # id_user_principal_investigator = Column(Integer, nullable=False)
@@ -30,5 +29,5 @@ class Project(Base):
 
     __permissions__ = (
         Permission(datasets, read=True, write=True),
-        Permission(visualizations, write=True)
+        # Permission(visualizations, write=True)
     )

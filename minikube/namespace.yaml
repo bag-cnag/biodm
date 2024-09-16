@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cellxgene
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aws-cred-secret
+  namespace: cellxgene
+type: opaque
+data:
+  # Secrets encoded in base64 e.g. `echo -n 'data' | base64`
+  AWS_ENDPOINT_URL: aHR0cDovL2hvc3QubWluaWt1YmUuaW50ZXJuYWw6OTAwMA== # http://host.minikube.internal:9000
+  AWS_ACCESS_KEY_ID: YWRtaW4= # admin
+  AWS_SECRET_ACCESS_KEY: MTIzNDU2Nzg= # 12345678

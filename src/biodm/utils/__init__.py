@@ -1,2 +1,2 @@
 """utils."""
-from .security import UserInfo
+from .security import UserInfo, AuthenticationMiddleware

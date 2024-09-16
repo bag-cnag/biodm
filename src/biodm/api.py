@@ -1,10 +1,11 @@
+"""BioDM Server Class."""
 from asyncio import wait_for
+from datetime import datetime
 from inspect import getfullargspec
 import logging
 import logging.config
 from time import sleep
 from typing import Callable, List, Optional, Dict, Any, Type
-from types import ModuleType
 
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
@@ -12,7 +13,7 @@ from starlette_apispec import APISpecSchemaGenerator
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import Response, HTMLResponse
+from starlette.responses import HTMLResponse
 from starlette.requests import Request
 from starlette.routing import Route
 from starlette.types import ASGIApp
@@ -20,18 +21,19 @@ from sqlalchemy.exc import IntegrityError
 
 from biodm import Scope, config
 from biodm.basics import CORE_CONTROLLERS, K8sController
-from biodm.component import ApiComponent
+from biodm.components.k8smanifest import K8sManifest
 from biodm.managers import DatabaseManager, KeycloakManager, S3Manager, K8sManager
 from biodm.components.controllers import Controller
 from biodm.components.services import UnaryEntityService, CompositeEntityService
 from biodm.error import onerror
 from biodm.exceptions import RequestError
-from biodm.utils.security import UserInfo
+from biodm.utils.security import AuthenticationMiddleware
 from biodm.utils.utils import to_it
 from biodm.tables import History, ListGroup, Upload, UploadPart
 from biodm import __version__ as CORE_VERSION
 
 
+# pylint: disable=too-few-public-methods
 class TimeoutMiddleware(BaseHTTPMiddleware):
     """Emit timeout signals."""
     def __init__(self, app: ASGIApp, timeout: int = 30) -> None:
@@ -44,21 +46,26 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
         except TimeoutError:
             return HTMLResponse("Request reached timeout.", status_code=504)
 
-
+# pylint: disable=too-few-public-methods
 class HistoryMiddleware(BaseHTTPMiddleware):
-    """Logins in authenticated user requests in History."""
+    """Log incomming requests into History table AND stdout."""
     def __init__(self, app: ASGIApp, server_host: str) -> None:
         self.server_host = server_host
         super().__init__(app, self.dispatch)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Any:
-        user_info = await UserInfo(request)
-        username = user_info.info[0] if user_info.info else "anon" # Needs a key.
+        if request.state.user_info.info:
+            user_id = request.state.user_info.info[0]
+            user_groups = request.state.user_info.info[1]
+        else:
+            user_id = "anon"
+            user_groups = ['no_groups']
 
+        endpoint = str(request.url).rsplit(self.server_host, maxsplit=1)[-1]
         body = await request.body()
         entry = {
-            'username_user': username,
-            'endpoint': str(request.url).rsplit(self.server_host, maxsplit=1)[-1],
+            'username_user': user_id,
+            'endpoint': endpoint,
             'method': request.method,
             'content': str(body) if body else ""
         }
@@ -69,10 +76,18 @@ class HistoryMiddleware(BaseHTTPMiddleware):
             try: # Try once more.
                 sleep(0.1)
                 await History.svc.write(entry)
-            except:
+            except Exception as _:
+                # Keep going in any case. History feature should not be blocking.
                 pass
-        finally: # Keep going in any case. History feature should not be blocking.
-            return await call_next(request)
+
+        # Log
+        timestamp = datetime.now().strftime("%I:%M%p on %B %d, %Y")
+        History.svc.app.logger.info(
+            f'{timestamp}\t{user_id}\t{",".join(user_groups)}\t'
+            f'{endpoint}\t-\t{request.method}'
+        )
+
+        return await call_next(request)
 
 
 class Api(Starlette):
@@ -96,29 +111,21 @@ class Api(Starlette):
     def __init__(
         self,
         controllers: Optional[List[Type[Controller]]],
-        instance: Optional[Dict[str, ModuleType]]=None,
+        *args,
+        manifests: Optional[List[Type[K8sManifest]]] = None,
         debug: bool=False,
         test: bool=False,
-        *args,
-        **kwargs
+        **kwargs,
     ) -> None:
+        # Set runtime flag.
         self.scope = Scope.PROD
-        if debug:
-            self.scope |= Scope.DEBUG
-        if test:
-            self.scope |= Scope.TEST
+        self.scope |= Scope.DEBUG if debug else self.scope
+        self.scope |= Scope.TEST if test else self.scope
 
+        # Declare trusted ips.
         self._network_ips = [self.server_endpoint]
 
-        ## Instance Info.
-        instance = instance or {}
-
-        # TODO: debug
-        # m = instance.get('manifests')
-        # if m:
-        #     config.K8_MANIFESTS = m
-
-        ## Logger.
+        # Logger.
         logging.basicConfig(
             level=logging.DEBUG if Scope.DEBUG in self.scope else logging.INFO,
             format=(
@@ -127,16 +134,17 @@ class Api(Starlette):
         )
         logging.info("Intializing server.")
 
-        ## Managers
+        # Managers
         self.deploy_managers()
 
-        ## Controllers.
-        classes = CORE_CONTROLLERS + (controllers or [])
-        if hasattr(self, 'k8'):
-            classes.append(K8sController)
-        routes = self.adopt_controllers(classes)
+        # Controllers.
+        routes: List[Route] = []
+        for ctrl in CORE_CONTROLLERS + (controllers or []):
+            routes.extend(self.adopt_controller(ctrl))
+        if hasattr(self, 'k8') and manifests:
+            routes.extend(self.adopt_controller(K8sController, manifests=manifests))
 
-        ## Schema Generator.
+        # Schema Generator.
         self.apispec = APISpecSchemaGenerator(
             APISpec(
                 title=config.API_NAME,
@@ -155,23 +163,14 @@ class Api(Starlette):
             "bearerFormat": "JWT"
         })
 
-        """Headless Services
-
-            For entities that are managed internally: not exposing routes.
-
-            Since the controller normally instanciates the service, and it does so
-            because the services needs to access the app instance.
-            If more useful cases for this show up we might want to design a cleaner solution.
-        """
-        History.svc    = UnaryEntityService(app=self, table=History)
-        UploadPart.svc = UnaryEntityService(app=self, table=UploadPart)
-        ListGroup.svc  = CompositeEntityService(app=self, table=ListGroup)
-        Upload.svc     = CompositeEntityService(app=self, table=Upload)
+        # Final setup.
+        self._declare_headless_services()
 
         super().__init__(debug, routes, *args, **kwargs)
 
-        ## Middlewares
+        # Middlewares -> Stack goes in reverse order.
         self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
+        self.add_middleware(AuthenticationMiddleware)
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
             allow_origins=self._network_ips + ["http://localhost:9080"], # + swagger-ui.
@@ -193,6 +192,7 @@ class Api(Starlette):
 
     @property
     def server_endpoint(self) -> str:
+        """Server address, useful to compute callbacks."""
         return f"{config.SERVER_SCHEME}{config.SERVER_HOST}:{config.SERVER_PORT}/"
 
     def _parse_config(self, prefix: str) -> Dict[str, Any]:
@@ -229,23 +229,35 @@ class Api(Starlette):
             ):
                 setattr(self, mprefix, mclass(app=self, **conf))
                 self._network_ips.append(getattr(self, mprefix).endpoint)
-                self.logger.info(f"{mprefix.upper()} Manager - UP.")
+                self.logger.info("%s Manager - UP.", mprefix.upper())
             else:
-                self.logger.info(f"{mprefix.upper()} Manager - SKIPPED (no config).")
+                self.logger.info("%s Manager - SKIPPED (no config).", mprefix.upper())
 
-    def adopt_controllers(self, controllers: List[Type[Controller]]) -> List[Route]:
-        """Adopts controllers, and their associated routes."""
-        routes: List[Route] = []
-        for controller in controllers:
-            # Instanciate.
-            c = controller(app=self)
-            # Fetch and add routes.
-            routes.extend(to_it(c.routes()))
-            # Keep Track of controllers.
-            self.controllers.append(c)
-        return routes
+    def adopt_controller(self, controller: Type[Controller], **kwargs) -> List[Route]:
+        """Instanciate a controller and return its associated routes."""
+        c = controller(app=self, **kwargs)
+        # Keep Track of controllers.
+        self.controllers.append(c)
+        return to_it(c.routes())
+
+    def _declare_headless_services(self) -> None:
+        """Headless Services.
+
+        For entities that are managed internally: i.e. not exposing routes.
+
+        Since a controller normally instanciates the service, and it does so
+        because the services needs a reference the app instance.
+        If more useful cases for this show up we might want to design a cleaner solution.
+        """
+        History.svc    = UnaryEntityService(app=self, table=History)
+        UploadPart.svc = UnaryEntityService(app=self, table=UploadPart)
+        ListGroup.svc  = CompositeEntityService(app=self, table=ListGroup)
+        Upload.svc     = CompositeEntityService(app=self, table=Upload)
 
     async def onstart(self) -> None:
+        """server start event.
+
+        - Reinitialize DB in DEBUG mode.
+        """
         if Scope.DEBUG in self.scope:
-            """Dev mode: drop all and create tables."""
             await self.db.init_db()
