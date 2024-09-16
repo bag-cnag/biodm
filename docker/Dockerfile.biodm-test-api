@@ -1,9 +1,11 @@
 ARG PYTHON__V=3.11
 ARG PIP_CACHE_DIR=/root/.cache/pip
+ARG KEEPENV
 
 FROM python:${PYTHON__V}-slim-bookworm
 
 ARG PIP_CACHE_DIR
+ARG KEEPENV
 
 COPY ./src/requirements /biodm/src/requirements
 WORKDIR /biodm
@@ -16,9 +18,9 @@ RUN --mount=type=cache,target=${PIP_CACHE_DIR} \
 COPY ./pyproject.toml /biodm/pyproject.toml
 COPY ./src/biodm /biodm/src/biodm
 COPY ./src/example /biodm/src/example
-# Remove .env to replace it with environment variables in compose file.
-RUN find /biodm/src/example -name '.env' | xargs rm -rf
 
+# conditionally remove .env to replace it with environment variables in compose file.
+RUN if [[ -z "$KEEPENV" ]] ; then find /biodm/src/example -name '.env' | xargs rm -rf ; else : ; fi
 
 RUN pip3 install .
 

@@ -2,6 +2,29 @@ include:
   - ./compose.yml
 
 services:
+  example:
+    build:
+      context: ./
+      dockerfile: docker/Dockerfile.biodm-test-api
+      args:
+        - PYTHON__V=3.11
+        - KEEPENV=1
+    extra_hosts:
+      - "host.minikube.internal:10.10.0.3"
+    depends_on:
+      api-db:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      swagger-ui:
+        condition: service_started
+    ports:
+      - 8000:8000
+    stdin_open: true
+    tty: true
+    networks:
+    - biodm-dev
+
   test-keycloak-env:
     build:
       context: ./
