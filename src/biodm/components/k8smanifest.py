@@ -14,7 +14,7 @@ class K8sManifest(ApiComponent, metaclass=ABCMeta):
     All Manifests are processed and exposed under K8sController.
     """
     table: Type[Base]
-    namespace: str
+    namespace: str = "default"
 
     def __init__(self, app) -> None:
         super().__init__(app)

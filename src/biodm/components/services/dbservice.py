@@ -730,7 +730,7 @@ class UnaryEntityService(DatabaseService):
         # Get special parameters
         offset = int(params.pop('start', 0))
         limit = int(params.pop('end', config.LIMIT))
-        reverse = params.pop('reverse', None)
+        reverse = params.pop('reverse', None) # TODO: ?
         # TODO: apply limit to nested lists as well.
         stmt = select(self.table)
 

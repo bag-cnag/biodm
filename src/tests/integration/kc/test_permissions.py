@@ -228,6 +228,7 @@ def test_create_public_data(srv_endpoint, utils):
 
 @pytest.mark.dependency(name="test_create_public_data")
 def test_read_public_data(srv_endpoint, utils):
+    """Getting datasets without explicit fields will yield dataset, without its tags."""
     response = requests.get(
         f'{srv_endpoint}/datasets',
         data=utils.json_bytes(public_project),
@@ -238,6 +239,18 @@ def test_read_public_data(srv_endpoint, utils):
     assert response.status_code == 200
     assert len(json_response) == 1
     assert json_response[0]['name'] == public_project['datasets'][0]['name']
+    assert 'tags' not in json_response[0]
+
+
+@pytest.mark.dependency(name="test_create_public_data")
+def test_read_restricted_field_from_public_data(srv_endpoint, utils):
+    """Getting datasets asking explicitely for its tags (which are protected) will fail."""
+    response = requests.get(
+        f'{srv_endpoint}/datasets?fields=tags',
+        data=utils.json_bytes(public_project),
+    )
+
+    assert response.status_code == 511
 
 
 @pytest.mark.dependency(name="test_create_data_and_login")

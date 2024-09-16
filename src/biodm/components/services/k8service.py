@@ -58,4 +58,3 @@ class K8Service(CompositeEntityService):
         for k8sinst in k8sinsts:
             await self._gen_and_submit_manifest(k8sinst, session=session)
         return k8sinsts
- 

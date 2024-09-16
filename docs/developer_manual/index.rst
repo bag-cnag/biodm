@@ -79,3 +79,4 @@ introduce the toolkit:
     table_schema
     doc_endpoints
     advanced_use
+    k8manifests

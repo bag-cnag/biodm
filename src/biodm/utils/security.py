@@ -10,9 +10,6 @@ from biodm.exceptions import UnauthorizedError
 from .utils import aobject
 
 
-
-
-
 class UserInfo(aobject):
     """Hold user info for a given request.
 
@@ -78,7 +75,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
 
 def login_required(f):
-    """Docorator for endpoints expecting header 'Authorization: Bearer <token>'"""
+    """Docorator for endpoints requiring a valid header 'Authorization: Bearer <token>'"""
     # Handle special cases for nested compatiblity.
     @wraps(f)
     async def wrapper(controller, request, *args, **kwargs):
@@ -103,7 +100,8 @@ def login_required(f):
 
 
 def group_required(f, groups: List[str]):
-    """Decorator for endpoints expecting authenticated user to belong to a certain group."""
+    """Decorator for endpoints requiring authenticated user to be part of one of the list of paths.
+    """
     @wraps(f)
     async def wrapper(controller, request, *args, **kwargs):
         return await f(controller, request, *args, **kwargs)

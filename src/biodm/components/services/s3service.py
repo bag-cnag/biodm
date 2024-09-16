@@ -1,10 +1,9 @@
 from asyncio import iscoroutine
 from math import ceil
-from typing import List, Any, Sequence, Dict, Type
+from typing import List, Any, Sequence, Dict
 
 from sqlalchemy import Insert
 from sqlalchemy.ext.asyncio import AsyncSession
-
 
 from biodm.components.table import Base, S3File
 from biodm.exceptions import FileNotUploadedError
@@ -38,6 +37,7 @@ class S3Service(CompositeEntityService):
         return f"{srv}{route}"
 
     async def gen_key(self, item, session: AsyncSession):
+        """Generate a unique bucket key from file elements."""
         await session.refresh(item, ['filename', 'extension']) 
         version = ""
         if self.table.is_versioned:
@@ -146,7 +146,21 @@ class S3Service(CompositeEntityService):
         file.upload_id, file.upload = None, None
 
     @DatabaseManager.in_session
-    async def download(self, pk_val: List[Any], user_info: UserInfo | None, session: AsyncSession):
+    async def download(
+        self, pk_val: List[Any], user_info: UserInfo | None, session: AsyncSession
+    ) -> str:
+        """Get File entry from DB, and return a direct download url.
+
+        :param pk_val: key
+        :type pk_val: List[Any]
+        :param user_info: requesting user info
+        :type user_info: UserInfo | None
+        :param session: current db session
+        :type session: AsyncSession
+        :raises FileNotUploadedError: File entry exists but has not been validated yet
+        :return: direct download url.
+        :rtype: str
+        """
         # File management.
         fields = ['filename', 'extension', 'dl_count', 'ready']
         # Also fetch foreign keys, as some may be necessary for permission check.
@@ -173,6 +187,7 @@ class S3Service(CompositeEntityService):
         session: AsyncSession,
         user_info: UserInfo | None = None,
     ) -> Base:
+        # Bumps version.
         file = await super().release(
             pk_val=pk_val,
             fields=fields,
@@ -180,9 +195,11 @@ class S3Service(CompositeEntityService):
             session=session,
             user_info=user_info
         )
+        # Reset special fields.
         file.created_at = utcnow()
         file.validated_at = None
         file.ready = False
         file.dl_count = 0
+        # Generate a new form.
         await self.gen_upload_form(file, session=session)
         return file
