@@ -1,0 +1,7 @@
+biodm.managers.kcmanager module
+===============================
+
+.. automodule:: biodm.managers.kcmanager
+   :members:
+   :undoc-members:
+   :show-inheritance:
