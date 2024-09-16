@@ -332,7 +332,7 @@ class ResourceController(EntityController):
         """
         body = await request.body()
         if body in (b'{}', b'[]', b'[{}]'):
-            raise PayloadEmptyError
+            raise PayloadEmptyError("No input data.")
         return body
 
     def _extract_fields(
