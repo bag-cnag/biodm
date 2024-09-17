@@ -173,7 +173,7 @@ class Api(Starlette):
         self.add_middleware(AuthenticationMiddleware)
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
-            allow_origins=self._network_ips + ["http://localhost:9080"], # + swagger-ui.
+            allow_origins=["*"], # self._network_ips + ["http://localhost:9080"], # + swagger-ui.
             allow_methods=["*"],
             allow_headers=["*"],
             max_age=config.CACHE_MAX_AGE

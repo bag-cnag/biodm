@@ -1,0 +1,50 @@
+include:
+  - ./compose.yml
+
+services:
+  example:
+    build:
+      context: ./
+      dockerfile: docker/Dockerfile.biodm-test-api
+      args:
+        - PYTHON__V=3.11
+        - KEEPENV=1
+    extra_hosts:
+      - "host.minikube.internal:10.10.0.3"
+    healthcheck:
+      test: python3 -c "import requests; exit(requests.get('http://example:8000/live').text != 'live\n');"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      api-db:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      s3bucket:
+        condition: service_healthy
+    ports:
+      - 8000:8000
+    stdin_open: true
+    tty: true
+    networks:
+      biodm-dev:
+        ipv4_address: 10.10.0.6
+    # networks:
+    #   biodm-dev:
+    #     aliases:
+    #       # - example.local
+    #       - host.docker.internal
+
+  example-swagger-ui:
+    image: swaggerapi/swagger-ui:v5.17.14
+    ports:
+      - "9080:8080"
+    depends_on:
+      example:
+        condition: service_healthy
+    environment:
+      API_URL: http://host.docker.internal:8000/schema
+    networks:
+      biodm-dev:
+        ipv4_address: 10.10.0.7
