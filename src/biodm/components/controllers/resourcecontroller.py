@@ -22,6 +22,9 @@ from biodm.components.services import (
     KCUserService
 )
 from biodm.exceptions import (
+    DataError,
+    EndpointError,
+    ImplementionError,
     InvalidCollectionMethod,
     PayloadEmptyError,
     PartialIndex,
@@ -249,7 +252,7 @@ class ResourceController(EntityController):
 
         if self.resource in reg: # Weakref.
             return reg[self.resource]()
-        raise ValueError(
+        raise ImplementionError(
             f"{self.__class__.__name__} could not find {self.resource} Table."
             " Alternatively if you are following another naming convention you should "
             "provide the declarative_class as 'table' argument when defining a new controller."
@@ -264,7 +267,7 @@ class ResourceController(EntityController):
                 return res[0]
             return res
         except RegistryError as e:
-            raise ValueError(
+            raise ImplementionError(
                 f"{self.__class__.__name__} could not find {isn} Schema. "
                 "Alternatively if you are following another naming convention you should "
                 "provide the schema class as 'schema' argument when defining a new controller"
@@ -317,7 +320,7 @@ class ResourceController(EntityController):
             # Try to generate a where condition that will cast values into their python type.
             _ = self.svc.gen_cond(pk_val)
         except ValueError as e:
-            raise ValueError("Parameter type not matching key.") from e
+            raise DataError("Parameter type not matching key.") from e
 
         return pk_val
 
@@ -355,7 +358,7 @@ class ResourceController(EntityController):
             fields = set(fields) | self.pk
             for field in fields:
                 if field not in self.schema.dump_fields.keys():
-                    raise ValueError(f"Requested field {field} does not exists.")
+                    raise DataError(f"Requested field {field} does not exists.")
             self.svc._check_allowed_nested(fields, user_info=user_info)
         else: # Default case, permissive population.
             fields = [
@@ -452,7 +455,7 @@ class ResourceController(EntityController):
         if nested_attribute:
             target_rel = self.table.relationships().get(nested_attribute, {})
             if not target_rel or not getattr(target_rel, 'uselist', False):
-                raise ValueError(
+                raise EndpointError(
                     f"Unknown collection {nested_attribute} of {self.table.__class__.__name__}"
                 )
             # Serialization and field extraction done by target controller.
@@ -518,7 +521,7 @@ class ResourceController(EntityController):
 
         # Should be a single record.
         if not isinstance(validated_data, dict):
-            raise ValueError("Attempt at updating a single resource with multiple values.")
+            raise DataError("Attempt at updating a single resource with multiple values.")
 
         # Plug in pk into the dict.
         validated_data.update(dict(zip(self.pk, pk_val))) # type: ignore [assignment]
@@ -635,7 +638,7 @@ class ResourceController(EntityController):
 
         assert not isinstance(validated_data, list)
         if any([pk in validated_data.keys() for pk in self.pk]):
-            raise ValueError("Cannot edit versioned resource primary key.")
+            raise DataError("Cannot edit versioned resource primary key.")
 
         fields = self._extract_fields(
             dict(request.query_params),

@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from biodm.components import Base, K8sManifest
 from biodm.managers import DatabaseManager, K8sManager
+from biodm.utils.security import UserInfo
 from biodm.utils.utils import classproperty
 from .dbservice import CompositeEntityService
 
@@ -45,16 +46,26 @@ class K8Service(CompositeEntityService):
         f(manifest)
 
     @DatabaseManager.in_session
-    async def _insert(self, stmt: Insert, session: AsyncSession) -> (Any | None):
+    async def _insert(
+        self,
+        stmt: Insert,
+        user_info: UserInfo | None,
+        session: AsyncSession
+    ) -> (Any | None):
         """INSERT special case for file: populate url after getting entity id."""
-        k8sinst = await super()._insert(stmt, session=session)
+        k8sinst = await super()._insert(stmt, user_info=user_info, session=session)
         await self._gen_and_submit_manifest(k8sinst, session=session)
         return k8sinst
 
     @DatabaseManager.in_session
-    async def _insert_list(self, stmts: Sequence[Insert], session: AsyncSession) -> Sequence[Base]:
+    async def _insert_list(
+        self,
+        stmts: Sequence[Insert],
+        user_info: UserInfo | None,
+        session: AsyncSession
+    ) -> Sequence[Base]:
         """INSERT many objects into the DB database, check token write permission before commit."""
-        k8sinsts = await super()._insert_list(stmts, session=session)
+        k8sinsts = await super()._insert_list(stmts, user_info=user_info, session=session)
         for k8sinst in k8sinsts:
             await self._gen_and_submit_manifest(k8sinst, session=session)
         return k8sinsts

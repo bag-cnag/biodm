@@ -99,7 +99,7 @@ In our example:
         files         : sao.Mapped[List["File"]] = sao.relationship(back_populates="dataset")
 
         __permissions__ = (
-            Permission(files, write=True, read=False, download=True),
+          Permission(files, write=True, read=False, download=True),
         )
 
 The latter enables ``File`` permissions at the ``Dataset`` level.
@@ -110,6 +110,52 @@ with a nested collection and its elements.
 .. note::
 
     Those permissions will be taken into account when directly accessing ``/files`` API routes. 
+
+.. note::
+
+    You always need a top level resource. This system is thought to be combined with decorator
+    based permission for such resources.
+
+
+Nesting and propagation
+~~~~~~~~~~~~~~~~~~~~~~~
+
+This tool offers flexible options. Imagine a case with one more level of collections with a
+``Project`` table, containing a collection of ``Dataset`` such as showcased in ``example``.
+
+.. code-block:: python
+
+  class Project(Base):
+      id = Column(Integer, nullable=False, primary_key=True)
+      ...
+
+      datasets: Mapped[List["Dataset"]] = relationship(back_populates="project")
+
+
+Then you may use a string selector to apply that top level permission directly on a lower level
+resource, skipping the mid level.
+
+
+.. code-block:: python
+
+  class Project(Base):
+      ...
+    __permissions__ = (
+      Permission("datasets.files", download=True),
+    )
+
+
+Moreover, you have the option of propagating that top level permission to the lower nested
+collections. Sharing those permissions between intermediate level and lower level.
+
+
+.. code-block:: python
+
+  class Project(Base):
+      ...
+    __permissions__ = (
+      Permission(datasets, read=True, write=True, download=True, propagates_to=["files"]),
+    )
 
 
 Strict composition

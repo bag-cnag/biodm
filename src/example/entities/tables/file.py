@@ -5,7 +5,9 @@ from sqlalchemy import Column, Integer, ForeignKey, Boolean, String, ForeignKeyC
 from sqlalchemy.orm import Mapped, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.asyncio import AsyncSession
-from biodm.components.table import Base, S3File, Permission
+
+from biodm.components.table import Base, S3File#, Permission
+from biodm.utils.security import Permission
 # from .asso import asso_dataset_tag
 
 if TYPE_CHECKING:

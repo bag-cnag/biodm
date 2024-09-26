@@ -4,7 +4,6 @@
 .coverage
 
 # Envs
-.env.cnag
 venv*/
 
 # Caches
@@ -19,3 +18,7 @@ docs/biodm/
 
 # Minikube
 cxg_on_k8/
+
+# Internal
+*.cnag*
+omicsdm_server_v2/

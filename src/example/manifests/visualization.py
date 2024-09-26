@@ -7,6 +7,8 @@ from biodm.components import K8sManifest, Base
 
 from entities import tables
 
+from biodm.exceptions import EndpointError
+
 
 ## Cellxgene config
 CXG_APP_NAME = 'cellxgene'
@@ -85,7 +87,7 @@ class CellXGeneManifest(K8sManifest):
 
         key_stem, key_ext = file_key.split('.', maxsplit=1)
         if key_ext != "h5ad":
-            raise ValueError("Visualizer only supports h5ad files.")
+            raise EndpointError("Visualizer only supports h5ad files.")
 
         anno_files_path = f"{bucket_path}/cxg_on_k8/{key_stem}/{user_id}/"
 

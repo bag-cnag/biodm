@@ -5,7 +5,9 @@ from marshmallow.exceptions import ValidationError
 
 from biodm.utils.utils import json_response
 from .exceptions import (
+    EndpointError,
     FailedUpdate,
+    PayloadJSONDecodingError,
     RequestError,
     FailedDelete,
     FailedRead,
@@ -15,7 +17,7 @@ from .exceptions import (
     TokenDecodingError,
     UpdateVersionedError,
     FileNotUploadedError,
-    MissingDataError
+    DataError
 )
 
 
@@ -48,7 +50,7 @@ async def onerror(_, exc):
             case ValidationError():
                 status = 400
                 detail = str(exc.messages)
-            case  MissingDataError():
+            case DataError() | EndpointError() | PayloadJSONDecodingError():
                 status = 400
             case FailedDelete() | FailedRead() | FailedUpdate():
                 status = 404

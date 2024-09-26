@@ -27,7 +27,7 @@ from biodm.components.controllers import Controller
 from biodm.components.services import UnaryEntityService, CompositeEntityService
 from biodm.error import onerror
 from biodm.exceptions import RequestError
-from biodm.utils.security import AuthenticationMiddleware
+from biodm.utils.security import AuthenticationMiddleware, PermissionLookupTables
 from biodm.utils.utils import to_it
 from biodm.tables import History, ListGroup, Upload, UploadPart
 from biodm import __version__ as CORE_VERSION
@@ -166,11 +166,14 @@ class Api(Starlette):
         # Final setup.
         self._declare_headless_services()
 
-        super().__init__(debug, routes, *args, **kwargs)
+        super().__init__(debug=debug, routes=routes, *args, **kwargs)
 
         # Middlewares -> Stack goes in reverse order.
         self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
         self.add_middleware(AuthenticationMiddleware)
+        if self.scope is Scope.PROD:
+            self.add_middleware(TimeoutMiddleware, timeout=config.SERVER_TIMEOUT)
+        # CORS last (i.e. first).
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
             allow_origins=["*"], # self._network_ips + ["http://localhost:9080"], # + swagger-ui.
@@ -178,8 +181,6 @@ class Api(Starlette):
             allow_headers=["*"],
             max_age=config.CACHE_MAX_AGE
         )
-        if self.scope is Scope.PROD:
-            self.add_middleware(TimeoutMiddleware, timeout=config.SERVER_TIMEOUT)
 
         # Event handlers
         self.add_event_handler("startup", self.onstart)
@@ -188,7 +189,6 @@ class Api(Starlette):
         # Error handlers
         self.add_exception_handler(RequestError, onerror)
         # self.add_exception_handler(DatabaseError, on_error)
-        # self.add_exception_handler(Exception, on_error)
 
     @property
     def server_endpoint(self) -> str:
@@ -256,8 +256,9 @@ class Api(Starlette):
 
     async def onstart(self) -> None:
         """server start event.
-
+        - Setup permission lookup tables
         - Reinitialize DB in DEBUG mode.
         """
+        PermissionLookupTables.setup_permissions(self)
         if Scope.DEBUG in self.scope:
             await self.db.init_db()

@@ -21,3 +21,16 @@ class CompositeInsert:
 
 
 UpsertStmt = TypeVar('UpsertStmt', CompositeInsert, Insert, Update)
+
+
+def stmt_to_dict(stmt: UpsertStmt) -> Dict[str, Any]:
+    """Returns mapped values as dict for a statement.
+
+    Accesses private attribute _value, may change in a future version of sqla.
+
+    :param stmt: statement
+    :type stmt: UpsertStmt
+    :return: Dict values.
+    :rtype: Dict[str, Any]
+    """
+    return {k.name: v.effective_value for k, v in stmt._values.items()}

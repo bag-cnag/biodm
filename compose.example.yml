@@ -12,7 +12,7 @@ services:
     extra_hosts:
       - "host.minikube.internal:10.10.0.3"
     healthcheck:
-      test: python3 -c "import requests; exit(requests.get('http://localhost:8000/live').text != 'live\n');"
+      test: python3 -c "import requests; exit(requests.get('http://0.0.0.0:8000/live').text != 'live\n');"
       interval: 5s
       timeout: 5s
       retries: 10
@@ -24,7 +24,12 @@ services:
       s3bucket:
         condition: service_healthy
     stdin_open: true
-    network_mode: host
+    ports:
+    - 8000:8000
+    links:
+    - api-db
+    - keycloak
+    - s3bucket
 
   example-swagger-ui:
     image: swaggerapi/swagger-ui:v5.17.14
@@ -34,4 +39,7 @@ services:
     environment:
       PORT: 9080
       API_URL: http://localhost:8000/schema
-    network_mode: host
+    ports:
+    - 9080:9080
+    links:
+    - example

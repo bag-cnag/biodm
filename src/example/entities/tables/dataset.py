@@ -3,9 +3,11 @@ from typing import List, Set # Optional,
 from sqlalchemy import BIGINT, text, func, Column, Identity, Integer, Sequence, SmallInteger, ForeignKey, String, PrimaryKeyConstraint, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 
-from biodm.components.table import Base, Permission, Versioned
+from biodm.components.table import Base, Versioned
 from biodm.tables import Group, User
 from biodm import config
+from biodm.utils.security import Permission
+
 from .asso import asso_dataset_tag
 from .file import File
 from .tag import Tag
@@ -59,8 +61,8 @@ class Dataset(Versioned, Base):
     #     PrimaryKeyConstraint('id', 'version', name='pk_dataset'),
     # )
 
-    # Special parameters.
-    __permissions__ = (
-        # Flag many-to-entity (composition pattern) with permissions. 
-        Permission(files, read=True, write=True, download=True),
-    )
+    #  Special parameters.
+    # __permissions__ = (
+    #     # Flag many-to-entity (composition pattern) with permissions.
+    #     Permission(files, read=True, write=True, download=True),
+    # )
