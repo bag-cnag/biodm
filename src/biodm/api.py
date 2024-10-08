@@ -152,9 +152,9 @@ class Api(Starlette):
                 title=config.API_NAME,
                 version=config.API_VERSION,
                 openapi_version="3.0.0",
-                plugins=[BDMarshmallowPlugin()],
+                plugins=[BDMarshmallowPlugin()], # TODO: config.description ?
                 info={"description": "", "backend": "biodm", "backend_version": CORE_VERSION},
-                security=[{'Authorization': []}] # Same name as security_scheme arg below.
+                security=[{'Authorization': []}] # !! Same name as security_scheme arg below.
             )
         )
         self.apispec.spec.components.security_scheme("Authorization", {

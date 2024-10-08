@@ -812,7 +812,7 @@ class UnaryEntityService(DatabaseService):
                 nf_stmt,
                 onclause=unevalled_all([
                     getattr(self.table, local.name) == getattr(nf_stmt.columns, remote.name)
-                    for local, remote in self.relationships[nf_key].local_remote_pairs
+                    for local, remote in self.table.relationships()[nf_key].local_remote_pairs
                 ])
             )
 
