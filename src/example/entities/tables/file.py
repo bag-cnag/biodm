@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 import uuid
 
 from sqlalchemy import Column, Integer, ForeignKey, Boolean, String, ForeignKeyConstraint, SmallInteger
-from sqlalchemy.orm import Mapped, relationship
+from sqlalchemy.orm import Mapped, relationship, mapped_column
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,8 @@ class File(S3File, Base):
     id = Column(Integer, nullable=False, primary_key=True)
     id_dataset = Column(Integer, nullable=False)
     version_dataset = Column(SmallInteger, nullable=False)
+
+    # submitter_username:  Mapped[str] = mapped_column(ForeignKey("USER.username"), nullable=False)
 
     __table_args__ = (
         ForeignKeyConstraint(

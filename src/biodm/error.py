@@ -17,6 +17,7 @@ from .exceptions import (
     TokenDecodingError,
     UpdateVersionedError,
     FileNotUploadedError,
+    FileTooLargeError,
     DataError
 )
 
@@ -41,15 +42,15 @@ async def onerror(_, exc):
     """Error event handler.
 
     Relevant documentation: https://restfulapi.net/http-status-codes/"""
-    status = 500
     detail = None
 
     if issubclass(exc.__class__, RequestError):
-        detail = exc.detail
+         # TODO: investigate
+        detail = exc.detail + (str(exc.messages) if hasattr(exc, 'messages') else "")
+
         match exc:
-            case ValidationError():
+            case ValidationError() | FileTooLargeError():
                 status = 400
-                detail = str(exc.messages)
             case DataError() | EndpointError() | PayloadJSONDecodingError():
                 status = 400
             case FailedDelete() | FailedRead() | FailedUpdate():
@@ -65,6 +66,7 @@ async def onerror(_, exc):
             case UnauthorizedError():
                 status = 511
     else:
+        status = 500
         detail = "Server Error. Contact an administrator about it."
 
     return Error(status, detail).response

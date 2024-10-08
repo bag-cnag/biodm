@@ -13,5 +13,6 @@ class FileSchema(Schema):
     id_dataset = Integer()
     version_dataset = Integer()
 
+    # submitter_username = String()
     upload = Nested("UploadSchema", dump_only=True)
     # dataset = Nested('DatasetSchema') # , load_only=True

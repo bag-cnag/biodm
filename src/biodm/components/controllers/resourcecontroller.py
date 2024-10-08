@@ -1,7 +1,8 @@
 """Controller class for Tables acting as a Resource."""
 
 from __future__ import annotations
-from functools import partial, wraps
+from functools import partial
+from inspect import getmembers, ismethod
 from types import MethodType
 from typing import TYPE_CHECKING, Callable, List, Set, Any, Dict, Type
 
@@ -32,6 +33,7 @@ from biodm.exceptions import (
 )
 from biodm.utils.security import UserInfo
 from biodm.utils.utils import json_response
+from biodm.utils.apispec import register_runtime_schema, process_apispec_docstrings
 from biodm.components import Base
 from .controller import HttpMethod, EntityController
 
@@ -91,7 +93,10 @@ class ResourceController(EntityController):
 
         self.pk = set(self.table.pk)
         self.svc: UnaryEntityService = self._infer_svc()(app=self.app, table=self.table)
-        self.__class__.schema = (schema if schema else self._infer_schema())(unknown=RAISE)
+        # Inst schema, and set custom registry for apispec.
+        schema_cls = schema if schema else self._infer_schema()
+        self.__class__.schema = schema_cls(unknown=RAISE)
+        register_runtime_schema(schema_cls, self.__class__.schema)
         self._infuse_schema_in_apispec_docstrings()
 
     @staticmethod
@@ -110,112 +115,22 @@ class ResourceController(EntityController):
 
     def _infuse_schema_in_apispec_docstrings(self):
         """Substitute endpoint documentation template bits with adapted ones for this resource.
-
-        Essentially handling APIspec/Marshmallow/OpenAPISchema support for abstract endpoints.
-
-        Current patterns for abstract documentation:
-        - Marshmallow Schema |
-            schema: Schema -> schema: self.Schema.__class__.__name__
-        - key Attributes |
-            - in: path
-              name: id
-            ->
-            List of table primary keys, with their description from marshmallow schema if any.
-        - field conditions |
-            - in: query
-              name: field_conditions
-            ->
-            List of available fields to set conditions on.
+        Handling APIspec/Marshmallow/OpenAPISchema support for abstract endpoints.
         """
-        def process_apispec_docstrings(self, abs_doc):
-            # Use intance schema.
-            abs_doc = abs_doc.replace(
-                'schema: Schema', f"schema: {self.schema.__class__.__name__}"
+        for method, fct in getmembers(
+            self, predicate=lambda x: ( # Use typing anotations to identify endpoints.
+                ismethod(x) and hasattr(x, '__annotations__') and
+                x.__annotations__.get('request', '') == 'Request' and
+                x.__annotations__.get('return', '') == 'Response'
             )
-
-            # Template replacement #1: path key.
-            path_key = []
-            for key in self.pk:
-                attr = []
-                attr.append("- in: path")
-                attr.append(f"name: {key}")
-                field = self.schema.declared_fields[key]
-                desc  = field.metadata.get("description", None)
-                attr.append("description: " + (desc or f"{self.resource} {key}"))
-                path_key.append(attr)
-
-            # Template replacement #2: field conditions.
-            field_conditions = []
-            for col in self.table.__table__.columns:
-                condition = []
-                condition.append("- in: query")
-                condition.append(f"name: {col.name}")
-                if col.type.python_type == str:
-                    condition.append(
-                        "description: text - key=val | key=pattern "
-                        "where pattern may contain '*' for wildcards"
-                    )
-                elif col.type.python_type in (int, float):
-                    condition.append(
-                        "description: numeric - key=val | key=val1,val2.. | key.op(val) "
-                        "for op in (le|lt|ge|gt)"
-                    )
-                else:
-                    condition.append(f"description: {self.resource} {col.name}")
-                field_conditions.append(condition)
-
-            # Split.
-            doc = abs_doc.split('---')
-            if len(doc) > 1:
-                sphinxdoc, apispec = doc
-                apispec = apispec.split('\n')
-                flattened = []
-                # Search and replace templates.
-                for i in range(len(apispec)):
-                    if '- in: path' in apispec[i-1] and 'name: id' in apispec[i]:
-                        # Work out same indentation level in order not to break the yaml.
-                        indent = len(apispec[i-1].split('- in: path')[0])
-                        for path_attribute in path_key:
-                            path_attribute[0] = " " * indent + path_attribute[0]
-                            path_attribute[1] = " " * (indent+2) + path_attribute[1]
-                            path_attribute[2] = " " * (indent+2) + path_attribute[2]
-                            flattened.extend(path_attribute)
-                        break
-                if flattened:
-                    apispec = apispec[:i-1] + flattened + apispec[i+1:]
-
-                flattened = []
-                for i in range(len(apispec)):
-                    if '- in: query' in apispec[i-1] and 'name: fields_conditions' in apispec[i]:
-                        indent = len(apispec[i-1].split('- in: query')[0])
-                        flattened = []
-                        for condition in field_conditions:
-                            condition[0] = " " * indent + condition[0]
-                            condition[1] = " " * (indent+2) + condition[1]
-                            condition[2] = " " * (indent+2) + condition[2]
-                            flattened.extend(condition)
-                        break
-                if flattened:
-                    apispec = apispec[:i-1] + flattened + apispec[i+1:]
-                # Join.
-                abs_doc = sphinxdoc + "\n---\n" + "\n".join(apispec)
-            return abs_doc
-
-        for method in dir(self):
-            if not method.startswith('_'):
-                fct = getattr(self, method, {})
-                if hasattr(fct, '__annotations__'):
-                    if ( # Use typing anotations to identify endpoints.
-                            fct.__annotations__.get('request', '') == 'Request' and
-                            fct.__annotations__.get('return', '') == 'Response'
-                        ):
-                            # Replace with processed docstrings.
-                            setattr(self, method, MethodType(
-                                    ResourceController.replace_method_docstrings(
-                                        method, process_apispec_docstrings(self, fct.__doc__ or "")
-                                    ), self
-                                )
-                            )
+        ):
+            # Replace with processed docstrings.
+            setattr(self, method, MethodType(
+                    ResourceController.replace_method_docstrings(
+                        method, process_apispec_docstrings(self, fct.__doc__ or "")
+                    ), self
+                )
+            )
 
     def _infer_resource_name(self) -> str:
         """Infer entity name from controller name."""
@@ -440,7 +355,7 @@ class ResourceController(EntityController):
                 e.g. /datasets/1_1?name,description,contact,files
           - in: path
             name: attribute
-            description: Optional, nested collection name.
+            description: nested collection name
         responses:
             200:
                 description: Found matching item
@@ -526,21 +441,16 @@ class ResourceController(EntityController):
         # Plug in pk into the dict.
         validated_data.update(dict(zip(self.pk, pk_val))) # type: ignore [assignment]
 
-        try:
-            return json_response(
-                data=await self.svc.write(
-                    data=validated_data,
-                    stmt_only=False,
-                    user_info=request.state.user_info,
-                    serializer=partial(self.serialize, many=isinstance(validated_data, list)),
-                ),
-                status_code=201,
-            )
-        except IntegrityError as ie:
-            if 'UNIQUE' in ie.args[0] and 'version' in ie.args[0]: # Versioned case.
-                raise UpdateVersionedError(
-                    "Attempt at updating versioned resources via POST detected"
-                )
+        return json_response(
+            data=await self.svc.write(
+                data=validated_data,
+                stmt_only=False,
+                user_info=request.state.user_info,
+                serializer=partial(self.serialize, many=isinstance(validated_data, list)),
+            ),
+            status_code=201,
+        )
+
 
     async def delete(self, request: Request) -> Response:
         """Delete resource.

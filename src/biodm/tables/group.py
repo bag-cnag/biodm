@@ -21,11 +21,7 @@ class Group(Base):
     # id on creation is ensured by read_or_create method from KCService subclasses.
     # KC fields managed internally (not part of the Schema).
     id: Mapped[str] = mapped_column(nullable=True)
-    #
     path: Mapped[str] = mapped_column(String(500), primary_key=True)
-    # test
-    n_members: Mapped[int] = mapped_column(nullable=True)
-
     # relationships
     users: Mapped[List["User"]] = relationship(
         secondary=asso_user_group,
@@ -34,16 +30,16 @@ class Group(Base):
     )
 
     @hybrid_property
-    def path_parent(self) -> str:
+    def parent_path(self) -> str:
         return self.path[:self.path.index('__', -1)]
 
     # @hybrid_property # TODO ?
     # def display_name(self) -> str:
     #     return self.path[self.path.index('__', -1):]
 
-    @path_parent.inplace.expression
+    @parent_path.inplace.expression
     @classmethod
-    def _path_parent(cls) -> SQLColumnExpression[str]:
+    def _parent_path(cls) -> SQLColumnExpression[str]:
         sep = literal('__')
         if "postgresql" in config.DATABASE_URL:
             return func.substring(
@@ -84,7 +80,7 @@ Group_alias = aliased(Group)
 
 Group.parent = relationship(
     Group_alias,
-    primaryjoin=Group.path_parent == Group_alias.path,
+    primaryjoin=Group.parent_path == Group_alias.path,
     foreign_keys=[Group_alias.path],
     uselist=False,
     viewonly=True,
@@ -93,8 +89,8 @@ Group.parent = relationship(
 
 Group.children = relationship(
     Group_alias,
-    primaryjoin=foreign(Group_alias.path_parent) == Group.path,
-    foreign_keys=[Group_alias.path_parent],
+    primaryjoin=foreign(Group_alias.parent_path) == Group.path,
+    foreign_keys=[Group_alias.parent_path],
     uselist=True,
     viewonly=True,
 )

@@ -2,7 +2,7 @@
 from abc import ABCMeta
 from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type, Set
 
-from sqlalchemy import select, delete, update, or_, func
+from sqlalchemy import select, delete, update, or_, func, inspect
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -189,6 +189,7 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         :type session: AsyncSession
         :raises UnauthorizedError: Insufficient permissions detected.
         """
+        # Internal request.
         if not user_info:
             return
 
@@ -196,6 +197,10 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
             raise UnauthorizedError("Authentication required.")
 
         groups = user_info.info[1] if user_info.info else []
+
+        # Special admin case.
+        if groups and 'admin' in groups:
+            return
 
         if not self._group_required(verb, groups):
             raise UnauthorizedError("Insufficient group privileges for this operation.")
@@ -269,10 +274,15 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         verb = "read"
         perms = self._get_permissions(verb)
 
+        # No restriction or internal request.
         if not perms or not user_info:
             return stmt
 
         groups = user_info.info[1] if user_info.info else []
+
+        # Special admin case.
+        if groups and 'admin' in groups:
+            return stmt
 
         # Build nested query to filter permitted results.
         for permission in perms:
@@ -335,7 +345,7 @@ class UnaryEntityService(DatabaseService):
         self.table = table
         self.pk = set(table.col(name) for name in table.pk)
         # Take a snapshot at declaration time, convenient to isolate runtime permissions.
-        self.relationships = table.relationships()
+        self._inst_relationships = inspect(self.table).mapper.relationships
         # Enable entity - service - table linkage so everything is conveniently available.
         setattr(table, 'svc', self)
         setattr(table.__table__, 'decl_class', table)
@@ -362,7 +372,7 @@ class UnaryEntityService(DatabaseService):
             return rel.target.decl_class.svc
 
     def _check_allowed_nested(self, fields, user_info: UserInfo) -> None:
-        nested, _ = partition(fields, lambda x: x in self.relationships)
+        nested, _ = partition(fields, lambda x: x in self.table.relationships())
         for name in nested:
             target_svc = self._svc_from_rel_name(name)
             if target_svc._login_required("read") and not user_info.info:
@@ -374,7 +384,7 @@ class UnaryEntityService(DatabaseService):
                 raise UnauthorizedError(f"Insufficient group privileges to retrieve {name}.")
 
     def _takeout_unallowed_nested(self, fields, user_info: UserInfo) -> List[str]:
-        nested, fields = partition(fields, lambda x: x in self.relationships)
+        nested, fields = partition(fields, lambda x: x in self.table.relationships())
 
         def ncheck(name):
             target_svc = self._svc_from_rel_name(name)
@@ -463,7 +473,7 @@ class UnaryEntityService(DatabaseService):
             await self.populate_ids_sqlite(data)
 
         futures = kwargs.pop('futures', None)
-        stmts = [self.upsert(one, futures=futures) for one in to_it(data)]
+        stmts = [self.upsert(one, futures=futures, user_info=user_info) for one in to_it(data)]
 
         if len(stmts) == 1:
             return stmts[0] if stmt_only else await self._insert(stmts[0], user_info=user_info, **kwargs)
@@ -472,7 +482,8 @@ class UnaryEntityService(DatabaseService):
     def upsert(
         self,
         data: Dict[Any, str],
-        futures: List[str] | None = None
+        futures: List[str] | None = None,
+        user_info: UserInfo | None = None,
     ) -> Insert | Update:
         """Generates an upsert (Insert + .on_conflict_do_x) depending on data population.
             OR an explicit Update statement for partial data with full primary key.
@@ -518,6 +529,10 @@ class UnaryEntityService(DatabaseService):
                     .returning(self.table)
                 )
                 return stmt
+            elif missing_data == {'submitter_username'} and self.table.has_submitter_username:
+                if not user_info or not user_info.info:
+                    raise UnauthorizedError("Requires authentication.")
+                data['submitter_username'] = user_info.info[0]
             else:
                 raise DataError(f"{self.table.__name__} missing the following: {missing_data}.")
 
@@ -569,7 +584,7 @@ class UnaryEntityService(DatabaseService):
         :return: statement restricted on field list
         :rtype: Select
         """
-        nested, fields = partition(fields, lambda x: x in self.relationships)
+        nested, fields = partition(fields, lambda x: x in self.table.relationships())
         # Exclude hybrid properties.
         _, fields = partition(
             fields,
@@ -591,7 +606,7 @@ class UnaryEntityService(DatabaseService):
         ) if fields else stmt
 
         for n in nested:
-            relationship = self.relationships[n]
+            relationship = self.table.relationships()[n]
             target = relationship.target
             target = self.table if isinstance(target, Alias) else target.decl_class
 
@@ -852,7 +867,7 @@ class CompositeEntityService(UnaryEntityService):
         """
         return {
             key: rel for key, rel in self.table.relationships().items()
-            if key not in self.relationships.keys()
+            if key not in self._inst_relationships.keys()
         }
 
     @DatabaseManager.in_session
@@ -1008,9 +1023,9 @@ class CompositeEntityService(UnaryEntityService):
             delayed[key] = CompositeInsert(item=perm_stmt, nested={}, delayed=perm_listgroups)
 
         # Remaining table relationships.
-        for key in self.relationships.keys() & data.keys():
+        for key in self._inst_relationships.keys() & data.keys():
             svc, sub = self._svc_from_rel_name(key), data.pop(key)
-            rel = self.relationships[key]
+            rel = self._inst_relationships[key]
 
             # Infer fields that will get populated at insertion time (for error detection).
             nested_futures = None

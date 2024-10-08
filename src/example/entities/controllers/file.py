@@ -11,6 +11,7 @@ from starlette.routing import BaseRoute, Mount, Route
 
 from entities import tables
 
+
 class FileController(S3Controller):
     def routes(self, **_) -> List[Mount | Route] | List[Mount] | List[BaseRoute]:
         """Adds a /files/id/visualize route.
@@ -48,7 +49,7 @@ class FileController(S3Controller):
         if not user_info.info:
             raise UnauthorizedError("Visualizing requires authentication.")
 
-        vis_data["username_user"] = user_info.info[0]
+        vis_data["user_username"] = user_info.info[0]
 
         vis = await vis_svc.write(data=vis_data, stmt_only=False, user_info=user_info)
 

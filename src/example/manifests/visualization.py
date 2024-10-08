@@ -42,7 +42,7 @@ class CellXGeneManifest(K8sManifest):
         :rtype: Dict[str, str]
         """
         # 1. Get vis.user.username
-        username = vis.username_user
+        username = vis.user_username
 
         # 2. Get vis.file.key
         file: tables.File = await vis.awaitable_attrs.file

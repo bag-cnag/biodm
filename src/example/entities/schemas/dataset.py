@@ -13,11 +13,11 @@ class DatasetSchema(Schema):
     #     #     [g.name for g in Group]
     #     # )
     # )
-    username_user_contact = String()
+    username_contact = String()
     id_project = Integer()
 
     # owner_group = Nested('GroupSchema') # , only=('path', 'n_members',)
-    contact = Nested('UserSchema') # , only=('username', )
+    contact = Nested('UserSchema', exclude=['groups']) # , only=('username', )
     project = Nested('ProjectSchema', exclude=('datasets', ))
     tags = List(Nested('TagSchema'))
     files = List(Nested('FileSchema'))

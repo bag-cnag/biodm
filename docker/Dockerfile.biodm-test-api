@@ -20,7 +20,7 @@ COPY ./src/biodm /biodm/src/biodm
 COPY ./src/example /biodm/src/example
 
 # conditionally remove .env to replace it with environment variables in compose file.
-RUN if [[ -z "$KEEPENV" ]] ; then find /biodm/src/example -name '.env' | xargs rm -rf ; else : ; fi
+RUN if [ -z "$KEEPENV" ] ; then find /biodm/src/example -name '.env' | xargs rm -rf ; else : ; fi
 
 RUN pip3 install .
 

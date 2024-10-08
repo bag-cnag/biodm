@@ -52,6 +52,7 @@ class S3Manager(ApiManager):
 
     def create_presigned_post(self,
                               object_name,
+                              file_size,
                               callback,
     ) -> Any:
         """ Generates a presigned url + form fiels to upload a given file on s3 bucket.
@@ -71,7 +72,7 @@ class S3Manager(ApiManager):
             {"x-amz-date": t.isoformat()},
             {"success_action_status": "201"},
             ["starts-with", "$success_action_redirect", ""], # self.app.server_endpoint
-            ["content-length-range", 2, self.file_size_limit * 1024 ** 3],
+            ["content-length-range", 2, file_size],
             {"bucket": self.bucket_name},
         ]
 

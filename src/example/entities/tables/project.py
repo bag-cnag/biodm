@@ -30,8 +30,8 @@ class Project(Base):
     # id_user_responsible = Column(Integer, nullable=False)
 
     __permissions__ = (
-        # Permission(datasets, read=True, write=True, download=True, propagates_to=["files"]),
+        Permission(datasets, read=True, write=True, download=True, propagates_to=["files"]),
         #  propagates_to=[]
-        Permission("datasets.files", read=True, write=True, download=True),
+        # Permission("datasets.files", read=True, write=True, download=True),
         # Permission(visualizations, write=True)
     )

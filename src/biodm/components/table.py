@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Tuple, Type, Set, ClassVar, Type
 from uuid import uuid4
 
 from sqlalchemy import (
-    BOOLEAN, Integer, inspect, Column, String, TIMESTAMP, ForeignKey,
+    BOOLEAN, Integer, inspect, Column, String, TIMESTAMP, ForeignKey, BigInteger
 )
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
@@ -122,6 +122,24 @@ class Base(DeclarativeBase, AsyncAttrs):
             )
         )
 
+    @classproperty
+    def has_submitter_username(cls) -> bool:
+        """True if table has FK pointing to USER.username called 'submitter_username'
+
+        :return: Flag
+        :rtype: bool
+        """
+        return (
+            'submitter_username' in cls.__dict__ and
+            cls.submitter_username.foreign_keys  and
+            len(cls.submitter_username.foreign_keys) == 1 and
+            next(
+                iter(
+                    cls.submitter_username.foreign_keys
+                )
+            ).target_fullname == 'USER.username'
+        )
+
 
 class S3File:
     """Class to use in order to have a file managed on S3 bucket associated to this table
@@ -129,14 +147,14 @@ class S3File:
     filename = Column(String(100), nullable=False)
     extension = Column(String(10), nullable=False)
     ready = Column(BOOLEAN, nullable=False, server_default='0')
-    size = Column(Integer, nullable=False)
+    size = Column(BigInteger, nullable=False)
 
     # upload_form = Column(String(2000)) # , nullable=False+
-    id_upload: Mapped[int]         = mapped_column(ForeignKey("UPLOAD.id"),       nullable=True)
+    upload_id: Mapped[int]         = mapped_column(ForeignKey("UPLOAD.id"),       nullable=True)
 
     @declared_attr
     def upload(cls) -> Mapped["Upload"]:
-        return relationship(backref="file", foreign_keys=[cls.id_upload])
+        return relationship(backref="file", foreign_keys=[cls.upload_id])
 
     dl_count = Column(Integer, nullable=False, server_default='0')
 

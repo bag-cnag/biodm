@@ -5,7 +5,6 @@ from functools import wraps
 from inspect import getmembers, ismethod
 from typing import TYPE_CHECKING, List, Tuple, Callable, Awaitable, Set, ClassVar, Type, Any, Dict
 
-# import marshmallow as ma
 from marshmallow import fields, Schema
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -166,8 +165,6 @@ class Permission:
         )
 
 
-
-
 class PermissionLookupTables:
     """Holds lookup tables for group based access.
 
@@ -302,7 +299,8 @@ class PermissionLookupTables:
                     f"{verb}": fields.Nested("ListGroupSchema"),
                 }
             )
-        schema_columns['entity'] = fields.Nested(table.ctrl.schema)
+        # back reference - probably unnecessary.
+        # schema_columns['entity'] = fields.Nested(table.ctrl.schema)
 
         return type(
             f"AssoPerm{table.__name__.capitalize()}{fkey.capitalize()}Schema",
@@ -379,11 +377,11 @@ class PermissionLookupTables:
                 rel_name, NewAsso = cls._gen_perm_table(app, table, field_fullkey, verbs)
                 NewAssoSchema = cls._gen_perm_schema(table, field_fullkey, verbs)
 
-                # Set extra load field onto associated schema.
-                # Load fields only -> permissions are not dumped. # TODO: think about it.
-                table.ctrl.schema.load_fields.update(
-                    {rel_name: fields.Nested(NewAssoSchema)}
-                )
+                # Set extra field onto associated schema.
+                patch = {rel_name: fields.Nested(NewAssoSchema)}
+                table.ctrl.schema.fields.update(patch)
+                table.ctrl.schema.load_fields.update(patch)
+                table.ctrl.schema.dump_fields.update(patch)
 
                 # Set up look up table for incomming requests.
                 entry = {'table': NewAsso, 'from': tchain, 'verbs': verbs}

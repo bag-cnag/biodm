@@ -6,7 +6,7 @@ from sqlalchemy import Insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from biodm.components.table import Base, S3File
-from biodm.exceptions import FileNotUploadedError
+from biodm.exceptions import FileNotUploadedError, FileTooLargeError
 from biodm.managers import DatabaseManager, S3Manager
 from biodm.tables import Upload, UploadPart
 from biodm.utils.utils import utcnow, classproperty
@@ -61,6 +61,9 @@ class S3Service(CompositeEntityService):
         """
         assert isinstance(file, S3File) # mypy.
 
+        if file.size > self.s3.file_size_limit * 1024 ** 3:
+            raise FileTooLargeError(f"File exceeding {self.s3.file_size_limit} GB")
+
         file.upload = Upload()
         session.add(file.upload)
         await session.flush()
@@ -75,7 +78,7 @@ class S3Service(CompositeEntityService):
             for i in range(1, n_chunks+1):
                 parts.append(
                     UploadPart(
-                        id_upload=file.upload.id,
+                        upload_id=file.upload.id,
                         part_number=i,
                         form=str(
                             self.s3.create_upload_part(
@@ -87,11 +90,12 @@ class S3Service(CompositeEntityService):
         else:
             parts.append(
                 UploadPart(
-                    id_upload=file.upload.id,
+                    upload_id=file.upload.id,
                     form=str(
-                        self.s3.create_presigned_post( # TODO: use filesize.
+                        self.s3.create_presigned_post(
                             object_name=key,
-                            callback=self.post_callback(file)
+                            file_size=file.size,
+                            callback=self.post_callback(file),
                         )
                     )
                 )

@@ -8,9 +8,7 @@ from starlette.responses import Response, PlainTextResponse
 
 from biodm.components.controllers import Controller, HttpMethod# ResourceController
 from biodm.exceptions import ManifestError
-from biodm.tables import K8sInstance
 from biodm.components import K8sManifest
-from biodm.schemas import K8sinstanceSchema
 from biodm.utils.utils import json_response
 
 

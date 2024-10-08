@@ -30,6 +30,27 @@ In particular, if a relationship is one-armed (pointing in one direction only), 
 be possible to create a nested resource in the other direction.
 
 
+Special columns
+~~~~~~~~~~~~~~~
+
+Some special column will yield built-in behavior.
+
+
+**Tracking resource submitter: submitter_username**
+
+
+Setting up the following `foreign key`, in a table will automatically populate the field
+with requesting user's username creating the resource.
+
+
+.. code:: python
+
+    class MyTable(Base):
+        id:          Mapped[int]   = mapped_column(Integer(), primary_key=True)
+        ...
+        submitter_username:  Mapped[str] = mapped_column(ForeignKey("USER.username"), nullable=False)
+
+
 Schemas
 -------
 

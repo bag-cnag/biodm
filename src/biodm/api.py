@@ -8,7 +8,7 @@ from time import sleep
 from typing import Callable, List, Optional, Dict, Any, Type
 
 from apispec import APISpec
-from apispec.ext.marshmallow import MarshmallowPlugin
+# from apispec.ext.marshmallow import MarshmallowPlugin
 from starlette_apispec import APISpecSchemaGenerator
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -21,6 +21,7 @@ from sqlalchemy.exc import IntegrityError
 
 from biodm import Scope, config
 from biodm.basics import CORE_CONTROLLERS, K8sController
+from biodm.components.controllers.resourcecontroller import ResourceController
 from biodm.components.k8smanifest import K8sManifest
 from biodm.managers import DatabaseManager, KeycloakManager, S3Manager, K8sManager
 from biodm.components.controllers import Controller
@@ -29,6 +30,7 @@ from biodm.error import onerror
 from biodm.exceptions import RequestError
 from biodm.utils.security import AuthenticationMiddleware, PermissionLookupTables
 from biodm.utils.utils import to_it
+from biodm.utils.apispec import BDMarshmallowPlugin
 from biodm.tables import History, ListGroup, Upload, UploadPart
 from biodm import __version__ as CORE_VERSION
 
@@ -64,7 +66,7 @@ class HistoryMiddleware(BaseHTTPMiddleware):
         endpoint = str(request.url).rsplit(self.server_host, maxsplit=1)[-1]
         body = await request.body()
         entry = {
-            'username_user': user_id,
+            'user_username': user_id,
             'endpoint': endpoint,
             'method': request.method,
             'content': str(body) if body else ""
@@ -150,7 +152,7 @@ class Api(Starlette):
                 title=config.API_NAME,
                 version=config.API_VERSION,
                 openapi_version="3.0.0",
-                plugins=[MarshmallowPlugin()],
+                plugins=[BDMarshmallowPlugin()],
                 info={"description": "", "backend": "biodm", "backend_version": CORE_VERSION},
                 security=[{'Authorization': []}] # Same name as security_scheme arg below.
             )
@@ -191,7 +193,7 @@ class Api(Starlette):
         # self.add_exception_handler(DatabaseError, on_error)
 
     @property
-    def server_endpoint(self) -> str:
+    def server_endpoint(cls) -> str:
         """Server address, useful to compute callbacks."""
         return f"{config.SERVER_SCHEME}{config.SERVER_HOST}:{config.SERVER_PORT}/"
 

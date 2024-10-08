@@ -1,7 +1,7 @@
 """Utils."""
 import datetime as dt
 import json
-from functools import reduce, update_wrapper
+from functools import reduce, update_wrapper, wraps
 import operator
 from os import path, utime
 from typing import (
@@ -30,18 +30,28 @@ class aobject(object):
 
 class classproperty(Generic[_T]):
     """Descriptor combining @classmethod and @property behaviours for python v3.11+.
-    note: only implements the getter.
+    notes: only implements the getter and memoizes for subsequent calls.
 
-    Coutesy of: https://stackoverflow.com/a/76378416/6847689
+    Inspired by: https://stackoverflow.com/a/76378416/6847689
     """
-    def __init__(self, method: Callable[..., _T]):
+    def __init__(self, method: Callable[..., _T]) -> None:
         self.method = method
+        self.cache = {}
+
         update_wrapper(self, method) # type: ignore [misc]
 
-    def __get__(self, obj, cls=None) -> _T:
-        if cls is None:
-            cls = type(obj)
+    def __call__(self, cls):
+        """Not necessary but suppresses Sphinx errors."""
         return self.method(cls)
+
+    def __get__(self, slf, cls=None) -> _T:
+        if cls is None:
+            cls = type(slf)
+
+        if cls not in self.cache:
+            self.cache[cls] = self.method(cls)
+
+        return self.cache[cls]
 
 
 def utcnow() -> dt.datetime:

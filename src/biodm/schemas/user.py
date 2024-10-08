@@ -10,4 +10,4 @@ class UserSchema(Schema):
     firstName = String()
     lastName = String()
 
-    groups = List(Nested('GroupSchema', exclude=['users', 'children', 'parent']))
+    groups = List(Nested('GroupSchema', exclude=['users', 'children', 'parent'])) #'children', 'parent'

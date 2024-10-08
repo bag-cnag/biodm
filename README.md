@@ -28,6 +28,11 @@ BioDM is a fast, modular, stateless and asynchronous REST API framework with the
   - Login and token retrieval system
   - OpenAPI schema generation through [apispec](https://github.com/marshmallow-code/apispec)
 
+
+It sits on the **F**indability and **A**ccessibility part of the **F.A.I.R** principles,
+while remaining flexible for the remainder to be implemented.
+
+
 ## Quickstart
 ### Install
 ```bash

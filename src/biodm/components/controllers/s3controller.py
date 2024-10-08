@@ -21,6 +21,7 @@ from .resourcecontroller import ResourceController
 class S3Controller(ResourceController):
     """Controller for entities involving file management leveraging an S3Service."""
     svc: S3Service
+
     def __init__(
         self,
         app,

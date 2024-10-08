@@ -350,8 +350,8 @@ otherwise.
         "perm_files": {
             "write": {
                 "groups": [
-                    {"name": "genomics_team"},
-                    {"name": "IT_team"},
+                    {"path": "genomics_team"},
+                    {"path": "IT_team"},
                     {"..."}
                 ]
             },

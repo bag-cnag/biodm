@@ -41,12 +41,12 @@ class Dataset(Versioned, Base):
     # # supplementary_metadata = Column(JSONB, nullable=True)
 
     # # Foreign keys
-    username_user_contact: Mapped[int] = mapped_column(ForeignKey("USER.username"),    nullable=False)
+    username_contact: Mapped[str] = mapped_column(ForeignKey("USER.username"),    nullable=False)
     id_project:      Mapped[int]       = mapped_column(ForeignKey("PROJECT.id"),       nullable=False)
 
     # # relationships
     # policy - cascade="save-update, merge" ?
-    contact: Mapped["User"]       = relationship(foreign_keys=[username_user_contact])
+    contact: Mapped["User"]       = relationship(foreign_keys=[username_contact])
     tags:    Mapped[Set["Tag"]]   = relationship(secondary=asso_dataset_tag, uselist=True)
     project: Mapped["Project"]    = relationship(back_populates="datasets")
     files:   Mapped[List["File"]] = relationship(back_populates="dataset")
@@ -62,7 +62,6 @@ class Dataset(Versioned, Base):
     # )
 
     #  Special parameters.
-    # __permissions__ = (
-    #     # Flag many-to-entity (composition pattern) with permissions.
-    #     Permission(files, read=True, write=True, download=True),
-    # )
+    __permissions__ = (
+        Permission(files, read=True, write=True, download=True),
+    )

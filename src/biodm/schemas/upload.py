@@ -6,7 +6,7 @@ class PartsEtagSchema(Schema):
     ETag = String()
 
 class UploadPartSchema(Schema):
-    id_upload = Integer()
+    upload_id = Integer()
     part_number = Integer()
     form = String()
 
