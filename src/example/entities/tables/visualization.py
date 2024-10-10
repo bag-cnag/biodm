@@ -16,7 +16,7 @@ class Visualization(Base):
 
     # Foreign Keys
     user_username:   Mapped[str] = mapped_column(ForeignKey("USER.username"))
-    # id_project:      Mapped[int] = mapped_column(ForeignKey("PROJECT.id"))
+    # project_id:      Mapped[int] = mapped_column(ForeignKey("PROJECT.id"))
     id_file:         Mapped[int] = mapped_column(ForeignKey("FILE.id"))
     # id_k8sinstance:  Mapped[int] = mapped_column(ForeignKey("K8SINSTANCE.id"))
 

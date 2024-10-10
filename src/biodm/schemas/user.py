@@ -10,4 +10,8 @@ class UserSchema(Schema):
     firstName = String()
     lastName = String()
 
-    groups = List(Nested('GroupSchema', exclude=['users', 'children', 'parent'])) #'children', 'parent'
+    def dump_group(): # Delay import using a function.
+        from .group import GroupSchema
+        return GroupSchema(load_only=['users', 'children', 'parent'])
+
+    groups = List(Nested(dump_group))

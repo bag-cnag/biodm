@@ -2,12 +2,12 @@
 from abc import ABCMeta
 from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type, Set
 
-from sqlalchemy import select, delete, update, or_, func, inspect
+from sqlalchemy import select, delete, update, or_, func
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
-    load_only, selectinload, ONETOMANY, MANYTOONE, aliased, make_transient, Relationship
+    load_only, selectinload, joinedload, ONETOMANY, MANYTOONE, make_transient, Relationship
 )
 from sqlalchemy.sql import Insert, Delete, Select, Update
 from sqlalchemy.sql._typing import _DMLTableArgument
@@ -15,7 +15,7 @@ from sqlalchemy.sql.selectable import Alias
 
 from biodm import config
 from biodm.component import ApiService
-from biodm.components import Base#, Permission
+from biodm.components import Base
 from biodm.exceptions import (
     DataError, EndpointError, FailedRead, FailedDelete, ImplementionError, UpdateVersionedError, UnauthorizedError
 )
@@ -135,7 +135,7 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         return False
 
     def _login_required(self, verb: str) -> bool:
-        """Login required nested cases."""
+        """Login required static permissions."""
         if not hasattr(self.app, 'kc'):
             return False
 
@@ -145,7 +145,7 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         return False
 
     def _group_required(self, verb: str, groups: List[str]) -> bool:
-        """Group required nested cases"""
+        """Group required static permissions."""
         if not hasattr(self.app, 'kc'):
             return True
 
@@ -345,7 +345,7 @@ class UnaryEntityService(DatabaseService):
         self.table = table
         self.pk = set(table.col(name) for name in table.pk)
         # Take a snapshot at declaration time, convenient to isolate runtime permissions.
-        self._inst_relationships = inspect(self.table).mapper.relationships
+        self._inst_relationships = self.table.dyn_relationships()
         # Enable entity - service - table linkage so everything is conveniently available.
         setattr(table, 'svc', self)
         setattr(table.__table__, 'decl_class', table)
@@ -361,7 +361,7 @@ class UnaryEntityService(DatabaseService):
         :return: associated service
         :rtype: DatabaseService
         """
-        rels = self.table.relationships()
+        rels = self.table.relationships
         if key not in rels.keys():
             raise EndpointError(f"Invalid nested collection name {key}.")
 
@@ -371,8 +371,16 @@ class UnaryEntityService(DatabaseService):
         else:
             return rel.target.decl_class.svc
 
-    def _check_allowed_nested(self, fields, user_info: UserInfo) -> None:
-        nested, _ = partition(fields, lambda x: x in self.table.relationships())
+    def check_allowed_nested(self, fields: List[str], user_info: UserInfo) -> None:
+        """Checks whether all user requested fields are allowed by static permissions.
+
+        :param fields: list of fields
+        :type fields: List[str]
+        :param user_info: user info
+        :type user_info: UserInfo
+        :raises UnauthorizedError: protected nested field required without sufficient authorization
+        """
+        nested, _ = partition(fields, lambda x: x in self.table.relationships)
         for name in nested:
             target_svc = self._svc_from_rel_name(name)
             if target_svc._login_required("read") and not user_info.info:
@@ -383,8 +391,17 @@ class UnaryEntityService(DatabaseService):
             if not self._group_required("read", groups):
                 raise UnauthorizedError(f"Insufficient group privileges to retrieve {name}.")
 
-    def _takeout_unallowed_nested(self, fields, user_info: UserInfo) -> List[str]:
-        nested, fields = partition(fields, lambda x: x in self.table.relationships())
+    def takeout_unallowed_nested(self, fields: List[str], user_info: UserInfo) -> List[str]:
+        """Take out fields not allowed by static permissions.
+
+        :param fields: list of fields
+        :type fields: List[str]
+        :param user_info: user info
+        :type user_info: UserInfo
+        :return: List of fields with unallowed ones taken out.
+        :rtype: List[str]
+        """
+        nested, fields = partition(fields, lambda x: x in self.table.relationships)
 
         def ncheck(name):
             target_svc = self._svc_from_rel_name(name)
@@ -584,7 +601,7 @@ class UnaryEntityService(DatabaseService):
         :return: statement restricted on field list
         :rtype: Select
         """
-        nested, fields = partition(fields, lambda x: x in self.table.relationships())
+        nested, fields = partition(fields, lambda x: x in self.table.relationships)
         # Exclude hybrid properties.
         _, fields = partition(
             fields,
@@ -606,21 +623,18 @@ class UnaryEntityService(DatabaseService):
         ) if fields else stmt
 
         for n in nested:
-            relationship = self.table.relationships()[n]
+            relationship = self.table.relationships[n]
             target = relationship.target
             target = self.table if isinstance(target, Alias) else target.decl_class
 
             if relationship.direction in (MANYTOONE, ONETOMANY):
                 if target == self.table:
-                    alias = aliased(target)
-                    stmt = stmt.join_from(
-                        self.table,
-                        alias,
-                        onclause=unevalled_all([
-                            getattr(self.table, local.name) == getattr(alias, remote.name)
-                            for local, remote in relationship.local_remote_pairs
-                        ]),
-                        isouter=True
+                    stmt = stmt.options(
+                        joinedload(
+                            getattr(self.table, n)
+                            # TODO: possible optimization, see if there is a way to infer innerjoin.
+                            # innerjoin=relationship.direction is ONETOMANY -> Wrong
+                        )
                     )
                 else:
                     rel_stmt = select(target)
@@ -812,7 +826,7 @@ class UnaryEntityService(DatabaseService):
                 nf_stmt,
                 onclause=unevalled_all([
                     getattr(self.table, local.name) == getattr(nf_stmt.columns, remote.name)
-                    for local, remote in self.table.relationships()[nf_key].local_remote_pairs
+                    for local, remote in self.table.relationships[nf_key].local_remote_pairs
                 ])
             )
 
@@ -866,7 +880,7 @@ class CompositeEntityService(UnaryEntityService):
             and runtime, since those get populated later in Base.setup_permissions().
         """
         return {
-            key: rel for key, rel in self.table.relationships().items()
+            key: rel for key, rel in self.table.relationships.items()
             if key not in self._inst_relationships.keys()
         }
 
@@ -896,7 +910,7 @@ class CompositeEntityService(UnaryEntityService):
                 case Insert() | Update():
                     return ins.values(**mapping)
 
-        rels = self.table.relationships()
+        rels = self.table.relationships
         # Pack in session in kwargs for lower level calls.
         kwargs.update({'session': session})
 

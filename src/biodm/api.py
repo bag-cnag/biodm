@@ -147,19 +147,20 @@ class Api(Starlette):
             routes.extend(self.adopt_controller(K8sController, manifests=manifests))
 
         # Schema Generator.
+        SECURITY_SCHEME = "Authorization"
         self.apispec = APISpecSchemaGenerator(
             APISpec(
                 title=config.API_NAME,
                 version=config.API_VERSION,
                 openapi_version="3.0.0",
-                plugins=[BDMarshmallowPlugin()], # TODO: config.description ?
-                info={"description": "", "backend": "biodm", "backend_version": CORE_VERSION},
-                security=[{'Authorization': []}] # !! Same name as security_scheme arg below.
+                plugins=[BDMarshmallowPlugin()],
+                info={"description": config.API_DESCRIPTION, "backend": "biodm", "backend_version": CORE_VERSION},
+                security=[{SECURITY_SCHEME: []}]
             )
         )
-        self.apispec.spec.components.security_scheme("Authorization", {
+        self.apispec.spec.components.security_scheme(SECURITY_SCHEME, {
             "type": "http",
-            "name": "authorization",
+            "name": SECURITY_SCHEME.lower(),
             "in": "header",
             "scheme": "bearer",
             "bearerFormat": "JWT"

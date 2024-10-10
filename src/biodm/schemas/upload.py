@@ -1,4 +1,4 @@
-from marshmallow import Schema #, validate
+from marshmallow import Schema
 from marshmallow.fields import String, List, Nested, Integer
 
 class PartsEtagSchema(Schema):

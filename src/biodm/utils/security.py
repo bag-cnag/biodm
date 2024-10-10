@@ -299,6 +299,7 @@ class PermissionLookupTables:
                     f"{verb}": fields.Nested("ListGroupSchema"),
                 }
             )
+
         # back reference - probably unnecessary.
         # schema_columns['entity'] = fields.Nested(table.ctrl.schema)
 
@@ -326,7 +327,7 @@ class PermissionLookupTables:
         itable = origin
         table_chain = []
         for key in field_chain.split('.'):
-            rels = itable.relationships()
+            rels = itable.dyn_relationships()
             table_chain.append(itable)
             if not key in rels:
                 raise ImplementionError(

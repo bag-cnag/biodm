@@ -50,9 +50,14 @@ class Base(DeclarativeBase, AsyncAttrs):
         return cls.__name__.upper()
 
     @classmethod
-    def relationships(cls):
-        """Return table relationships."""
+    def dyn_relationships(cls):
+        """Return table relationships. dyn stands for dynamic -> use for setup."""
         return inspect(cls).mapper.relationships
+
+    @classproperty
+    def relationships(cls):
+        """Table relationships. Memoized result -> use for runtime."""
+        return cls.dyn_relationships()
 
     @classmethod
     def target_table(cls, name):

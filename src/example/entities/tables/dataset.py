@@ -41,12 +41,12 @@ class Dataset(Versioned, Base):
     # # supplementary_metadata = Column(JSONB, nullable=True)
 
     # # Foreign keys
-    username_contact: Mapped[str] = mapped_column(ForeignKey("USER.username"),    nullable=False)
-    id_project:      Mapped[int]       = mapped_column(ForeignKey("PROJECT.id"),       nullable=False)
+    contact_username: Mapped[str]  = mapped_column(ForeignKey("USER.username"),    nullable=False)
+    project_id:       Mapped[int]  = mapped_column(ForeignKey("PROJECT.id"),       nullable=False)
 
     # # relationships
     # policy - cascade="save-update, merge" ?
-    contact: Mapped["User"]       = relationship(foreign_keys=[username_contact])
+    contact: Mapped["User"]       = relationship(foreign_keys=[contact_username])
     tags:    Mapped[Set["Tag"]]   = relationship(secondary=asso_dataset_tag, uselist=True)
     project: Mapped["Project"]    = relationship(back_populates="datasets")
     files:   Mapped[List["File"]] = relationship(back_populates="dataset")

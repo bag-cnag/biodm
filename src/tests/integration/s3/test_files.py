@@ -14,7 +14,7 @@ CHUNK_SIZE = 100*1024**2
 project = {"name": "pr_test"}
 dataset = {
     "name": "ds_test",
-    "id_project": "1",
+    "project_id": "1",
     "contact": {
         "username": "u_test"
     },

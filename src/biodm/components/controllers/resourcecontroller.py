@@ -93,7 +93,7 @@ class ResourceController(EntityController):
 
         self.pk = set(self.table.pk)
         self.svc: UnaryEntityService = self._infer_svc()(app=self.app, table=self.table)
-        # Inst schema, and set custom registry for apispec.
+        # Inst schema, and set registry entry for apispec.
         schema_cls = schema if schema else self._infer_schema()
         self.__class__.schema = schema_cls(unknown=RAISE)
         register_runtime_schema(schema_cls, self.__class__.schema)
@@ -158,7 +158,9 @@ class ResourceController(EntityController):
             case "group":
                 return KCGroupService if hasattr(self.app, "kc") else CompositeEntityService
             case _:
-                return CompositeEntityService if self.table.relationships() else UnaryEntityService
+                if self.table.dyn_relationships():
+                    return CompositeEntityService
+                return UnaryEntityService
 
     def _infer_table(self) -> Type[Base]:
         """Try to find matching table in the registry."""
@@ -269,18 +271,20 @@ class ResourceController(EntityController):
         """
         fields = query_params.pop('fields', None)
         fields = fields.split(',') if fields else None
+
         if fields: # User input case, check and raise.
             fields = set(fields) | self.pk
             for field in fields:
                 if field not in self.schema.dump_fields.keys():
                     raise DataError(f"Requested field {field} does not exists.")
-            self.svc._check_allowed_nested(fields, user_info=user_info)
-        else: # Default case, permissive population.
+            self.svc.check_allowed_nested(fields, user_info=user_info)
+
+        else: # Default case, gracefully populate allowed fields.
             fields = [
                 k for k,v in self.schema.dump_fields.items()
                 if not no_depth or not (hasattr(v, 'nested') or hasattr(v, 'inner'))
             ]
-            fields = self.svc._takeout_unallowed_nested(fields, user_info=user_info)
+            fields = self.svc.takeout_unallowed_nested(fields, user_info=user_info)
         return fields
 
     async def create(self, request: Request) -> Response:
@@ -368,7 +372,7 @@ class ResourceController(EntityController):
         nested_attribute = request.path_params.get('attribute', None)
         ctrl, many = self, False
         if nested_attribute:
-            target_rel = self.table.relationships().get(nested_attribute, {})
+            target_rel = self.table.relationships.get(nested_attribute, {})
             if not target_rel or not getattr(target_rel, 'uselist', False):
                 raise EndpointError(
                     f"Unknown collection {nested_attribute} of {self.table.__class__.__name__}"

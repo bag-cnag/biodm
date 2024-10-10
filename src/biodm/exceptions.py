@@ -56,8 +56,10 @@ class UpdateVersionedError(RequestError):
 class FileNotUploadedError(RequestError):
     """Raised when trying to download a file that has not been uploaded yet."""
 
+
 class FileTooLargeError(RequestError):
     """Raised when trying to create a too large file."""
+
 
 class DataError(RequestError):
     """Raised when input data is incorrect."""
