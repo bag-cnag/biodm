@@ -1,0 +1,7 @@
+biodm.tables.history module
+===========================
+
+.. automodule:: biodm.tables.history
+   :members:
+   :undoc-members:
+   :show-inheritance:

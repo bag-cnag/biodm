@@ -1,0 +1,7 @@
+biodm.components.controllers.resourcecontroller module
+======================================================
+
+.. automodule:: biodm.components.controllers.resourcecontroller
+   :members:
+   :undoc-members:
+   :show-inheritance:
