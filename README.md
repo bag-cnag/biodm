@@ -23,12 +23,15 @@ BioDM is a fast, modular, stateless and asynchronous REST API framework with the
   - Storage leveraging _S3_ protocol
   - Jobs & Visualization leveraging _Kubernetes_ cluster
 
--> Act as an API gateway and log relevant data.
-
 - Also sets up essentials:
   - Liveness endpoint
   - Login and token retrieval system
   - OpenAPI schema generation through [apispec](https://github.com/marshmallow-code/apispec)
+
+
+It sits on the **F**indability and **A**ccessibility part of the **F.A.I.R** principles,
+while remaining flexible for the remainder to be implemented.
+
 
 ## Quickstart
 ### Install

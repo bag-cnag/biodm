@@ -100,7 +100,7 @@ services:
   swagger-ui:
     image: swaggerapi/swagger-ui:v5.17.14
     ports:
-      - "9080:8080"
+      - 9080:8080
     environment:
       API_URL: http://localhost:8000/schema
 
@@ -108,6 +108,7 @@ networks:
   biodm-dev:
     driver: bridge
     ipam:
+      driver: default
       config:
         - subnet: 10.10.0.0/16
           gateway: 10.10.0.1

@@ -139,32 +139,39 @@ def test_login_and_authenticated_with_groups(srv_endpoint, utils):
         f"'{user_with_groups['groups'][1]['path']}']") in response.text
 
 
-def test_create_group_with_parent(srv_endpoint, utils):
+def test_create_groups_with_parent(srv_endpoint, utils):
     parent = {
         "path": "parent"
     }
-    child = {
-        "path": f"{parent['path']}__child"
+    child1 = {
+        "path": f"{parent['path']}__child1"
+    }
+    child2 = {
+        "path": f"{parent['path']}__child2"
     }
     parent_response = requests.post(f'{srv_endpoint}/groups', data=utils.json_bytes(parent))
-    child_response = requests.post(f'{srv_endpoint}/groups', data=utils.json_bytes(child))
+    child_response = requests.post(f'{srv_endpoint}/groups', data=utils.json_bytes(child1))
+    child2_response = requests.post(f'{srv_endpoint}/groups', data=utils.json_bytes(child2))
 
     assert parent_response.status_code == 201
     assert child_response.status_code == 201
+    assert child2_response.status_code == 201
 
     json_child = json.loads(child_response.text)
-    assert json_child['path'] == child['path']
+    assert json_child['path'] == child1['path']
     assert json_child['parent']['path'] == parent['path']
 
-    search_parent = requests.get(f"{srv_endpoint}/groups?path={parent['path']}&fields=children")
+    search_parent = requests.get(f"{srv_endpoint}/groups?path={parent['path']}&fields=children,parent")
     assert search_parent.status_code == 200
 
     json_parent = json.loads(search_parent.text)
     assert len(json_parent) == 1
     json_parent = json_parent[0]
 
-    assert len(json_parent['children']) == 1
-    assert json_parent['children'][0]['path'] == child['path']
+    assert json_parent['parent'] is None
+    assert len(json_parent['children']) == 2
+    assert json_parent['children'][0]['path'] == child1['path']
+    assert json_parent['children'][1]['path'] == child2['path']
 
 
 def test_create_tag_no_auth(srv_endpoint, utils):

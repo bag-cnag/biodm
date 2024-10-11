@@ -22,7 +22,7 @@ metadata and relationships, to setup standard RESTful endpoints.
 
 Furthermore, it is providing a structure and toolkit in order to manage common Data Management problems
 such as: s3 protocol remote file storage, group based permissions access (on both resources and
-endpoints), resource versioning (coming up), cluster jobs and so on.
+endpoints), resource versioning, cluster jobs and so on.
 
 Moreover, the modular and flexible architecture allows you to easily extend base features for
 instance specific use cases.

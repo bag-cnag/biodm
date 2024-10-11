@@ -14,7 +14,7 @@ CHUNK_SIZE = 100*1024**2
 project = {"name": "pr_test"}
 dataset = {
     "name": "ds_test",
-    "id_project": "1",
+    "project_id": "1",
     "contact": {
         "username": "u_test"
     },
@@ -46,15 +46,15 @@ def test_create_project_dataset(srv_endpoint, utils):
 def test_create_file(srv_endpoint, utils, tmpdir):
     global small_file_path, small_file_upload_form, small_file
 
-    small_file_path = Path(tmpdir) / big_file_name
+    small_file_path = Path(tmpdir) / small_file_name
     utils.rand_file(small_file_path, ceil(0.5*CHUNK_SIZE)) # -> 1 chunk.
 
     small_file = {
         "filename": small_file_path.name.split('.')[0],
         "extension": small_file_path.name.split('.')[1],
         "size": small_file_path.stat().st_size,
-        "id_dataset": "1",
-        "version_dataset": "1",
+        "dataset_id": "1",
+        "dataset_version": "1",
     }
     response = requests.post(f"{srv_endpoint}/files", data=utils.json_bytes(small_file))
 
@@ -88,6 +88,54 @@ def test_file_upload():
         )
     assert "Uploaded." in response.text
     assert response.status_code == 201
+
+
+@pytest.mark.dependency(name="test_create_file")
+def test_create_oversized_file(srv_endpoint, utils, tmpdir):
+    small_file = {
+        "filename": small_file_path.name.split('.')[0],
+        "extension": small_file_path.name.split('.')[1],
+        "size": 1000*1024**3, # 1000GB
+        "dataset_id": "1",
+        "dataset_version": "1",
+    }
+    response = requests.post(f"{srv_endpoint}/files", data=utils.json_bytes(small_file))
+
+    assert response.status_code == 400
+    assert "File exceeding 100 GB" in response.text
+
+
+@pytest.mark.dependency(name="test_create_file")
+def test_create_and_upload_oversized_file(srv_endpoint, utils):
+    # create, with lower size.
+    small_file = {
+        "filename": small_file_path.name.split('.')[0],
+        "extension": small_file_path.name.split('.')[1],
+        "size": small_file_path.stat().st_size - 10,
+        "dataset_id": "1",
+        "dataset_version": "1",
+    }
+    response = requests.post(f"{srv_endpoint}/files", data=utils.json_bytes(small_file))
+    assert response.status_code == 201
+    # Get form.
+    json_rf = json.loads(response.text)
+    upload = json_rf['upload']
+    assert 'parts' in upload
+    assert len(upload['parts']) == 1
+    upload_form = upload['parts'][0]['form']
+    # Upload
+    postv4 = json.loads(upload_form.replace("'", "\""))
+    with open(small_file_path, 'rb') as f:
+        files = {'file': (small_file_name, f)}
+        response = requests.post(
+            postv4['url'],
+            data=postv4['fields'],
+            files=files,
+            verify=True,
+            allow_redirects=True
+        )
+    assert response.status_code == 400
+    assert "EntityTooLarge" in response.text
 
 
 @pytest.mark.dependency(name="test_file_upload")
@@ -139,8 +187,8 @@ def test_create_large_file(srv_endpoint, utils, tmpdir):
         "filename": big_file_path.name.split('.')[0],
         "extension": big_file_path.name.split('.')[1],
         "size": big_file_path.stat().st_size,
-        "id_dataset": "1",
-        "version_dataset": "1",
+        "dataset_id": "1",
+        "dataset_version": "1",
     }
 
     rf = requests.post(f"{srv_endpoint}/files", data=utils.json_bytes(big_file))

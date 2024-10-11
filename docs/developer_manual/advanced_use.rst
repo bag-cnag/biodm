@@ -122,7 +122,7 @@ insert/update statement building and execution.
             if not path.parent.parts == ('/',):
                 parent = await self.kc.get_group_by_path(str(path.parent))
                 if not parent:
-                    raise ValueError("Input path does not match any parent group.")
+                    raise DataError("Input path does not match any parent group.")
                 parent_id = parent['id']
 
             data['id'] = await self.kc.create_group(path.name, parent_id)
@@ -147,6 +147,7 @@ insert/update statement building and execution.
                     await User.svc.read_or_create(user, [group["path"]], [group["id"]],)
 
             # Send to DB
+            # Not passing user_info, which gives unrestricted permissions as check happens above.
             return await super().write(data, stmt_only=stmt_only, **kwargs)
 
 
@@ -316,7 +317,7 @@ A lot of that code has to do with retrieving async SQLAlchemy objects attributes
             key = await self.gen_key(file, session=session)
             parts.append(
                 UploadPart(
-                    id_upload=file.upload.id,
+                    upload_id=file.upload.id,
                     form=str(
                         self.s3.create_presigned_post(
                             object_name=key,
@@ -369,18 +370,26 @@ A lot of that code has to do with retrieving async SQLAlchemy objects attributes
             return url
 
         @DatabaseManager.in_session
-        async def _insert(self, stmt: Insert, session: AsyncSession) -> Base:
+        async def _insert(
+            self,
+            stmt: Insert,
+            user_info: UserInfo | None,
+            session: AsyncSession
+        ) -> (Any | None):
             """INSERT special case for file: populate url after getting entity id."""
-            file = await super()._insert(stmt, session=session)
+            file = await super()._insert(stmt, user_info=user_info, session=session)
             await self.gen_upload_form(file, session=session)
             return file
 
         @DatabaseManager.in_session
         async def _insert_list(
-            self, stmts: Sequence[Insert], session: AsyncSession
+            self,
+            stmts: Sequence[Insert],
+            user_info: UserInfo | None,
+            session: AsyncSession
         ) -> Sequence[Base]:
-            """INSERT many objects into the DB database."""
-            files = await super()._insert_list(stmts, session=session)
+            """INSERT many objects into the DB database, check token write permission before commit."""
+            files = await super()._insert_list(stmts, user_info=user_info, session=session)
             for file in files:
                 await self.gen_upload_form(file, session=session)
             return files

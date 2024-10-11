@@ -171,7 +171,7 @@ def test_filter_resource_with_fields(client):
     assert 'c' in json_response and json_response['c']['data'] == '1234'
 
 
-@pytest.mark.xfail(raises=ValueError)
+@pytest.mark.xfail(raises=exc.EndpointError)
 def test_filter_wrong_op(client):
     item = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'}, {'name': 'bap'},]}
 
@@ -179,7 +179,7 @@ def test_filter_wrong_op(client):
     client.get('/as?x.lt=2')
 
 
-@pytest.mark.xfail(raises=ValueError)
+@pytest.mark.xfail(raises=exc.EndpointError)
 def test_filter_wrong_wildcard(client):
     item = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'}, {'name': 'bap'},]}
 
@@ -187,7 +187,7 @@ def test_filter_wrong_wildcard(client):
     client.get('/as?y=2*')
 
 
-@pytest.mark.xfail(raises=ValueError)
+@pytest.mark.xfail(raises=exc.EndpointError)
 def test_filter_op_on_string(client):
     item = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'}, {'name': 'bap'},]}
 
@@ -245,7 +245,7 @@ def test_read_nested_collection(client):
         assert item['bs'][i]['name'] == b['name']
 
 
-@pytest.mark.xfail(raises=ValueError)
+@pytest.mark.xfail(raises=exc.EndpointError)
 def test_read_nested_collection_wrong_name(client):
     item = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'}, {'name': 'bap'},]}
 

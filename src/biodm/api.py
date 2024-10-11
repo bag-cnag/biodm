@@ -8,7 +8,7 @@ from time import sleep
 from typing import Callable, List, Optional, Dict, Any, Type
 
 from apispec import APISpec
-from apispec.ext.marshmallow import MarshmallowPlugin
+# from apispec.ext.marshmallow import MarshmallowPlugin
 from starlette_apispec import APISpecSchemaGenerator
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -21,14 +21,16 @@ from sqlalchemy.exc import IntegrityError
 
 from biodm import Scope, config
 from biodm.basics import CORE_CONTROLLERS, K8sController
+from biodm.components.controllers.resourcecontroller import ResourceController
 from biodm.components.k8smanifest import K8sManifest
 from biodm.managers import DatabaseManager, KeycloakManager, S3Manager, K8sManager
 from biodm.components.controllers import Controller
 from biodm.components.services import UnaryEntityService, CompositeEntityService
 from biodm.error import onerror
 from biodm.exceptions import RequestError
-from biodm.utils.security import AuthenticationMiddleware
+from biodm.utils.security import AuthenticationMiddleware, PermissionLookupTables
 from biodm.utils.utils import to_it
+from biodm.utils.apispec import BDMarshmallowPlugin
 from biodm.tables import History, ListGroup, Upload, UploadPart
 from biodm import __version__ as CORE_VERSION
 
@@ -64,7 +66,7 @@ class HistoryMiddleware(BaseHTTPMiddleware):
         endpoint = str(request.url).rsplit(self.server_host, maxsplit=1)[-1]
         body = await request.body()
         entry = {
-            'username_user': user_id,
+            'user_username': user_id,
             'endpoint': endpoint,
             'method': request.method,
             'content': str(body) if body else ""
@@ -145,19 +147,20 @@ class Api(Starlette):
             routes.extend(self.adopt_controller(K8sController, manifests=manifests))
 
         # Schema Generator.
+        SECURITY_SCHEME = "Authorization"
         self.apispec = APISpecSchemaGenerator(
             APISpec(
                 title=config.API_NAME,
                 version=config.API_VERSION,
                 openapi_version="3.0.0",
-                plugins=[MarshmallowPlugin()],
-                info={"description": "", "backend": "biodm", "backend_version": CORE_VERSION},
-                security=[{'Authorization': []}] # Same name as security_scheme arg below.
+                plugins=[BDMarshmallowPlugin()],
+                info={"description": config.API_DESCRIPTION, "backend": "biodm", "backend_version": CORE_VERSION},
+                security=[{SECURITY_SCHEME: []}]
             )
         )
-        self.apispec.spec.components.security_scheme("Authorization", {
+        self.apispec.spec.components.security_scheme(SECURITY_SCHEME, {
             "type": "http",
-            "name": "authorization",
+            "name": SECURITY_SCHEME.lower(),
             "in": "header",
             "scheme": "bearer",
             "bearerFormat": "JWT"
@@ -166,20 +169,21 @@ class Api(Starlette):
         # Final setup.
         self._declare_headless_services()
 
-        super().__init__(debug, routes, *args, **kwargs)
+        super().__init__(debug=debug, routes=routes, *args, **kwargs)
 
         # Middlewares -> Stack goes in reverse order.
         self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
         self.add_middleware(AuthenticationMiddleware)
+        if self.scope is Scope.PROD:
+            self.add_middleware(TimeoutMiddleware, timeout=config.SERVER_TIMEOUT)
+        # CORS last (i.e. first).
         self.add_middleware(
             CORSMiddleware, allow_credentials=True,
-            allow_origins=self._network_ips + ["http://localhost:9080"], # + swagger-ui.
+            allow_origins=["*"], # self._network_ips + ["http://localhost:9080"], # + swagger-ui.
             allow_methods=["*"],
             allow_headers=["*"],
             max_age=config.CACHE_MAX_AGE
         )
-        if self.scope is Scope.PROD:
-            self.add_middleware(TimeoutMiddleware, timeout=config.SERVER_TIMEOUT)
 
         # Event handlers
         self.add_event_handler("startup", self.onstart)
@@ -188,10 +192,9 @@ class Api(Starlette):
         # Error handlers
         self.add_exception_handler(RequestError, onerror)
         # self.add_exception_handler(DatabaseError, on_error)
-        # self.add_exception_handler(Exception, on_error)
 
     @property
-    def server_endpoint(self) -> str:
+    def server_endpoint(cls) -> str:
         """Server address, useful to compute callbacks."""
         return f"{config.SERVER_SCHEME}{config.SERVER_HOST}:{config.SERVER_PORT}/"
 
@@ -256,8 +259,9 @@ class Api(Starlette):
 
     async def onstart(self) -> None:
         """server start event.
-
+        - Setup permission lookup tables
         - Reinitialize DB in DEBUG mode.
         """
+        PermissionLookupTables.setup_permissions(self)
         if Scope.DEBUG in self.scope:
             await self.db.init_db()

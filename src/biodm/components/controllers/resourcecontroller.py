@@ -1,7 +1,8 @@
 """Controller class for Tables acting as a Resource."""
 
 from __future__ import annotations
-from functools import partial, wraps
+from functools import partial
+from inspect import getmembers, ismethod
 from types import MethodType
 from typing import TYPE_CHECKING, Callable, List, Set, Any, Dict, Type
 
@@ -22,6 +23,9 @@ from biodm.components.services import (
     KCUserService
 )
 from biodm.exceptions import (
+    DataError,
+    EndpointError,
+    ImplementionError,
     InvalidCollectionMethod,
     PayloadEmptyError,
     PartialIndex,
@@ -29,6 +33,7 @@ from biodm.exceptions import (
 )
 from biodm.utils.security import UserInfo
 from biodm.utils.utils import json_response
+from biodm.utils.apispec import register_runtime_schema, process_apispec_docstrings
 from biodm.components import Base
 from .controller import HttpMethod, EntityController
 
@@ -88,7 +93,10 @@ class ResourceController(EntityController):
 
         self.pk = set(self.table.pk)
         self.svc: UnaryEntityService = self._infer_svc()(app=self.app, table=self.table)
-        self.__class__.schema = (schema if schema else self._infer_schema())(unknown=RAISE)
+        # Inst schema, and set registry entry for apispec.
+        schema_cls = schema if schema else self._infer_schema()
+        self.__class__.schema = schema_cls(unknown=RAISE)
+        register_runtime_schema(schema_cls, self.__class__.schema)
         self._infuse_schema_in_apispec_docstrings()
 
     @staticmethod
@@ -107,112 +115,22 @@ class ResourceController(EntityController):
 
     def _infuse_schema_in_apispec_docstrings(self):
         """Substitute endpoint documentation template bits with adapted ones for this resource.
-
-        Essentially handling APIspec/Marshmallow/OpenAPISchema support for abstract endpoints.
-
-        Current patterns for abstract documentation:
-        - Marshmallow Schema |
-            schema: Schema -> schema: self.Schema.__class__.__name__
-        - key Attributes |
-            - in: path
-              name: id
-            ->
-            List of table primary keys, with their description from marshmallow schema if any.
-        - field conditions |
-            - in: query
-              name: field_conditions
-            ->
-            List of available fields to set conditions on.
+        Handling APIspec/Marshmallow/OpenAPISchema support for abstract endpoints.
         """
-        def process_apispec_docstrings(self, abs_doc):
-            # Use intance schema.
-            abs_doc = abs_doc.replace(
-                'schema: Schema', f"schema: {self.schema.__class__.__name__}"
+        for method, fct in getmembers(
+            self, predicate=lambda x: ( # Use typing anotations to identify endpoints.
+                ismethod(x) and hasattr(x, '__annotations__') and
+                x.__annotations__.get('request', '') == 'Request' and
+                x.__annotations__.get('return', '') == 'Response'
             )
-
-            # Template replacement #1: path key.
-            path_key = []
-            for key in self.pk:
-                attr = []
-                attr.append("- in: path")
-                attr.append(f"name: {key}")
-                field = self.schema.declared_fields[key]
-                desc  = field.metadata.get("description", None)
-                attr.append("description: " + (desc or f"{self.resource} {key}"))
-                path_key.append(attr)
-
-            # Template replacement #2: field conditions.
-            field_conditions = []
-            for col in self.table.__table__.columns:
-                condition = []
-                condition.append("- in: query")
-                condition.append(f"name: {col.name}")
-                if col.type.python_type == str:
-                    condition.append(
-                        "description: text - key=val | key=pattern "
-                        "where pattern may contain '*' for wildcards"
-                    )
-                elif col.type.python_type in (int, float):
-                    condition.append(
-                        "description: numeric - key=val | key=val1,val2.. | key.op(val) "
-                        "for op in (le|lt|ge|gt)"
-                    )
-                else:
-                    condition.append(f"description: {self.resource} {col.name}")
-                field_conditions.append(condition)
-
-            # Split.
-            doc = abs_doc.split('---')
-            if len(doc) > 1:
-                sphinxdoc, apispec = doc
-                apispec = apispec.split('\n')
-                flattened = []
-                # Search and replace templates.
-                for i in range(len(apispec)):
-                    if '- in: path' in apispec[i-1] and 'name: id' in apispec[i]:
-                        # Work out same indentation level in order not to break the yaml.
-                        indent = len(apispec[i-1].split('- in: path')[0])
-                        for path_attribute in path_key:
-                            path_attribute[0] = " " * indent + path_attribute[0]
-                            path_attribute[1] = " " * (indent+2) + path_attribute[1]
-                            path_attribute[2] = " " * (indent+2) + path_attribute[2]
-                            flattened.extend(path_attribute)
-                        break
-                if flattened:
-                    apispec = apispec[:i-1] + flattened + apispec[i+1:]
-
-                flattened = []
-                for i in range(len(apispec)):
-                    if '- in: query' in apispec[i-1] and 'name: fields_conditions' in apispec[i]:
-                        indent = len(apispec[i-1].split('- in: query')[0])
-                        flattened = []
-                        for condition in field_conditions:
-                            condition[0] = " " * indent + condition[0]
-                            condition[1] = " " * (indent+2) + condition[1]
-                            condition[2] = " " * (indent+2) + condition[2]
-                            flattened.extend(condition)
-                        break
-                if flattened:
-                    apispec = apispec[:i-1] + flattened + apispec[i+1:]
-                # Join.
-                abs_doc = sphinxdoc + "\n---\n" + "\n".join(apispec)
-            return abs_doc
-
-        for method in dir(self):
-            if not method.startswith('_'):
-                fct = getattr(self, method, {})
-                if hasattr(fct, '__annotations__'):
-                    if ( # Use typing anotations to identify endpoints.
-                            fct.__annotations__.get('request', '') == 'Request' and
-                            fct.__annotations__.get('return', '') == 'Response'
-                        ):
-                            # Replace with processed docstrings.
-                            setattr(self, method, MethodType(
-                                    ResourceController.replace_method_docstrings(
-                                        method, process_apispec_docstrings(self, fct.__doc__ or "")
-                                    ), self
-                                )
-                            )
+        ):
+            # Replace with processed docstrings.
+            setattr(self, method, MethodType(
+                    ResourceController.replace_method_docstrings(
+                        method, process_apispec_docstrings(self, fct.__doc__ or "")
+                    ), self
+                )
+            )
 
     def _infer_resource_name(self) -> str:
         """Infer entity name from controller name."""
@@ -240,7 +158,9 @@ class ResourceController(EntityController):
             case "group":
                 return KCGroupService if hasattr(self.app, "kc") else CompositeEntityService
             case _:
-                return CompositeEntityService if self.table.relationships() else UnaryEntityService
+                if self.table.dyn_relationships():
+                    return CompositeEntityService
+                return UnaryEntityService
 
     def _infer_table(self) -> Type[Base]:
         """Try to find matching table in the registry."""
@@ -249,7 +169,7 @@ class ResourceController(EntityController):
 
         if self.resource in reg: # Weakref.
             return reg[self.resource]()
-        raise ValueError(
+        raise ImplementionError(
             f"{self.__class__.__name__} could not find {self.resource} Table."
             " Alternatively if you are following another naming convention you should "
             "provide the declarative_class as 'table' argument when defining a new controller."
@@ -264,7 +184,7 @@ class ResourceController(EntityController):
                 return res[0]
             return res
         except RegistryError as e:
-            raise ValueError(
+            raise ImplementionError(
                 f"{self.__class__.__name__} could not find {isn} Schema. "
                 "Alternatively if you are following another naming convention you should "
                 "provide the schema class as 'schema' argument when defining a new controller"
@@ -317,7 +237,7 @@ class ResourceController(EntityController):
             # Try to generate a where condition that will cast values into their python type.
             _ = self.svc.gen_cond(pk_val)
         except ValueError as e:
-            raise ValueError("Parameter type not matching key.") from e
+            raise DataError("Parameter type not matching key.") from e
 
         return pk_val
 
@@ -351,18 +271,20 @@ class ResourceController(EntityController):
         """
         fields = query_params.pop('fields', None)
         fields = fields.split(',') if fields else None
+
         if fields: # User input case, check and raise.
             fields = set(fields) | self.pk
             for field in fields:
                 if field not in self.schema.dump_fields.keys():
-                    raise ValueError(f"Requested field {field} does not exists.")
-            self.svc._check_allowed_nested(fields, user_info=user_info)
-        else: # Default case, permissive population.
+                    raise DataError(f"Requested field {field} does not exists.")
+            self.svc.check_allowed_nested(fields, user_info=user_info)
+
+        else: # Default case, gracefully populate allowed fields.
             fields = [
                 k for k,v in self.schema.dump_fields.items()
                 if not no_depth or not (hasattr(v, 'nested') or hasattr(v, 'inner'))
             ]
-            fields = self.svc._takeout_unallowed_nested(fields, user_info=user_info)
+            fields = self.svc.takeout_unallowed_nested(fields, user_info=user_info)
         return fields
 
     async def create(self, request: Request) -> Response:
@@ -437,7 +359,7 @@ class ResourceController(EntityController):
                 e.g. /datasets/1_1?name,description,contact,files
           - in: path
             name: attribute
-            description: Optional, nested collection name.
+            description: nested collection name
         responses:
             200:
                 description: Found matching item
@@ -450,9 +372,9 @@ class ResourceController(EntityController):
         nested_attribute = request.path_params.get('attribute', None)
         ctrl, many = self, False
         if nested_attribute:
-            target_rel = self.table.relationships().get(nested_attribute, {})
+            target_rel = self.table.relationships.get(nested_attribute, {})
             if not target_rel or not getattr(target_rel, 'uselist', False):
-                raise ValueError(
+                raise EndpointError(
                     f"Unknown collection {nested_attribute} of {self.table.__class__.__name__}"
                 )
             # Serialization and field extraction done by target controller.
@@ -518,26 +440,21 @@ class ResourceController(EntityController):
 
         # Should be a single record.
         if not isinstance(validated_data, dict):
-            raise ValueError("Attempt at updating a single resource with multiple values.")
+            raise DataError("Attempt at updating a single resource with multiple values.")
 
         # Plug in pk into the dict.
         validated_data.update(dict(zip(self.pk, pk_val))) # type: ignore [assignment]
 
-        try:
-            return json_response(
-                data=await self.svc.write(
-                    data=validated_data,
-                    stmt_only=False,
-                    user_info=request.state.user_info,
-                    serializer=partial(self.serialize, many=isinstance(validated_data, list)),
-                ),
-                status_code=201,
-            )
-        except IntegrityError as ie:
-            if 'UNIQUE' in ie.args[0] and 'version' in ie.args[0]: # Versioned case.
-                raise UpdateVersionedError(
-                    "Attempt at updating versioned resources via POST detected"
-                )
+        return json_response(
+            data=await self.svc.write(
+                data=validated_data,
+                stmt_only=False,
+                user_info=request.state.user_info,
+                serializer=partial(self.serialize, many=isinstance(validated_data, list)),
+            ),
+            status_code=201,
+        )
+
 
     async def delete(self, request: Request) -> Response:
         """Delete resource.
@@ -635,7 +552,7 @@ class ResourceController(EntityController):
 
         assert not isinstance(validated_data, list)
         if any([pk in validated_data.keys() for pk in self.pk]):
-            raise ValueError("Cannot edit versioned resource primary key.")
+            raise DataError("Cannot edit versioned resource primary key.")
 
         fields = self._extract_fields(
             dict(request.query_params),

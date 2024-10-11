@@ -10,8 +10,9 @@ class FileSchema(Schema):
 
     ready = Bool(dump_only=True)
     dl_count = Integer(dump_only=True)
-    id_dataset = Integer()
-    version_dataset = Integer()
+    dataset_id = Integer()
+    dataset_version = Integer()
 
+    # submitter_username = String()
     upload = Nested("UploadSchema", dump_only=True)
     # dataset = Nested('DatasetSchema') # , load_only=True

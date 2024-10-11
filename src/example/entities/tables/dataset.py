@@ -3,9 +3,11 @@ from typing import List, Set # Optional,
 from sqlalchemy import BIGINT, text, func, Column, Identity, Integer, Sequence, SmallInteger, ForeignKey, String, PrimaryKeyConstraint, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 
-from biodm.components.table import Base, Permission, Versioned
+from biodm.components.table import Base, Versioned
 from biodm.tables import Group, User
 from biodm import config
+from biodm.utils.security import Permission
+
 from .asso import asso_dataset_tag
 from .file import File
 from .tag import Tag
@@ -39,12 +41,12 @@ class Dataset(Versioned, Base):
     # # supplementary_metadata = Column(JSONB, nullable=True)
 
     # # Foreign keys
-    username_user_contact: Mapped[int] = mapped_column(ForeignKey("USER.username"),    nullable=False)
-    id_project:      Mapped[int]       = mapped_column(ForeignKey("PROJECT.id"),       nullable=False)
+    contact_username: Mapped[str]  = mapped_column(ForeignKey("USER.username"),    nullable=False)
+    project_id:       Mapped[int]  = mapped_column(ForeignKey("PROJECT.id"),       nullable=False)
 
     # # relationships
     # policy - cascade="save-update, merge" ?
-    contact: Mapped["User"]       = relationship(foreign_keys=[username_user_contact])
+    contact: Mapped["User"]       = relationship(foreign_keys=[contact_username])
     tags:    Mapped[Set["Tag"]]   = relationship(secondary=asso_dataset_tag, uselist=True)
     project: Mapped["Project"]    = relationship(back_populates="datasets")
     files:   Mapped[List["File"]] = relationship(back_populates="dataset")
@@ -59,8 +61,7 @@ class Dataset(Versioned, Base):
     #     PrimaryKeyConstraint('id', 'version', name='pk_dataset'),
     # )
 
-    # Special parameters.
+    #  Special parameters.
     __permissions__ = (
-        # Flag many-to-entity (composition pattern) with permissions. 
         Permission(files, read=True, write=True, download=True),
     )

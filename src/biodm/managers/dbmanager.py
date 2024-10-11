@@ -74,7 +74,6 @@ class DatabaseManager(ApiManager):
     async def init_db(self) -> None:
         """Drop all tables and create them."""
         from biodm.components import Base
-        Base.setup_permissions(self.app)
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)

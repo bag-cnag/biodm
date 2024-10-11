@@ -57,8 +57,16 @@ class FileNotUploadedError(RequestError):
     """Raised when trying to download a file that has not been uploaded yet."""
 
 
-class MissingDataError(RequestError):
-    """Raised when data is missing for resource creation."""
+class FileTooLargeError(RequestError):
+    """Raised when trying to create a too large file."""
+
+
+class DataError(RequestError):
+    """Raised when input data is incorrect."""
+
+
+class EndpointError(RequestError):
+    """Raised when an endpoint is reached with wrong attributes, parameters and so on."""
 
 
 ## Routing

@@ -95,7 +95,7 @@ project2 = {
 
 dataset1 = {
     "name": "ds_test",
-    "id_project": "1",
+    "project_id": "1",
     "contact": {
         "username": user1['username']
     },
@@ -116,7 +116,7 @@ dataset1 = {
 
 dataset2 = {
     "name": "ds_test_parent",
-    "id_project": "2",
+    "project_id": "2",
     "contact": {
         "username": user2['username']
     },
@@ -213,7 +213,7 @@ def test_read_dataset_no_read_perm(srv_endpoint):
     assert response2.status_code == 200
     assert len(json_response1) == 1
     assert str(json_response1[0]['name']) == str(dataset1['name'])
-    assert str(json_response1[0]['id_project']) == str(dataset1['id_project'])
+    assert str(json_response1[0]['project_id']) == str(dataset1['project_id'])
     assert json_response2 == []
 
 

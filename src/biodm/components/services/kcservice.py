@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Any, Dict, List
 from pathlib import Path
 
-from biodm.exceptions import MissingDataError
+from biodm.exceptions import DataError
 from biodm.managers import KeycloakManager
 from biodm.tables import Group, User
 from biodm.utils.security import UserInfo
@@ -68,7 +68,7 @@ class KCGroupService(KCService):
         if not path.parent.parts == ('/',):
             parent = await self.kc.get_group_by_path(str(path.parent))
             if not parent:
-                raise ValueError("Input path does not match any parent group.")
+                raise DataError("Input path does not match any parent group.")
             parent_id = parent['id']
 
         data['id'] = await self.kc.create_group(path.name, parent_id)
@@ -133,7 +133,7 @@ class KCUserService(KCService):
             await self.sync(user, data)
 
         elif not data.get('password', None):
-            raise MissingDataError("Missing password in order to create User.")
+            raise DataError("Missing password in order to create User.")
 
         else:
             data['id'] = await self.kc.create_user(data, groups)

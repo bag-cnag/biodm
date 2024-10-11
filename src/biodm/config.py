@@ -8,6 +8,7 @@ except FileNotFoundError:
 # Server.
 API_NAME        = config("API_NAME",        cast=str,  default="biodm_instance")
 API_VERSION     = config("API_VERSION",     cast=str,  default="0.1.0")
+API_DESCRIPTION = config("API_DESCRIPTION", cast=str,  default="")
 SERVER_SCHEME   = config("SERVER_SCHEME",   cast=str,  default="http://")
 SERVER_HOST     = config("SERVER_HOST",     cast=str,  default="0.0.0.0")
 SERVER_PORT     = config("SERVER_PORT",     cast=int,  default=8000)
@@ -44,7 +45,6 @@ KC_JWT_OPTIONS     = config("KC_JWT_OPTIONS",     cast=dict,  default={'verify_e
                                                                        'verify_aud': False})
 
 # Kubernetes.
-
 K8_IP         = config("K8_IP",         cast=str,  default=None)
 K8_PORT       = config("K8_PORT",       cast=str,  default="8443")
 K8_HOST       = config("K8_HOST",       cast=str,  default=None)

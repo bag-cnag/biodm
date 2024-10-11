@@ -6,7 +6,7 @@ from sqlalchemy import Insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from biodm.components.table import Base, S3File
-from biodm.exceptions import FileNotUploadedError
+from biodm.exceptions import FileNotUploadedError, FileTooLargeError
 from biodm.managers import DatabaseManager, S3Manager
 from biodm.tables import Upload, UploadPart
 from biodm.utils.utils import utcnow, classproperty
@@ -61,6 +61,9 @@ class S3Service(CompositeEntityService):
         """
         assert isinstance(file, S3File) # mypy.
 
+        if file.size > self.s3.file_size_limit * 1024 ** 3:
+            raise FileTooLargeError(f"File exceeding {self.s3.file_size_limit} GB")
+
         file.upload = Upload()
         session.add(file.upload)
         await session.flush()
@@ -75,7 +78,7 @@ class S3Service(CompositeEntityService):
             for i in range(1, n_chunks+1):
                 parts.append(
                     UploadPart(
-                        id_upload=file.upload.id,
+                        upload_id=file.upload.id,
                         part_number=i,
                         form=str(
                             self.s3.create_upload_part(
@@ -87,27 +90,38 @@ class S3Service(CompositeEntityService):
         else:
             parts.append(
                 UploadPart(
-                    id_upload=file.upload.id,
+                    upload_id=file.upload.id,
                     form=str(
                         self.s3.create_presigned_post(
                             object_name=key,
-                            callback=self.post_callback(file)
+                            file_size=file.size,
+                            callback=self.post_callback(file),
                         )
                     )
                 )
             )
 
     @DatabaseManager.in_session
-    async def _insert(self, stmt: Insert, session: AsyncSession) -> (Any | None):
+    async def _insert(
+        self,
+        stmt: Insert,
+        user_info: UserInfo | None,
+        session: AsyncSession
+    ) -> (Any | None):
         """INSERT special case for file: populate url after getting entity id."""
-        file = await super()._insert(stmt, session=session)
+        file = await super()._insert(stmt, user_info=user_info, session=session)
         await self.gen_upload_form(file, session=session)
         return file
 
     @DatabaseManager.in_session
-    async def _insert_list(self, stmts: Sequence[Insert], session: AsyncSession) -> Sequence[Base]:
+    async def _insert_list(
+        self,
+        stmts: Sequence[Insert],
+        user_info: UserInfo | None,
+        session: AsyncSession
+    ) -> Sequence[Base]:
         """INSERT many objects into the DB database, check token write permission before commit."""
-        files = await super()._insert_list(stmts, session=session)
+        files = await super()._insert_list(stmts, user_info=user_info, session=session)
         for file in files:
             await self.gen_upload_form(file, session=session)
         return files
