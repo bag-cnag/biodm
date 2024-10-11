@@ -230,12 +230,14 @@ class PermissionLookupTables:
             f"{pk}_{table.__name__.lower()}": Column(primary_key=True)
             for pk in table.pk
         }
+        
         columns['entity'] = relationship(
             table,
             backref=backref(
                 rel_name,
                 uselist=False,
-                cascade="all, delete-orphan" # important.
+                # all\{refresh-expire} + delete-orphan: important.
+                cascade="save-update, merge, delete, expunge, delete-orphan"
             ),
             foreign_keys="[" + ",".join(
                 [
@@ -244,7 +246,7 @@ class PermissionLookupTables:
                 ]
             ) + "]",
             passive_deletes=True,
-            single_parent=True, # also.
+            single_parent=True,
         )
         columns['__table_args__'] = (
             ForeignKeyConstraint(
@@ -263,7 +265,9 @@ class PermissionLookupTables:
             columns.update(
                 {
                     f"id_{verb}": c,
-                    f"{verb}": relationship(ListGroup, foreign_keys=[c])
+                    f"{verb}": relationship(
+                        ListGroup, cascade="save-update, merge, delete", foreign_keys=[c]
+                    )
                 }
             )
 

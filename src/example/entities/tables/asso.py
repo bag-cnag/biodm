@@ -7,10 +7,10 @@ from biodm.components.table import Base
 asso_dataset_tag = Table(
     "ASSO_DATASET_TAG",
     Base.metadata,
-    Column("id_dataset",                                       primary_key=True),
-    Column("version_dataset",                                  primary_key=True),
-    Column("name_tag",          ForeignKey("TAG.name"),        primary_key=True),
+    Column("dataset_id",                                       primary_key=True),
+    Column("dataset_version",                                  primary_key=True),
+    Column("tag_name",          ForeignKey("TAG.name"),        primary_key=True),
     ForeignKeyConstraint(
-        ['id_dataset', 'version_dataset'], ['DATASET.id', 'DATASET.version']
+        ['dataset_id', 'dataset_version'], ['DATASET.id', 'DATASET.version']
     )
 )

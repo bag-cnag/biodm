@@ -9,4 +9,4 @@ class GroupSchema(Schema):
 
     users = List(Nested(lambda: UserSchema(load_only=['groups'])))
     children = List(Nested(lambda: GroupSchema(load_only=['users', 'children', 'parent'])))
-    parent = Nested(lambda: GroupSchema(load_only=['users', 'children', 'parent']))
+    parent = Nested('GroupSchema', dump_only=True)

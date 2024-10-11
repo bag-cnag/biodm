@@ -42,7 +42,7 @@ class FileController(S3Controller):
         """
         vis_svc = tables.Visualization.svc
 
-        vis_data = {'id_file': int(request.path_params.get('id'))}
+        vis_data = {'file_id': int(request.path_params.get('id'))}
 
         user_info = await UserInfo(request)
 

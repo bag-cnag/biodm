@@ -11,7 +11,7 @@ Tables
 ------
 
 In principle any valid ``SQLALchemy`` table is accepted by ``BioDM``. Yet,
-depending how you configure it, it shall adopt varying behaviours.
+depending how you configure it, it shall adopt varying behaviors.
 
 SQLAlchemy 2.0 ORM API is a really nice and convenient piece of technology.
 However, it does not natively support trees of entities (nested dictionaries).
@@ -151,20 +151,21 @@ circular or self referencial dependencies.
         # If import order allows it: you may pass lambdas.
         users = List(Nested(lambda: UserSchema(load_only=['groups'])))
         children = List(Nested(lambda: GroupSchema(load_only=['users', 'children', 'parent'])))
-        parent = Nested(lambda: GroupSchema(load_only=['users', 'children', 'parent']))
+        # Make sense to not create parents from children.
+        parent = Nested('GroupSchema', dump_only=True)
 
 
-The example above is demonstrating how to allow loading relationships while limiting
+The example above is demonstrating how to allow loading sensible relationships while limiting
 dumping depth to one. In other words, to have a resource output its attached related resources,
 with their own fields but not their subsequent related resources.
 
-This is the **highly recommended** approach, both to avoid critical errorw while using ``BioDM`` and
-following RESTful principles.
+This is the **highly recommended** approach, both to avoid critical errors while using ``BioDM`` and
+follow RESTful principles.
 
 
 .. warning::
 
-    Marshmallow provides other primitives such as ``only``, ``exclude`` and ``dump_only`` that can be
+    Marshmallow provides other primitives such as ``only`` and ``exclude`` that can be
     used to do this restriction.
 
     However, be careful with your dumping configuration in order not to impede a Schema's
@@ -178,3 +179,17 @@ following RESTful principles.
 
     Setting "metadata.description" like for path in our example example above, is used for
     automatic apispec docstrings generation.
+
+
+Duplicate Schemas
+~~~~~~~~~~~~~~~~~
+
+While setting your nested flags policy, you may get a notice from apispec in the form or a
+`UserWarning` that multiple schemas got resolved to the same name. In that case it will generate
+other schemas with incrementing trailing numbers in the name (Group1, User1 ...).
+
+It is a normal behavior as per the OpenAPI specification, partials schemas are considered others.
+However, it may not help your client to automatically discover your app,
+with careful configuration it is possible to avoid the case.
+
+If that proves to be necessary, a future version of ``BioDM`` may implement a name resolver.

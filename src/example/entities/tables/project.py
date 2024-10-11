@@ -13,9 +13,9 @@ if TYPE_CHECKING:
 
 
 class Project(Base):
-    id = Column(Integer, nullable=False, primary_key=True)
-    name = Column(String(50), nullable=False)
-    description = Column(String, nullable=True)
+    id          = Column(Integer,    primary_key=True)
+    name        = Column(String(50), nullable=False)
+    description = Column(String,     nullable=True)
 
     # created_at = Column(TIMESTAMP(timezone=True), server_default=text('now()'))
     # updated_at = Column(TIMESTAMP(timezone=True), server_default=text('now()'))

@@ -53,8 +53,8 @@ def test_create_file(srv_endpoint, utils, tmpdir):
         "filename": small_file_path.name.split('.')[0],
         "extension": small_file_path.name.split('.')[1],
         "size": small_file_path.stat().st_size,
-        "id_dataset": "1",
-        "version_dataset": "1",
+        "dataset_id": "1",
+        "dataset_version": "1",
     }
     response = requests.post(f"{srv_endpoint}/files", data=utils.json_bytes(small_file))
 
@@ -96,8 +96,8 @@ def test_create_oversized_file(srv_endpoint, utils, tmpdir):
         "filename": small_file_path.name.split('.')[0],
         "extension": small_file_path.name.split('.')[1],
         "size": 1000*1024**3, # 1000GB
-        "id_dataset": "1",
-        "version_dataset": "1",
+        "dataset_id": "1",
+        "dataset_version": "1",
     }
     response = requests.post(f"{srv_endpoint}/files", data=utils.json_bytes(small_file))
 
@@ -112,8 +112,8 @@ def test_create_and_upload_oversized_file(srv_endpoint, utils):
         "filename": small_file_path.name.split('.')[0],
         "extension": small_file_path.name.split('.')[1],
         "size": small_file_path.stat().st_size - 10,
-        "id_dataset": "1",
-        "version_dataset": "1",
+        "dataset_id": "1",
+        "dataset_version": "1",
     }
     response = requests.post(f"{srv_endpoint}/files", data=utils.json_bytes(small_file))
     assert response.status_code == 201
@@ -187,8 +187,8 @@ def test_create_large_file(srv_endpoint, utils, tmpdir):
         "filename": big_file_path.name.split('.')[0],
         "extension": big_file_path.name.split('.')[1],
         "size": big_file_path.stat().st_size,
-        "id_dataset": "1",
-        "version_dataset": "1",
+        "dataset_id": "1",
+        "dataset_version": "1",
     }
 
     rf = requests.post(f"{srv_endpoint}/files", data=utils.json_bytes(big_file))

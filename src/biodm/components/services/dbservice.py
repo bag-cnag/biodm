@@ -649,6 +649,8 @@ class UnaryEntityService(DatabaseService):
                         isouter=True
                     )
             else:
+                # TODO: check permissions ?
+                # Possible edge cases in o2o relationships
                 stmt = stmt.options(
                     selectinload(
                         getattr(self.table, n)

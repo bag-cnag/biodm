@@ -30,8 +30,8 @@ we will go over the following minimal example.
 
     class File(bd.components.S3File, bd.components.Base):
         id                         = sa.Column(sa.Integer,                    primary_key=True)
-        id_dataset                 = sa.Column(sa.ForeignKey("DATASET.id"),   nullable=False)
-        dataset: sao.Mapped["Dataset"] = sao.relationship(back_populates="files", single_parent=True, foreign_keys=[id_dataset])
+        dataset_id                 = sa.Column(sa.ForeignKey("DATASET.id"),   nullable=False)
+        dataset: sao.Mapped["Dataset"] = sao.relationship(back_populates="files", single_parent=True, foreign_keys=[dataset_id])
 
     # Schemas
     class DatasetSchema(ma.Schema):
@@ -50,7 +50,7 @@ we will go over the following minimal example.
         size           = mf.Integer(required=True)
         url            = mf.String(                 dump_only=True)
         ready          = mf.Bool(                   dump_only=True)
-        id_dataset     = mf.Integer(required=True,  load_only=True)
+        dataset_id     = mf.Integer(required=True,  load_only=True)
         dataset        = mf.Nested("DatasetSchema")
 
     # Controllers
