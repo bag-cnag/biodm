@@ -380,8 +380,8 @@ class ResourceController(EntityController):
             # Serialization and field extraction done by target controller.
             ctrl: ResourceController = (
                 target_rel
-                .target
-                .decl_class
+                .mapper
+                .entity
                 .svc
                 .table
                 .ctrl

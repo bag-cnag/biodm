@@ -1,11 +1,11 @@
 """Utils."""
 import datetime as dt
 import json
-from functools import reduce, update_wrapper, wraps
+from functools import reduce, update_wrapper
 import operator
 from os import path, utime
 from typing import (
-    Any, List, Callable, Tuple, TypeVar, Dict, Iterator, Self, Callable, Generic
+    Any, List, Callable, Tuple, TypeVar, Dict, Iterator, Self, Generic
 )
 
 from starlette.responses import Response
@@ -15,13 +15,16 @@ _T = TypeVar("_T")
 _U = TypeVar("_U")
 
 
-class aobject(object):
+# pylint: disable=invalid-name, too-few-public-methods
+class aobject:
     """Inheriting this class allows you to define an async __init__.
     Syntax sugar allowing you to create objects like this `await MyClass(params)`.
 
-
     Courtesy of: https://stackoverflow.com/a/45364670/6847689
+
+    Quite unpleasant for the linter, but neat to use.
     """
+    # pylint: disable=invalid-overridden-method
     async def __new__(cls, *args, **kwargs) -> Self: # type: ignore [misc]
         instance = super().__new__(cls)
         await instance.__init__(*args, **kwargs) # type: ignore [misc]
@@ -40,7 +43,7 @@ class classproperty(Generic[_T]):
 
         update_wrapper(self, method) # type: ignore [misc]
 
-    def __call__(self, cls):
+    def __call__(self, cls) -> _T:
         """Not necessary but suppresses Sphinx errors."""
         return self.method(cls)
 

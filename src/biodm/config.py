@@ -41,7 +41,7 @@ KC_ADMIN           = config("KC_ADMIN",           cast=str,   default=None)
 KC_ADMIN_PASSWORD  = config("KC_ADMIN_PASSWORD",  cast=str,   default=None)
 KC_CLIENT_ID       = config("KC_CLIENT_ID",       cast=str,   default=None)
 KC_CLIENT_SECRET   = config("KC_CLIENT_SECRET",   cast=str,   default=None)
-KC_JWT_OPTIONS     = config("KC_JWT_OPTIONS",     cast=dict,  default={'verify_exp': False, 
+KC_JWT_OPTIONS     = config("KC_JWT_OPTIONS",     cast=dict,  default={'verify_exp': False,
                                                                        'verify_aud': False})
 
 # Kubernetes.

@@ -21,7 +21,6 @@ from sqlalchemy.exc import IntegrityError
 
 from biodm import Scope, config
 from biodm.basics import CORE_CONTROLLERS, K8sController
-from biodm.components.controllers.resourcecontroller import ResourceController
 from biodm.components.k8smanifest import K8sManifest
 from biodm.managers import DatabaseManager, KeycloakManager, S3Manager, K8sManager
 from biodm.components.controllers import Controller
@@ -147,20 +146,24 @@ class Api(Starlette):
             routes.extend(self.adopt_controller(K8sController, manifests=manifests))
 
         # Schema Generator.
-        SECURITY_SCHEME = "Authorization"
+        security_scheme = "Authorization"
         self.apispec = APISpecSchemaGenerator(
             APISpec(
                 title=config.API_NAME,
                 version=config.API_VERSION,
                 openapi_version="3.0.0",
                 plugins=[BDMarshmallowPlugin()],
-                info={"description": config.API_DESCRIPTION, "backend": "biodm", "backend_version": CORE_VERSION},
-                security=[{SECURITY_SCHEME: []}]
+                info={
+                    "description": config.API_DESCRIPTION,
+                    "backend": "BioDM",
+                    "backend_version": CORE_VERSION
+                },
+                security=[{security_scheme: []}]
             )
         )
-        self.apispec.spec.components.security_scheme(SECURITY_SCHEME, {
+        self.apispec.spec.components.security_scheme(security_scheme, {
             "type": "http",
-            "name": SECURITY_SCHEME.lower(),
+            "name": security_scheme.lower(),
             "in": "header",
             "scheme": "bearer",
             "bearerFormat": "JWT"
@@ -194,7 +197,7 @@ class Api(Starlette):
         # self.add_exception_handler(DatabaseError, on_error)
 
     @property
-    def server_endpoint(cls) -> str:
+    def server_endpoint(self) -> str:
         """Server address, useful to compute callbacks."""
         return f"{config.SERVER_SCHEME}{config.SERVER_HOST}:{config.SERVER_PORT}/"
 

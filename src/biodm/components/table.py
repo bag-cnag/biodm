@@ -3,7 +3,7 @@
 - S3File entity
 - Versioned
 """
-from typing import TYPE_CHECKING, Any, Tuple, Type, Set, ClassVar, Type
+from typing import TYPE_CHECKING, Any, Tuple, Type, Set, ClassVar, Type, Dict
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -17,7 +17,6 @@ from sqlalchemy.orm import (
 
 from biodm import config
 from biodm.utils.utils import utcnow, classproperty
-from biodm.utils.security import PermissionLookupTables
 
 
 if TYPE_CHECKING:
@@ -25,7 +24,6 @@ if TYPE_CHECKING:
     from biodm.components.controllers import ResourceController
     from sqlalchemy.orm import Relationship
     from biodm.tables import Upload
-
 
 class Base(DeclarativeBase, AsyncAttrs):
     """Base class for ORM declarative Tables.
@@ -40,6 +38,7 @@ class Base(DeclarativeBase, AsyncAttrs):
 
     def __init_subclass__(cls, **kw: Any) -> None:
         """Populates permission dict."""
+        from biodm.utils.security import PermissionLookupTables
         if hasattr(cls, "__permissions__"):
             PermissionLookupTables.raw_permissions[cls.__name__] = (cls, cls.__permissions__)
         return super().__init_subclass__(**kw)

@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 
 
 def gen_schema(table: Type['Base']):
+    """Generate schema skeletton from table definition."""
     for k in table.__table__.columns:
         print(k.name, table.colinfo(k.name)[1])
     print("---")

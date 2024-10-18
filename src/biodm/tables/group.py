@@ -52,7 +52,7 @@ class Group(Base):
                     )
                 )
             )
-        elif "sqlite" in config.DATABASE_URL:
+        if "sqlite" in config.DATABASE_URL:
             #  sqlite doesn't have reverse
             #            -> strrev declared in dbmanager
             #  postgres.position -> sqlite.instr

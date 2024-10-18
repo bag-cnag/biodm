@@ -1,6 +1,7 @@
 """Security convenience functions."""
 from copy import deepcopy
-import dataclasses
+from dataclasses import dataclass
+from dataclasses import field as dc_field
 from functools import wraps
 from inspect import getmembers, ismethod
 from typing import TYPE_CHECKING, List, Tuple, Callable, Awaitable, Set, ClassVar, Type, Any, Dict
@@ -31,7 +32,6 @@ class UserInfo(aobject):
     kc: 'KeycloakManager'
     _info: Tuple[str, List, List] | None = None
 
-    # aobject syntax sugar not known by typecheckers.
     async def __init__(self, request: Request) -> None: # type: ignore [misc]
         self.token = self.auth_header(request)
         if self.token:
@@ -39,6 +39,7 @@ class UserInfo(aobject):
 
     @property
     def info(self) -> Tuple[str, List, List] | None:
+        """info getter. Returns user_info if the request is authenticated, else None."""
         return self._info
 
     @staticmethod
@@ -64,7 +65,7 @@ class UserInfo(aobject):
 
         # Parse.
         username = decoded.get("preferred_username")
-        user: User = (await User.svc.read(pk_val=[username], fields=['id']))
+        user: User = await User.svc.read(pk_val=[username], fields=['id'])
         groups = [
             group['path'].replace("/", "__")[2:]
             for group in await self.kc.get_user_groups(user.id)
@@ -88,41 +89,41 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 def login_required(f):
     """Docorator for endpoints requiring a valid header 'Authorization: Bearer <token>'"""
     # Handle special cases for nested compatiblity.
-    @wraps(f)
-    async def wrapper(controller, request, *args, **kwargs):
-        return await f(controller, request, *args, **kwargs)
-
     if f.__name__ == "create":
-        wrapper.login_required = 'write'
-        return wrapper
+        @wraps(f)
+        async def lr_write_wrapper(controller, request, *args, **kwargs):
+            return await f(controller, request, *args, **kwargs)
+
+        lr_write_wrapper.login_required = 'write'
+        return lr_write_wrapper
 
     # Else hardcheck here is enough.
     @wraps(f)
-    async def wrapper(controller, request, *args, **kwargs):
+    async def lr_wrapper(controller, request, *args, **kwargs):
         if request.state.user_info.info:
             return await f(controller, request, *args, **kwargs)
         raise UnauthorizedError("Authentication required.")
 
     # Read is protected on its endpoint and is handled specifically for nested cases in codebase.
     if f.__name__ == "read":
-        wrapper.login_required = 'read'
+        lr_wrapper.login_required = 'read'
 
-    return wrapper
+    return lr_wrapper
 
 
 def group_required(f, groups: List[str]):
     """Decorator for endpoints requiring authenticated user to be part of one of the list of paths.
     """
-    @wraps(f)
-    async def wrapper(controller, request, *args, **kwargs):
-        return await f(controller, request, *args, **kwargs)
-
     if f.__name__ == "create":
-        wrapper.group_required = {'write', groups}
-        return wrapper
+        @wraps(f)
+        async def gr_write_wrapper(controller, request, *args, **kwargs):
+            return await f(controller, request, *args, **kwargs)
+
+        gr_write_wrapper.group_required = {'write', groups}
+        return gr_write_wrapper
 
     @wraps(f)
-    async def wrapper(controller, request, *args, **kwargs):
+    async def gr_wrapper(controller, request, *args, **kwargs):
         if request.state.user_info.info:
             _, user_groups, _ = request.state.user_info.info
             if any((ug in groups for ug in user_groups)):
@@ -131,9 +132,9 @@ def group_required(f, groups: List[str]):
         raise UnauthorizedError("Insufficient group privileges for this operation.")
 
     if f.__name__ == "read":
-        wrapper.group_required = {'read', groups}
+        gr_wrapper.group_required = {'read', groups}
 
-    return wrapper
+    return gr_wrapper
 
 
 def admin_required(f):
@@ -141,7 +142,7 @@ def admin_required(f):
     return group_required(f, groups=["admin"])
 
 
-@dataclasses.dataclass
+@dataclass
 class Permission:
     """Holds dynamic permissions for a given entity's attributes."""
     field: Relationship | str
@@ -150,14 +151,16 @@ class Permission:
     write: bool=False
     download: bool=False
     # Propagation
-    propagates_to: List[str] = dataclasses.field(default_factory=lambda: [])
+    propagates_to: List[str] = dc_field(default_factory=lambda: [])
 
     @classproperty
     def verbs(cls) -> Set[str]:
+        """verb fields."""
         return set(cls.__dataclass_fields__.keys() - set(('field', 'propagates_to')))
 
     @property
     def enabled_verbs(self) -> Set[str]:
+        """verb fields, which are True."""
         return set(
             verb
             for verb in self.verbs
@@ -183,6 +186,23 @@ class PermissionLookupTables:
     permissions: ClassVar[Dict[Type['Base'], Any]] = {}
     login_required: ClassVar[Dict[Type['Base'], Any]] = {}
     group_required: ClassVar[Dict[Type['Base'], Any]] = {}
+
+    @classmethod
+    def _setup_static_permissions(cls, app: 'Api'):
+        for controller in app.controllers:
+            if not hasattr(controller, 'table'):
+                continue
+
+            table = controller.table
+            # Check if methods have those attributes set for [login|group]_required.
+            for func in [f for _, f in getmembers(controller, predicate=ismethod)]:
+                # Populate LookupTables in case
+                if hasattr(func, 'login_required'):
+                    cls.login_required[table] = cls.login_required.get(table, [])
+                    cls.login_required[table].append(func.login_required)
+                if hasattr(func, 'group_required'):
+                    cls.group_required[table] = cls.group_required.get(table, {})
+                    cls.group_required[table].update(func.group_required)
 
     @staticmethod
     def _gen_perm_table(app: 'Api', table: Type['Base'], fkey: str, verbs: List[str]):
@@ -219,9 +239,7 @@ class PermissionLookupTables:
         """
         # Defered imports as they depend on this module.
         from biodm.components.services import CompositeEntityService
-        from biodm.tables import ListGroup
-        from biodm.components import Base
-
+        from biodm.components.table import Base
 
         new_asso_name = f"ASSO_PERM_{table.__name__.upper()}_{fkey.upper()}"
         rel_name = f"perm_{fkey.lower()}"
@@ -230,7 +248,7 @@ class PermissionLookupTables:
             f"{pk}_{table.__name__.lower()}": Column(primary_key=True)
             for pk in table.pk
         }
-        
+
         columns['entity'] = relationship(
             table,
             backref=backref(
@@ -248,6 +266,7 @@ class PermissionLookupTables:
             passive_deletes=True,
             single_parent=True,
         )
+
         columns['__table_args__'] = (
             ForeignKeyConstraint(
                 [
@@ -260,22 +279,23 @@ class PermissionLookupTables:
                 ],
             ),
         )
+
         for verb in verbs:
             c = mapped_column(ForeignKey("LISTGROUP.id"))
             columns.update(
                 {
                     f"id_{verb}": c,
                     f"{verb}": relationship(
-                        ListGroup, cascade="save-update, merge, delete", foreign_keys=[c]
+                        "ListGroup", cascade="save-update, merge, delete", foreign_keys=[c]
                     )
                 }
             )
 
         # Declare table and setup svc.
-        NewAsso = type(new_asso_name, (Base,), columns)
-        setattr(NewAsso, 'svc', CompositeEntityService(app=app, table=NewAsso))
+        perm_table = type(new_asso_name, (Base,), columns)
+        setattr(perm_table, 'svc', CompositeEntityService(app=app, table=perm_table))
 
-        return rel_name, NewAsso
+        return rel_name, perm_table
 
     @staticmethod
     def _gen_perm_schema(table: Type['Base'], fkey: str, verbs: List[str]):
@@ -304,7 +324,7 @@ class PermissionLookupTables:
                 }
             )
 
-        # back reference - probably unnecessary.
+        # back reference - probably unwanted.
         # schema_columns['entity'] = fields.Nested(table.ctrl.schema)
 
         return type(
@@ -343,28 +363,21 @@ class PermissionLookupTables:
                     "Permission should only be applied on One-to-Many relationships fields "
                     "A.K.A 'composition' pattern."
                 )
-            itable = rel.target.decl_class
+            itable = rel.mapper.entity
         return table_chain, itable
 
     @classmethod
-    def setup_permissions(cls, app: 'Api'):
-        """After tables have been added to Base, and before you initialize DB
-        you shall call this method to factor in changes.
-
+    def _setup_dynamic_permissions(cls, app: 'Api'):
+        """
         - For each declared permission.
             - Creates an associative table
                 - indexed by Parent table pk
                     - children hold parent id
             - holds listgroup objects mapped to enabled verbs
                 - Set ref for Children controller
-
-        Has to be done after all tables have been declared.
-
-        Currently assumes straight composition:
-        i.e. You should not flag an o2m with the same target in two different parent classes.
         """
-        lut = {}
-        for table, permissions in PermissionLookupTables.raw_permissions.values():
+        cls.permissions = {}
+        for table, permissions in cls.raw_permissions.values():
             for perm in permissions:
                 match perm.field:
                     case str():
@@ -374,49 +387,39 @@ class PermissionLookupTables:
                         field_fullkey = perm.field.key
                         tchain, target = cls.walk_relationships(table, perm.field.key)
 
-                verbs = perm.enabled_verbs
-                if not verbs:
+                if not perm.enabled_verbs:
                     continue
 
                 # Declare permission table and associated schema.
-                rel_name, NewAsso = cls._gen_perm_table(app, table, field_fullkey, verbs)
-                NewAssoSchema = cls._gen_perm_schema(table, field_fullkey, verbs)
+                perm_table = cls._gen_perm_table(app, table, field_fullkey, perm.enabled_verbs)
+                perm_schema = cls._gen_perm_schema(table, field_fullkey, perm.enabled_verbs)
 
                 # Set extra field onto associated schema.
-                patch = {rel_name: fields.Nested(NewAssoSchema)}
-                table.ctrl.schema.fields.update(patch)
-                table.ctrl.schema.load_fields.update(patch)
-                table.ctrl.schema.dump_fields.update(patch)
+                table.ctrl.schema.fields.update({perm_table[0]: fields.Nested(perm_schema)})
+                table.ctrl.schema.load_fields.update({perm_table[0]: fields.Nested(perm_schema)})
+                table.ctrl.schema.dump_fields.update({perm_table[0]: fields.Nested(perm_schema)})
 
                 # Set up look up table for incomming requests.
-                entry = {'table': NewAsso, 'from': tchain, 'verbs': verbs}
-                lut[target] = lut.get(target, [])
-                lut[target].append(entry)
+                entry = {'table': perm_table[1], 'from': tchain, 'verbs': perm.enabled_verbs}
+                cls.permissions[target] = cls.permissions.get(target, [])
+                cls.permissions[target].append(entry)
 
                 # Propagate:
                 for propag in perm.propagates_to:
                     prop_entry = deepcopy(entry)
                     prop_tchain, prop_target = cls.walk_relationships(target, propag)
                     prop_entry['from'].extend(prop_tchain)
-                    lut[prop_target] = lut.get(prop_target, [])
-                    lut[prop_target].append(prop_entry)
+                    cls.permissions[prop_target] = cls.permissions.get(prop_target, [])
+                    cls.permissions[prop_target].append(prop_entry)
 
-        PermissionLookupTables.permissions = lut
+    @classmethod
+    def setup_permissions(cls, app: 'Api'):
+        """After tables have been added to Base, and before you initialize DB
+        you shall call this method to factor in the changes.
 
-        # Check if methods have those attributes set for [login|group]_required nested cases.
-        for controller in app.controllers:
-            for func in [f for _, f in getmembers(controller, predicate=ismethod)]:
-                if hasattr(func, 'login_required'):
-                    PermissionLookupTables.login_required[controller.table] = (
-                        PermissionLookupTables.login_required.get(controller.table, [])
-                    )
-                    PermissionLookupTables.login_required[controller.table].append(
-                        func.login_required
-                    )
-                if hasattr(func, 'group_required'):
-                    PermissionLookupTables.group_required[controller.table] = (
-                        PermissionLookupTables.group_required.get(controller.table, {})
-                    )
-                    PermissionLookupTables.group_required[controller.table].update(
-                        func.group_required
-                    )
+        Dynamic permissions currently assume straight composition:
+        i.e. You should not flag an o2m with the same target from two different parent classes else
+        that resource will likely be locked from any access.
+        """
+        cls._setup_static_permissions(app=app)
+        cls._setup_dynamic_permissions(app=app)

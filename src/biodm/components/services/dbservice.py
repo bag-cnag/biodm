@@ -17,7 +17,8 @@ from biodm import config
 from biodm.component import ApiService
 from biodm.components import Base
 from biodm.exceptions import (
-    DataError, EndpointError, FailedRead, FailedDelete, ImplementionError, UpdateVersionedError, UnauthorizedError
+    DataError, EndpointError, FailedRead, FailedDelete,
+    ImplementionError, UpdateVersionedError, UnauthorizedError
 )
 from biodm.managers import DatabaseManager
 from biodm.tables import ListGroup, Group
@@ -346,9 +347,8 @@ class UnaryEntityService(DatabaseService):
         self.pk = set(table.col(name) for name in table.pk)
         # Take a snapshot at declaration time, convenient to isolate runtime permissions.
         self._inst_relationships = self.table.dyn_relationships()
-        # Enable entity - service - table linkage so everything is conveniently available.
+        # Enable service - table linkage
         setattr(table, 'svc', self)
-        setattr(table.__table__, 'decl_class', table)
 
         super().__init__(app, *args, **kwargs)
 
@@ -369,7 +369,7 @@ class UnaryEntityService(DatabaseService):
         if hasattr(rel.target, 'original') and rel.target.original == self.table.__table__:
             return self
         else:
-            return rel.target.decl_class.svc
+            return rel.mapper.entity.svc
 
     def check_allowed_nested(self, fields: List[str], user_info: UserInfo) -> None:
         """Checks whether all user requested fields are allowed by static permissions.
@@ -489,8 +489,12 @@ class UnaryEntityService(DatabaseService):
         ):
             await self.populate_ids_sqlite(data)
 
-        futures = kwargs.pop('futures', None)
-        stmts = [self.upsert(one, futures=futures, user_info=user_info) for one in to_it(data)]
+        futures = kwargs.pop('futures', [])
+        stmts = [
+            self.upsert(
+                one, futures=futures, user_info=user_info
+            ) for one in to_it(data)
+        ]
 
         if len(stmts) == 1:
             return stmts[0] if stmt_only else await self._insert(stmts[0], user_info=user_info, **kwargs)
@@ -499,7 +503,7 @@ class UnaryEntityService(DatabaseService):
     def upsert(
         self,
         data: Dict[Any, str],
-        futures: List[str] | None = None,
+        futures: List[str],
         user_info: UserInfo | None = None,
     ) -> Insert | Update:
         """Generates an upsert (Insert + .on_conflict_do_x) depending on data population.
@@ -624,8 +628,7 @@ class UnaryEntityService(DatabaseService):
 
         for n in nested:
             relationship = self.table.relationships[n]
-            target = relationship.target
-            target = self.table if isinstance(target, Alias) else target.decl_class
+            target = self.table if isinstance(relationship.target, Alias) else relationship.mapper.entity
 
             if relationship.direction in (MANYTOONE, ONETOMANY):
                 if target == self.table:
@@ -921,8 +924,8 @@ class CompositeEntityService(UnaryEntityService):
             rel = rels[key]
             composite.nested[key] = await (
                 rel
-                .target
-                .decl_class
+                .mapper
+                .entity
                 .svc
             )._insert(sub, **kwargs)
 
@@ -1009,6 +1012,7 @@ class CompositeEntityService(UnaryEntityService):
         data: Dict[str, Any],
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
+        futures: List[str] = [],
         **kwargs,
     ) -> Base | CompositeInsert:
         """Parsing: recursive tree builder.
@@ -1017,12 +1021,12 @@ class CompositeEntityService(UnaryEntityService):
             Each service is responsible for building statements for its own associated table.
             Ultimately all statements (except permissions) are built by UnaryEntityService class.
         """
-        nested, delayed, futures = {}, {}, kwargs.pop('futures', [])
-
+        # Initialize composite.
+        nested, delayed = {}, {}
         for key, rel in self.permission_relationships.items():
             # IMPORTANT: Create an entry even for empty permissions.
             # It is necessary in order to query permissions from nested entities.
-            perm_stmt = self._backend_specific_insert(rel.target.decl_class)
+            perm_stmt = self._backend_specific_insert(rel.mapper.entity)
 
             perm_listgroups = {}
             if key in data.keys():
@@ -1034,8 +1038,8 @@ class CompositeEntityService(UnaryEntityService):
 
             # Do nothing in case the entry already exists.
             # potential updates of listgroups are ensured by _insert_composite.
-            perm_stmt = perm_stmt.on_conflict_do_nothing(index_elements=rel.target.decl_class.pk)
-            perm_stmt = perm_stmt.returning(rel.target.decl_class)
+            perm_stmt = perm_stmt.on_conflict_do_nothing(index_elements=rel.mapper.entity.pk)
+            perm_stmt = perm_stmt.returning(rel.mapper.entity)
             delayed[key] = CompositeInsert(item=perm_stmt, nested={}, delayed=perm_listgroups)
 
         # Remaining table relationships.
@@ -1044,7 +1048,7 @@ class CompositeEntityService(UnaryEntityService):
             rel = self._inst_relationships[key]
 
             # Infer fields that will get populated at insertion time (for error detection).
-            nested_futures = None
+            nested_futures = []
             if rel.secondary is None:
                 if hasattr(rel, 'remote_side'):
                     nested_futures = [c.name for c in rel.remote_side if c.foreign_keys]
@@ -1054,7 +1058,10 @@ class CompositeEntityService(UnaryEntityService):
 
             # Get statement(s) for nested entity.
             nested_stmt = await svc.write(
-                sub, stmt_only=True, user_info=user_info, futures=nested_futures
+                sub,
+                stmt_only=True,
+                user_info=user_info,
+                futures=nested_futures,
             )
 
             # Single nested entity.

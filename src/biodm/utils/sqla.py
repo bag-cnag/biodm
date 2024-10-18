@@ -33,5 +33,5 @@ def stmt_to_dict(stmt: UpsertStmt) -> Dict[str, Any]:
     :return: Dict values.
     :rtype: Dict[str, Any]
     """
-    pass
+    # pylint: disable=protected-access
     return {k.name: v.effective_value for k, v in stmt._values.items() if hasattr(k, 'name')}
