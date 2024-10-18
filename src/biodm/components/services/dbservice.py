@@ -17,8 +17,7 @@ from biodm import config
 from biodm.component import ApiService
 from biodm.components import Base
 from biodm.exceptions import (
-    DataError, EndpointError, FailedRead, FailedDelete,
-    ImplementionError, UpdateVersionedError, UnauthorizedError
+    DataError, EndpointError, FailedRead, FailedDelete, UpdateVersionedError, UnauthorizedError
 )
 from biodm.managers import DatabaseManager
 from biodm.tables import ListGroup, Group
@@ -213,7 +212,6 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
 
         for permission in perms:
             for one in to_it(pending):
-                link, chain = permission['from'][-1], permission['from'][:-1]
                 entity = permission['table'].entity.prop
 
                 stmt = (
@@ -227,19 +225,28 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
                         for local, remote in entity.local_remote_pairs
                     ])
                 )
+                if permission['from']: # remote permissions
+                    # Naturally join the chain
+                    link, chain = permission['from'][-1], permission['from'][:-1]
 
-                # Naturally join the chain
-                for jtable in chain + [link]:
-                    stmt = stmt.join(jtable)
+                    for jtable in chain + [link]:
+                        stmt = stmt.join(jtable)
 
-                # Finally connect the link with pending
-                stmt = stmt.where(
-                    unevalled_all([
-                        one.get(fk.parent.name) == getattr(link, fk.column.name)
-                        for fk in self.table.__table__.foreign_keys
-                        if fk.column.table is link.__table__
-                    ])
-                )
+                    # Finally connect the link with pending
+                    stmt = stmt.where(
+                        unevalled_all([
+                            one.get(fk.parent.name) == getattr(link, fk.column.name)
+                            for fk in self.table.__table__.foreign_keys
+                            if fk.column.table is link.__table__
+                        ])
+                    )
+                else: # self permissions, cannot be write, pk will be present.
+                    stmt = stmt.where(
+                        unevalled_all([
+                            one.get(k) == getattr(self.table, k)
+                            for k in self.table.pk
+                        ])
+                    )
 
                 stmt = stmt.options(selectinload(ListGroup.groups))
                 allowed: ListGroup = await session.scalar(stmt)
@@ -287,36 +294,13 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
 
         # Build nested query to filter permitted results.
         for permission in perms:
-            link, chain = permission['from'][-1], permission['from'][:-1]
-            entity = permission['table'].entity.prop
             lgverb = permission['table'].__table__.c[f'id_{verb}']
 
-            sub = select(link)
-            for jtable in chain:
-                sub = sub.join(jtable)
-
-            inner = ( # Look for empty permissions.
-                sub
-                .join(
-                    permission['table'],
-                    onclause=unevalled_all([
-                            local == remote
-                            for local, remote in entity.local_remote_pairs
-                        ] + [lgverb == None]
-                    )
-                )
-            )
+            # public.
+            perm_stmt = select(permission['table']).where(lgverb == None)
             if groups:
-                protected = ( # Join the whole chain.
-                    sub
-                    .join(
-                        permission['table'],
-                        onclause=unevalled_all([
-                                local == remote
-                                for local, remote in entity.local_remote_pairs
-                            ]
-                        )
-                    )
+                protected = (
+                    select(permission['table'])
                     .join(
                         ListGroup,
                         onclause=lgverb == ListGroup.id,
@@ -330,8 +314,19 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
                         ]),
                     )
                 )
-                inner = inner.union(protected)
-            stmt = stmt.join(inner.subquery())
+                perm_stmt = perm_stmt.union(protected)
+
+            # Remote permissions: chain of tables.
+            if permission['from']:
+                link, chain = permission['from'][-1], permission['from'][:-1]
+
+                sub = select(link)
+                for jtable in chain:
+                    sub = sub.join(jtable)
+
+                perm_stmt= sub.join(perm_stmt.subquery())
+
+            stmt = stmt.join(perm_stmt.subquery())
         return stmt
 
 
@@ -646,6 +641,7 @@ class UnaryEntityService(DatabaseService):
                         .svc
                         ._apply_read_permissions(user_info, rel_stmt)
                     )
+                    # stmt = stmt.join(rel_stmt.subquery(), isouter=True)
                     stmt = stmt.join_from(
                         self.table,
                         rel_stmt.subquery(),

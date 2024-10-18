@@ -43,3 +43,7 @@ class File(S3File, Base):
 #     # dataset: Mapped["Dataset"] = relationship(back_populates="files", foreign_keys=[dataset_id, dataset_version])
 #     # dataset: Mapped["Dataset"] = relationship('Dataset', primaryjoin="and_(Dataset.id == File.dataset_id, Dataset.version == File.dataset_version)")
 #     #  foreign_keys=[dataset_id, dataset_version]
+
+    # __permissions__ = (
+    #     Permission("self", download=True),
+    # )

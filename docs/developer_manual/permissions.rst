@@ -158,6 +158,26 @@ collections. Sharing those permissions between intermediate level and lower leve
     )
 
 
+Self
+~~~~
+
+The term ``self`` is also supported in this configuration, it will bind those permissions
+on the same resource.
+
+.. code-block:: python
+
+  class Project(Base):
+      ...
+    __permissions__ = (
+      Permission("self", read=True),
+    )
+
+.. warning::
+
+  It shall raise an ``ImplementationError`` if used in conjunction with ``write``
+  as it does not makes sense to tie writing rights directly on a resource.
+
+
 Strict composition
 ~~~~~~~~~~~~~~~~~~
 

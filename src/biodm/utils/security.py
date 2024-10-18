@@ -381,14 +381,23 @@ class PermissionLookupTables:
             for perm in permissions:
                 match perm.field:
                     case str():
-                        field_fullkey = perm.field.replace(".", "_")
-                        tchain, target = cls.walk_relationships(table, perm.field)
+                        field_fullkey = perm.field.lower().replace(".", "_")
+                        if field_fullkey == 'self':
+                            tchain = []
+                            target = table
+                        else:
+                            tchain, target = cls.walk_relationships(table, perm.field)
                     case Relationship():
                         field_fullkey = perm.field.key
                         tchain, target = cls.walk_relationships(table, perm.field.key)
 
                 if not perm.enabled_verbs:
                     continue
+
+                if field_fullkey == 'self' and 'write' in perm.enabled_verbs:
+                    raise ImplementionError(
+                        "Permissions on self should not be used in conjunction with WRITE verb."
+                    )
 
                 # Declare permission table and associated schema.
                 perm_table = cls._gen_perm_table(app, table, field_fullkey, perm.enabled_verbs)
