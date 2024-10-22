@@ -1,6 +1,6 @@
 from typing import Dict, Self, Tuple, Any, TypeVar
 from dataclasses import dataclass
-from sqlalchemy.sql import Insert, Update
+from sqlalchemy.sql import Insert, Update, Select
 
 
 @dataclass
@@ -20,7 +20,7 @@ class CompositeInsert:
     delayed: Dict[str, Insert | Self | Tuple[Insert | Self]]
 
 
-UpsertStmt = TypeVar('UpsertStmt', CompositeInsert, Insert, Update)
+UpsertStmt = TypeVar('UpsertStmt', CompositeInsert, Insert, Update, Select)
 
 
 def stmt_to_dict(stmt: UpsertStmt) -> Dict[str, Any]:

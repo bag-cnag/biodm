@@ -60,7 +60,11 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         session: AsyncSession
     ) -> Base:
         """INSERT one object into the DB, check token write permissions before commit."""
-        await self._check_permissions("write", user_info, stmt_to_dict(stmt))
+        # Some insert statements are Select to work nicely with updates and parsing.
+        # In which case, write permissions are not required.
+        # TODO: maybe not.
+        if not isinstance(stmt, Select):
+            await self._check_permissions("write", user_info, stmt_to_dict(stmt))
         item = await session.scalar(stmt)
         return item
 
@@ -72,10 +76,10 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         session: AsyncSession
     ) -> Sequence[Base]:
         """INSERT list of items in one go."""
-        items = []
-        for stmt in stmts:
-            await self._check_permissions("write", user_info, stmt_to_dict(stmt))
-            items.append(await session.scalar(stmt))
+        items = [
+            await self._insert(stmt, user_info=user_info, session=session)
+            for stmt in stmts
+        ]
         return items
 
     @DatabaseManager.in_session
@@ -564,10 +568,9 @@ class UnaryEntityService(DatabaseService):
         if not self.table.is_versioned:
             if set_: # upsert
                 stmt = stmt.on_conflict_do_update(index_elements=pk, set_=set_)
-            else: # effectively a select.
+            else: # insert with default values
                 stmt = stmt.on_conflict_do_nothing(index_elements=pk)
         # Else (implicit): on_conflict_do_error -> catched by Controller.
-
         stmt = stmt.returning(self.table)
         return stmt
 
@@ -902,14 +905,27 @@ class CompositeEntityService(UnaryEntityService):
         :return: Inserted item
         :rtype: Base
         """
-        def patch(ins, mapping):
-            """On the fly statement patcher."""
+        def patch(ins, mapping, svc):
+            """On the fly statement patcher.
+            Generates a new statement to regenerate on_conflict clause."""
             match ins:
                 case CompositeInsert():
-                    ins.item = ins.item.values(**mapping)
+                    vals = stmt_to_dict(ins.item)
+                    vals.update(mapping)
+                    # recompute futures
+                    futures = []
+                    for n in ins.nested.keys():
+                        rel = svc.table.relationships[n]
+                        if hasattr(rel, 'local_columns'):
+                            for col in rel.local_columns:
+                                futures.append(col.name)
+                    # regen statement
+                    ins.item = svc.upsert(vals, futures=futures)
                     return ins
                 case Insert() | Update():
-                    return ins.values(**mapping)
+                    vals = stmt_to_dict(ins)
+                    vals.update(mapping)
+                    return svc.upsert(vals, futures=[])
 
         rels = self.table.relationships
         # Pack in session in kwargs for lower level calls.
@@ -931,7 +947,7 @@ class CompositeEntityService(UnaryEntityService):
                     local.name: getattr(composite.nested[key], remote.name)
                     for local, remote in rel.local_remote_pairs
                 }
-                composite.item = patch(composite.item, mapping)
+                composite.item = patch(composite.item, mapping, self)
 
         # Insert main object.
         item = await self._insert(composite.item, **kwargs)
@@ -962,9 +978,9 @@ class CompositeEntityService(UnaryEntityService):
                 # Patch statements before inserting.
                 if hasattr(delay, '__len__'):
                     for i, ins in enumerate(delay):
-                        delay[i] = patch(ins, mapping)
+                        delay[i] = patch(ins, mapping, svc)
                 else:
-                    delay = patch(delay, mapping)
+                    delay = patch(delay, mapping, svc)
 
             # Insert and populate back into item.
             if rel.uselist:
@@ -987,7 +1003,7 @@ class CompositeEntityService(UnaryEntityService):
         **kwargs
     ) -> Base:
         """Redirect in case of composite insert."""
-        if isinstance(stmt, Insert | Update):
+        if isinstance(stmt, Insert | Update | Select):
             return await super()._insert(stmt, **kwargs)
         return await self._insert_composite(stmt, **kwargs)
 
@@ -1019,29 +1035,34 @@ class CompositeEntityService(UnaryEntityService):
         """
         # Initialize composite.
         nested, delayed = {}, {}
+        # Permission relationships first.
         for key, rel in self.permission_relationships.items():
-            # IMPORTANT: Create an entry even for empty permissions.
-            # It is necessary in order to query permissions from nested entities.
-            perm_stmt = self._backend_specific_insert(rel.mapper.entity)
+            svc, sub = self._svc_from_rel_name(key), data.pop(key, {})
+            rel = self.permission_relationships[key]
 
-            perm_listgroups = {}
-            if key in data.keys():
-                sub = data.pop(key)
-                for verb in Permission.verbs & set(sub.keys()):
-                    perm_listgroups[str(verb)] = await ListGroup.svc.write(
-                        sub.get(verb), stmt_only=True,
-                    )
+            nested_futures = []
+            if hasattr(rel, 'remote_side'):
+                nested_futures = [c.name for c in rel.remote_side if c.foreign_keys]
 
-            # Do nothing in case the entry already exists.
-            # potential updates of listgroups are ensured by _insert_composite.
-            perm_stmt = perm_stmt.on_conflict_do_nothing(index_elements=rel.mapper.entity.pk)
-            perm_stmt = perm_stmt.returning(rel.mapper.entity)
-            delayed[key] = CompositeInsert(item=perm_stmt, nested={}, delayed=perm_listgroups)
-
-        # Remaining table relationships.
-        for key in self._inst_relationships.keys() & data.keys():
-            svc, sub = self._svc_from_rel_name(key), data.pop(key)
-            rel = self._inst_relationships[key]
+            # Get statement(s) for nested entity.
+            perm_stmt = await svc.write(
+                sub,
+                stmt_only=True,
+                user_info=None,
+                futures=nested_futures,
+            )
+            delayed[key] = perm_stmt
+        # pass
+        # For present table relationships and all permission_relationships.
+        for key in (
+            (
+                self._inst_relationships.keys() & data.keys()
+            )
+            # | set(self.permission_relationships.keys()) # TODO: factor in above here.
+        ):
+            svc = self._svc_from_rel_name(key)
+            sub = data.pop(key, {}) # {} default value -> only happens for empty permissions.
+            rel = self.table.relationships[key]
 
             # Infer fields that will get populated at insertion time (for error detection).
             nested_futures = []

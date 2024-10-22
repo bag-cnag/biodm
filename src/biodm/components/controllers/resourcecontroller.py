@@ -222,10 +222,14 @@ class ResourceController(EntityController):
         :return: Primary key values
         :rtype: List[Any]
         """
-        pk_val = [request.path_params.get(k) for k in self.pk]
+        pk_val = [
+            self.table.col(k).type.python_type(
+                request.path_params.get(k)
+            ) for k in self.pk
+        ]
+
         if not pk_val:
             raise InvalidCollectionMethod()
-
 
         if len(pk_val) != len(self.pk):
             raise PartialIndex(
@@ -454,7 +458,6 @@ class ResourceController(EntityController):
             ),
             status_code=201,
         )
-
 
     async def delete(self, request: Request) -> Response:
         """Delete resource.
