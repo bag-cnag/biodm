@@ -206,11 +206,10 @@ class ResourceController(EntityController):
                 Route(f'/{self.qp_id}',               self.read,           methods=[HttpMethod.GET]),
                 Route(f'/{self.qp_id}/{{attribute}}', self.read,           methods=[HttpMethod.GET]),
                 Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE]),
-            ] + [(
+                Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT]),
+            ] + ([
                 Route(f"/{self.qp_id}/release",       self.release,        methods=[HttpMethod.POST])
-                if self.table.is_versioned else
-                Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT])
-            )])
+            ] if self.table.is_versioned else []))
         ]
 
     def _extract_pk_val(self, request: Request) -> List[Any]:

@@ -2,15 +2,13 @@
 from abc import ABCMeta
 from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type, Set
 
-from sqlalchemy import select, delete, update, or_, func
-from sqlalchemy.dialects import postgresql, sqlite
+from sqlalchemy import select, delete, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
     load_only, selectinload, joinedload, ONETOMANY, MANYTOONE, make_transient, Relationship
 )
-from sqlalchemy.sql import Insert, Delete, Select, Update
-from sqlalchemy.sql._typing import _DMLTableArgument
+from sqlalchemy.sql import Delete, Select
 from sqlalchemy.sql.selectable import Alias
 
 from biodm import config
@@ -23,7 +21,7 @@ from biodm.managers import DatabaseManager
 from biodm.tables import ListGroup, Group
 from biodm.tables.asso import asso_list_group
 from biodm.utils.security import UserInfo, Permission, PermissionLookupTables
-from biodm.utils.sqla import CompositeInsert, UpsertStmt, stmt_to_dict
+from biodm.utils.sqla import CompositeInsert, UpsertStmt, stmt_to_dict, UpsertStmtValuesHolder
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
 
@@ -41,31 +39,17 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         """ServiceName(TableName)."""
         return f"{self.__class__.__name__}({self.table.__name__})"
 
-    @property
-    def _backend_specific_insert(self) -> Callable[[_DMLTableArgument], Insert]:
-        """Returns an insert statement builder according to DB backend."""
-        match self.app.db.engine.dialect:
-            case postgresql.asyncpg.dialect():
-                return postgresql.insert
-            case sqlite.aiosqlite.dialect():
-                return sqlite.insert
-            case _: # Should not happen. Here to suppress mypy.
-                raise
-
     @DatabaseManager.in_session
     async def _insert(
         self,
-        stmt: UpsertStmt,
+        stmt: UpsertStmtValuesHolder,
         user_info: UserInfo | None,
         session: AsyncSession
     ) -> Base:
         """INSERT one object into the DB, check token write permissions before commit."""
-        # Some insert statements are Select to work nicely with updates and parsing.
-        # In which case, write permissions are not required.
-        # TODO: maybe not.
-        if not isinstance(stmt, Select):
-            await self._check_permissions("write", user_info, stmt_to_dict(stmt))
-        item = await session.scalar(stmt)
+        # await self._check_permissions("write", user_info, stmt_to_dict(stmt))
+        await self._check_permissions("write", user_info, stmt)
+        item = await session.scalar(stmt.to_stmt(self))
         return item
 
     @DatabaseManager.in_session
@@ -432,6 +416,45 @@ class UnaryEntityService(DatabaseService):
             ]
         )
 
+    def gen_upsert_holder(
+        self,
+        data: Dict[Any, str],
+        futures: List[str],
+        user_info: UserInfo | None = None,
+    ) -> UpsertStmtValuesHolder:
+        """Generates an upsert statement values holder item.
+
+        This statement builder is by design working on a unit entity dict, it checks data
+        completion using 'futures' that are a list of fields that shall be populated at insertion
+        time in CompositeEntityService._insert_composite().
+
+        Versioned resource: in the case of a versioned resource,
+        passing a reference is allowed, updating nested resources through updates as well,
+        BUT an actual update is not as it should go through /release route.
+
+        auto-population of 'special columns' is handled here as well.
+        """
+        pending_keys = data.keys() | set(futures)
+        missing_data = self.table.required - pending_keys
+
+        if missing_data:
+            if all(k in pending_keys for k in self.table.pk): # pk present: UPDATE.
+                if (data.keys() - self.table.pk) and self.table.is_versioned:
+                    raise UpdateVersionedError(
+                        "Attempt at updating versioned resources detected"
+                    )
+
+            # submitter_username special col
+            elif missing_data == {'submitter_username'} and self.table.has_submitter_username:
+                if not user_info or not user_info.info:
+                    raise UnauthorizedError("Requires authentication.")
+                data['submitter_username'] = user_info.info[0]
+
+            else:
+                raise DataError(f"{self.table.__name__} missing the following: {missing_data}.")
+
+        return UpsertStmtValuesHolder(data)
+
     @overload
     async def write(
         self,
@@ -490,7 +513,7 @@ class UnaryEntityService(DatabaseService):
 
         futures = kwargs.pop('futures', [])
         stmts = [
-            self.upsert(
+            self.gen_upsert_holder(
                 one, futures=futures, user_info=user_info
             ) for one in to_it(data)
         ]
@@ -498,81 +521,6 @@ class UnaryEntityService(DatabaseService):
         if len(stmts) == 1:
             return stmts[0] if stmt_only else await self._insert(stmts[0], user_info=user_info, **kwargs)
         return stmts if stmt_only else await self._insert_list(stmts, user_info=user_info, **kwargs)
-
-    def upsert(
-        self,
-        data: Dict[Any, str],
-        futures: List[str],
-        user_info: UserInfo | None = None,
-    ) -> Insert | Update:
-        """Generates an upsert (Insert + .on_conflict_do_x) depending on data population.
-            OR an explicit Update statement for partial data with full primary key.
-
-        This statement builder is by design taking a unit entity dict and
-        cannot check if partial data is complete in case this is coming from upper resources
-        in the hierarchical structure.
-        In that case statements are patched on the fly at insertion time at
-        CompositeEntityService._insert_composite().
-
-        In case of actually incomplete data, some upserts will fail, and raise it up to controller
-        which has the details about initial validation fail.
-        Ultimately, the goal is to offer support for a more flexible and tolerant mode of writing
-        data, use of it is optional.
-
-        Versioned resource: in the case of a versioned resource, passing a reference is allowed
-        BUT an update is not as updates shall go through /release route.
-        Statement will still be emited but simply discard the update.
-
-        :param data: validated data, unit - i.e. one single entity, no depth - dictionary
-        :type data: Dict[Any, str]
-        :param futures: Fields that will get populated at insertion time, defaults to none
-        :type futures: List[str], optional
-        :return: statement
-        :rtype: Insert | Update
-        """
-        pk = self.table.pk
-        pending_keys = (data.keys() | set(futures or []))
-        missing_data = self.table.required - pending_keys
-
-        if missing_data:
-            if all(k in pending_keys for k in pk): # pk present: UPDATE.
-                values = {k: data.get(k) for k in data.keys() - pk}
-                if values and self.table.is_versioned:
-                    raise UpdateVersionedError(
-                        "Attempt at updating versioned resources via POST detected"
-                    )
-
-                stmt = (
-                    update(self.table)
-                    .where(self.gen_cond([data.get(k) for k in pk]))
-                    .values(**values)
-                    .returning(self.table)
-                )
-                return stmt
-            elif missing_data == {'submitter_username'} and self.table.has_submitter_username:
-                if not user_info or not user_info.info:
-                    raise UnauthorizedError("Requires authentication.")
-                data['submitter_username'] = user_info.info[0]
-            else:
-                raise DataError(f"{self.table.__name__} missing the following: {missing_data}.")
-
-        # Regular case
-        stmt = self._backend_specific_insert(self.table)
-        stmt = stmt.values(**data)
-
-        set_ = {
-            key: data[key]
-            for key in data.keys() - pk
-        }
-
-        if not self.table.is_versioned:
-            if set_: # upsert
-                stmt = stmt.on_conflict_do_update(index_elements=pk, set_=set_)
-            else: # insert with default values
-                stmt = stmt.on_conflict_do_nothing(index_elements=pk)
-        # Else (implicit): on_conflict_do_error -> catched by Controller.
-        stmt = stmt.returning(self.table)
-        return stmt
 
     @DatabaseManager.in_session
     async def getattr_in_session(
@@ -652,7 +600,7 @@ class UnaryEntityService(DatabaseService):
                     )
             else:
                 # TODO: check permissions ?
-                # Possible edge cases in o2o relationships
+                # Possible edge cases in o2o relationships ??
                 stmt = stmt.options(
                     selectinload(
                         getattr(self.table, n)
@@ -905,27 +853,14 @@ class CompositeEntityService(UnaryEntityService):
         :return: Inserted item
         :rtype: Base
         """
-        def patch(ins, mapping, svc):
-            """On the fly statement patcher.
-            Generates a new statement to regenerate on_conflict clause."""
+        def patch(ins, mapping):
+            """Apply dict update."""
             match ins:
                 case CompositeInsert():
-                    vals = stmt_to_dict(ins.item)
-                    vals.update(mapping)
-                    # recompute futures
-                    futures = []
-                    for n in ins.nested.keys():
-                        rel = svc.table.relationships[n]
-                        if hasattr(rel, 'local_columns'):
-                            for col in rel.local_columns:
-                                futures.append(col.name)
-                    # regen statement
-                    ins.item = svc.upsert(vals, futures=futures)
-                    return ins
-                case Insert() | Update():
-                    vals = stmt_to_dict(ins)
-                    vals.update(mapping)
-                    return svc.upsert(vals, futures=[])
+                    ins.item.update(mapping)
+                case UpsertStmtValuesHolder():
+                    ins.update(mapping)
+            return ins
 
         rels = self.table.relationships
         # Pack in session in kwargs for lower level calls.
@@ -947,7 +882,7 @@ class CompositeEntityService(UnaryEntityService):
                     local.name: getattr(composite.nested[key], remote.name)
                     for local, remote in rel.local_remote_pairs
                 }
-                composite.item = patch(composite.item, mapping, self)
+                composite = patch(composite, mapping)
 
         # Insert main object.
         item = await self._insert(composite.item, **kwargs)
@@ -978,9 +913,9 @@ class CompositeEntityService(UnaryEntityService):
                 # Patch statements before inserting.
                 if hasattr(delay, '__len__'):
                     for i, ins in enumerate(delay):
-                        delay[i] = patch(ins, mapping, svc)
+                        delay[i] = patch(ins, mapping)
                 else:
-                    delay = patch(delay, mapping, svc)
+                    delay = patch(delay, mapping)
 
             # Insert and populate back into item.
             if rel.uselist:
@@ -1003,9 +938,9 @@ class CompositeEntityService(UnaryEntityService):
         **kwargs
     ) -> Base:
         """Redirect in case of composite insert."""
-        if isinstance(stmt, Insert | Update | Select):
-            return await super()._insert(stmt, **kwargs)
-        return await self._insert_composite(stmt, **kwargs)
+        if isinstance(stmt, CompositeInsert):
+            return await self._insert_composite(stmt, **kwargs)
+        return await super()._insert(stmt, **kwargs)
 
     # pylint: disable=arguments-differ
     async def _insert_list(
@@ -1035,30 +970,13 @@ class CompositeEntityService(UnaryEntityService):
         """
         # Initialize composite.
         nested, delayed = {}, {}
-        # Permission relationships first.
-        for key, rel in self.permission_relationships.items():
-            svc, sub = self._svc_from_rel_name(key), data.pop(key, {})
-            rel = self.permission_relationships[key]
-
-            nested_futures = []
-            if hasattr(rel, 'remote_side'):
-                nested_futures = [c.name for c in rel.remote_side if c.foreign_keys]
-
-            # Get statement(s) for nested entity.
-            perm_stmt = await svc.write(
-                sub,
-                stmt_only=True,
-                user_info=None,
-                futures=nested_futures,
-            )
-            delayed[key] = perm_stmt
-        # pass
-        # For present table relationships and all permission_relationships.
+        # For present table relationships
+        #   and all permission_relationships: need to exist, even empty, in order to check them.
         for key in (
             (
                 self._inst_relationships.keys() & data.keys()
             )
-            # | set(self.permission_relationships.keys()) # TODO: factor in above here.
+            | set(self.permission_relationships.keys()) # TODO: factor in above here.
         ):
             svc = self._svc_from_rel_name(key)
             sub = data.pop(key, {}) # {} default value -> only happens for empty permissions.
@@ -1081,11 +999,10 @@ class CompositeEntityService(UnaryEntityService):
                 futures=nested_futures,
             )
 
-            # Single nested entity.
-            if isinstance(sub, dict):
+            # Warning: not checked for MANYTOMANY
+            if rel.direction is MANYTOONE:
                 nested[key] = nested_stmt
-            # List of entities: one - to - many relationship.
-            elif isinstance(sub, list):
+            else:
                 delayed[key] = nested_stmt
 
         # Statement for original item.
