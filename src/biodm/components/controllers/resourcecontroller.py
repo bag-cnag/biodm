@@ -261,8 +261,7 @@ class ResourceController(EntityController):
     def _extract_fields(
         self,
         query_params: Dict[str, Any],
-        user_info: UserInfo,
-        no_depth: bool = False,
+        user_info: UserInfo
     ) -> Set[str]:
         """Extracts fields from request query parameters.
            Defaults to ``self.schema.dump_fields.keys()``.
@@ -285,7 +284,6 @@ class ResourceController(EntityController):
         else: # Default case, gracefully populate allowed fields.
             fields = [
                 k for k,v in self.schema.dump_fields.items()
-                if not no_depth or not (hasattr(v, 'nested') or hasattr(v, 'inner'))
             ]
             fields = self.svc.takeout_unallowed_nested(fields, user_info=user_info)
         return fields
@@ -447,16 +445,21 @@ class ResourceController(EntityController):
 
         # Plug in pk into the dict.
         validated_data.update(dict(zip(self.pk, pk_val))) # type: ignore [assignment]
-
-        return json_response(
-            data=await self.svc.write(
-                data=validated_data,
-                stmt_only=False,
-                user_info=request.state.user_info,
-                serializer=partial(self.serialize, many=isinstance(validated_data, list)),
-            ),
-            status_code=201,
-        )
+        try:
+            return json_response(
+                data=await self.svc.write(
+                    data=validated_data,
+                    stmt_only=False,
+                    user_info=request.state.user_info,
+                    serializer=partial(self.serialize, many=isinstance(validated_data, list)),
+                ),
+                status_code=201,
+            )
+        except IntegrityError as ie:
+            if 'UNIQUE' in ie.args[0] and 'version' in ie.args[0]:
+                raise UpdateVersionedError(
+                    "Attempt at updating versioned resources via POST detected"
+                )
 
     async def delete(self, request: Request) -> Response:
         """Delete resource.
@@ -558,18 +561,14 @@ class ResourceController(EntityController):
 
         fields = self._extract_fields(
             dict(request.query_params),
-            user_info=request.state.user_info,
-            no_depth=True
+            user_info=request.state.user_info
         )
 
-        # Note: serialization is delayed. Hence the no_depth.
         return json_response(
-            self.serialize(
-                await self.svc.release(
-                    pk_val=self._extract_pk_val(request),
-                    fields=fields,
-                    update=validated_data,
-                    user_info=request.state.user_info,
-                ), many=False, only=fields
+            await self.svc.release(
+                pk_val=self._extract_pk_val(request),
+                update=validated_data,
+                user_info=request.state.user_info,
+                serializer=partial(self.serialize, many=False, only=fields),
             ), status_code=200
         )

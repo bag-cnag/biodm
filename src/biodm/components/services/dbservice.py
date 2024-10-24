@@ -20,8 +20,8 @@ from biodm.exceptions import (
 from biodm.managers import DatabaseManager
 from biodm.tables import ListGroup, Group
 from biodm.tables.asso import asso_list_group
-from biodm.utils.security import UserInfo, Permission, PermissionLookupTables
-from biodm.utils.sqla import CompositeInsert, UpsertStmt, stmt_to_dict, UpsertStmtValuesHolder
+from biodm.utils.security import UserInfo, PermissionLookupTables
+from biodm.utils.sqla import CompositeInsert, UpsertStmt, UpsertStmtValuesHolder
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
 
@@ -519,7 +519,9 @@ class UnaryEntityService(DatabaseService):
         ]
 
         if len(stmts) == 1:
-            return stmts[0] if stmt_only else await self._insert(stmts[0], user_info=user_info, **kwargs)
+            return stmts[0] if stmt_only else await self._insert(
+                stmts[0], user_info=user_info, **kwargs
+            )
         return stmts if stmt_only else await self._insert_list(stmts, user_info=user_info, **kwargs)
 
     @DatabaseManager.in_session
@@ -797,7 +799,6 @@ class UnaryEntityService(DatabaseService):
     async def release(
         self,
         pk_val: List[Any],
-        fields: List[str],
         update: Dict[str, Any],
         session: AsyncSession,
         user_info: UserInfo | None = None,
@@ -805,19 +806,29 @@ class UnaryEntityService(DatabaseService):
         await self._check_permissions(
             "write", user_info, dict(zip(self.pk, pk_val)), session=session
         )
+        from copy import deepcopy
 
-        item = await self.read(pk_val, fields, session=session)
-        # Put item in a `flexible` state where we may edit pk.
-        make_transient(item)
-        item.version += 1
+        # Get item with all columns - covers x-to-one relationships.
+        old_item = await self.read(pk_val, self.table.__table__.columns.keys(), session=session)
+
+        # Copy and put in a `flexible` state where we may edit pk.
+        new_item = deepcopy(old_item)
+        make_transient(new_item)
 
         # Apply update.
+        new_item.version += 1
         for key, val in update.items():
-            setattr(item, key, val)
+            setattr(new_item, key, val)
+
+        # covers x-to-many relationships
+        x_to_many = [key for key, rel in self.table.relationships.items() if rel.uselist]
+        await session.refresh(old_item, x_to_many)
+        for key in x_to_many:
+            setattr(new_item, key, getattr(old_item, key))
 
         # new pk -> new row.
-        session.add(item)
-        return item
+        session.add(new_item)
+        return new_item
 
 
 class CompositeEntityService(UnaryEntityService):
@@ -925,8 +936,15 @@ class CompositeEntityService(UnaryEntityService):
                 # Refresh objects that were present so item comes back with updated values.
                 for u in updated:
                     await session.refresh(u)
+
                 # Add new stuff
-                attr.extend(delay)
+                if isinstance(attr, list):
+                    attr.extend(delay)
+                elif isinstance(attr, set):
+                    for d in delay:
+                        attr.add(d)
+                else: # Should not happen, but will trigger a warning in case.
+                    raise NotImplementedError
             else:
                 setattr(item, key, await svc._insert(delay, **kwargs))
         return item
@@ -976,7 +994,7 @@ class CompositeEntityService(UnaryEntityService):
             (
                 self._inst_relationships.keys() & data.keys()
             )
-            | set(self.permission_relationships.keys()) # TODO: factor in above here.
+            | set(self.permission_relationships.keys())
         ):
             svc = self._svc_from_rel_name(key)
             sub = data.pop(key, {}) # {} default value -> only happens for empty permissions.

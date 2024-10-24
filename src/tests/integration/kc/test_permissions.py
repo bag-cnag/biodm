@@ -1,6 +1,7 @@
 import json
 import pytest
 import requests
+from typing import Any, Dict
 from uuid import uuid4
 
 session_id = uuid4()
@@ -9,56 +10,60 @@ token_user1: str = ""
 token_user2: str = ""
 token_user2_child: str = ""
 
-user1 = {
+
+project_2_id: int
+project_2_read_id: int
+
+
+user1: Dict[str, str] = {
     "username":f"u_{session_id}_1",
     "password": "1234",
 }
 
-user2 = {
+
+user2: Dict[str, str] = {
     "username": f"u_{session_id}_2",
     "password": "1234",
 }
 
-user2_child = {
+
+user2_child: Dict[str, str] = {
     "username": f"u_{session_id}_2_child",
     "password": "1234"
 }
 
-# user2_grandchild = {
-#     "username": f"u_{session_id}_2_grandchild",
-# }
 
-user3 = {
+user3: Dict[str, str] = {
     "username": f"u_{session_id}_3",
     "password": "1234",
 }
 
-group1 = {
+
+group1: Dict[str, str] = {
     "path":f"g_{session_id}_1",
     "users":[user1],
 }
 
-group2 = {
+
+group2: Dict[str, str] = {
     "path":f"g_{session_id}_2",
     "users":[user2],
 }
 
-group2_child = {
+
+group2_child: Dict[str, str] = {
     "path": group2['path'] + "__child",
     "users": [user2_child],
 }
 
-# group2_grandchild = {
-#     "path": group2_child['path'] + "__grandchild",
-#     "users":[user2_grandchild],
-# }
 
-group3 = {
+group3: Dict[str, str] = {
     "path":f"g_{session_id}_3",
     "users":[user3],
 }
 
-project1 = {
+
+project1: Dict[str, Any] = {
     "name": f"pr_{session_id}_1",
     "perm_datasets": {
         "read": {
@@ -76,7 +81,8 @@ project1 = {
     }
 }
 
-project2 = {
+
+project2: Dict[str, Any] = {
     "name": f"pr_{session_id}_2",
     "perm_datasets": {
         "read": {
@@ -93,7 +99,7 @@ project2 = {
 }
 
 
-dataset1 = {
+dataset1: Dict[str, Any] = {
     "name": "ds_test",
     "project_id": "1",
     "contact": {
@@ -114,7 +120,7 @@ dataset1 = {
 }
 
 
-dataset2 = {
+dataset2: Dict[str, Any] = {
     "name": "ds_test_parent",
     "project_id": "2",
     "contact": {
@@ -123,7 +129,7 @@ dataset2 = {
 }
 
 
-public_project = {
+public_project: Dict[str, Any] = {
     "name": f"pr_{session_id}_public",
     "datasets": [
         {
@@ -131,13 +137,14 @@ public_project = {
             "contact": {
                 "username": user1['username']
             },
+            "tags": [{"name": "bip"},{"name": "bap"}]
         },
     ]
 }
 
 
 def test_create_data_and_login(srv_endpoint, utils):
-    global token_user1, token_user2, token_user2_child
+    global token_user1, token_user2, token_user2_child, project_2_id, project_2_read_id
 
     groups = requests.post(f"{srv_endpoint}/groups", data=utils.json_bytes(
         [
@@ -157,6 +164,12 @@ def test_create_data_and_login(srv_endpoint, utils):
     token_user2 = utils.keycloak_login(srv_endpoint, user2['username'], user2['password'])
     token_user2_child = utils.keycloak_login(
         srv_endpoint, user2_child['username'], user2_child['password'])
+
+
+    json_pro = json.loads(projects.text)
+    assert len(json_pro) == 2
+    project_2_id = json_pro[-1]['id']
+    project_2_read_id = json_pro[-1]['perm_datasets']['read']['id']
 
 
 @pytest.mark.dependency(name="test_create_data_and_login")
@@ -217,10 +230,14 @@ def test_read_dataset_no_read_perm(srv_endpoint):
     assert json_response2 == []
 
 
+@pytest.mark.dependency(name="test_create_data_and_login")
 def test_create_public_data(srv_endpoint, utils):
+    headers1 = {'Authorization': f'Bearer {token_user1}'}
+
     response = requests.post(
         f'{srv_endpoint}/projects',
         data=utils.json_bytes(public_project),
+        headers=headers1
     )
 
     assert response.status_code == 201
@@ -260,3 +277,58 @@ def test_create_from_child_group(srv_endpoint, utils):
     )
 
     assert response.status_code == 201
+
+@pytest.mark.dependency(name="test_create_data_and_login")
+def test_add_to_project_permission(srv_endpoint, utils):
+    project_update = {
+        "perm_datasets": {
+            "read": {
+                "id": project_2_read_id,
+                "groups": [
+                    {"path": group3['path']},
+                ]
+            }
+        }
+    }
+
+    # Will now contain both group2 from creation and group3 from update
+    response = requests.put(
+        f'{srv_endpoint}/projects/{project_2_id}',
+        data=utils.json_bytes(project_update)
+    )
+
+    assert response.status_code == 201
+    json_response = json.loads(response.text)
+    assert json_response['perm_datasets']['read']['id'] == project_2_read_id
+
+    groups_oracle = [
+        {"path": group2['path']},
+        {"path": group3['path']}
+    ]
+    assert json_response['perm_datasets']['read']['groups'] == groups_oracle
+
+
+@pytest.mark.dependency(name="test_add_to_project_permission")
+def test_change_project_permission(srv_endpoint, utils):
+    project_update = {
+        "perm_datasets": {
+            "read": {
+                "groups": [
+                    {"path": group1['path']},
+                ]
+            }
+        }
+    }
+
+    response = requests.put(
+        f'{srv_endpoint}/projects/{project_2_id}',
+        data=utils.json_bytes(project_update)
+    )
+
+    assert response.status_code == 201
+    json_response = json.loads(response.text)
+    assert json_response['perm_datasets']['read']['id'] != project_2_read_id
+    assert (
+        json_response['perm_datasets']['read']['groups'] ==
+        project_update["perm_datasets"]["read"]["groups"]
+    )

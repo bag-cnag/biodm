@@ -37,7 +37,7 @@ class UpsertStmtValuesHolder(dict):
 
     def to_stmt(self, svc: 'DatabaseService') -> Insert | Update | Select:
         """Generates an upsert (Insert + .on_conflict_do_x) depending on data population.
-            OR an explicit Update statement for partial data with full primary key
+            OR an explicit Update statement for full primary key and data
             OR an explicit Select statement for full primary key and no data
         the above edge cases do not necessarily always return a value,
         hence we handle them that way to guarantee consistency.
@@ -53,13 +53,14 @@ class UpsertStmtValuesHolder(dict):
         """
         pk = svc.table.pk
         missing_data = svc.table.required - self.keys()
+        pk_present = all(k in self.keys() for k in pk)
 
         set_ = {
             key: self[key]
             for key in self.keys() - pk
         }
 
-        if missing_data and all(k in self.keys() for k in pk):
+        if missing_data and pk_present:
             if set_: # Missing data & pk present & values -> UPDATE.
                 stmt = (
                     update(svc.table)
@@ -68,21 +69,26 @@ class UpsertStmtValuesHolder(dict):
                 )
             else: # ... no values -> SELECT.
                 stmt = select(svc.table)
-            # Full pk is present so we can generate this where cond.
             stmt = stmt.where(svc.gen_cond([self.get(k) for k in pk]))
             return stmt
 
         # Regular case
-        stmt = insert(svc.table)# or _backend_specific_insert(svc.table)
+        stmt = insert(svc.table)
         stmt = stmt.values(**self)
+        stmt = stmt.returning(svc.table)
 
         if not svc.table.is_versioned:
             if set_: # upsert
                 stmt = stmt.on_conflict_do_update(index_elements=pk, set_=set_)
             else: # insert with default values
                 stmt = stmt.on_conflict_do_nothing(index_elements=pk)
+                if pk_present: # Ensure that on_conflict_do_nothing will return a result.
+                    # https://stackoverflow.com/a/62205017/6847689
+                    # https://github.com/sqlalchemy/sqlalchemy/discussions/10605
+                    one = select(stmt.cte())
+                    two = select(svc.table).where(svc.gen_cond([self.get(k) for k in pk]))
+                    stmt = select(svc.table).from_statement(one.union(two))
         # Else (implicit): on_conflict_do_error -> catched by Controller.
-        stmt = stmt.returning(svc.table)
         return stmt
 
 

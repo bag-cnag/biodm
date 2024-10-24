@@ -16,10 +16,21 @@ asso_a_b = sa.Table(
     "ASSO_A_B",
     Base.metadata,
     sa.Column("id_a",            sa.ForeignKey("A.id"),        primary_key=True),
-    sa.Column("id_b",            sa.Integer(),        primary_key=True),
-    sa.Column("version_b",       sa.Integer(),   primary_key=True),
+    sa.Column("id_b",            sa.Integer(),                 primary_key=True),
+    sa.Column("version_b",       sa.Integer(),                 primary_key=True),
     sa.ForeignKeyConstraint(
         ['id_b', 'version_b'], ['B.id', 'B.version']
+    )
+)
+
+asso_c_d = sa.Table(
+    "ASSO_C_D",
+    Base.metadata,
+    sa.Column("c_id",            sa.ForeignKey("C.id"),        primary_key=True),
+    sa.Column("d_id",            sa.Integer(),                 primary_key=True),
+    sa.Column("d_version",       sa.Integer(),                 primary_key=True),
+    sa.ForeignKeyConstraint(
+        ['d_id', 'd_version'], ['D.id', 'D.version']
     )
 )
 
@@ -35,13 +46,21 @@ class A(Base):
 
 
 class B(Versioned, Base):
-    id = sa.Column(sa.Integer, primary_key=True, autoincrement=False)
+    id = sa.Column(sa.Integer, primary_key=True)
     name = sa.Column(sa.String, nullable=False)
 
 
 class C(Base):
     id = sa.Column(sa.Integer, primary_key=True)
     data = sa.Column(sa.String, nullable=False)
+
+
+class D(Versioned, Base):
+    id = sa.Column(sa.Integer, primary_key=True)
+
+    info = sa.Column(sa.String, nullable=False)
+
+    cs:    Mapped[List["C"]]  = relationship(secondary=asso_c_d, uselist=True, lazy="select")
 
 
 # Schemas
@@ -59,14 +78,23 @@ class BSchema(ma.Schema):
     id = ma.fields.Integer()
     version = ma.fields.Integer()
 
-    name = ma.fields.String(required=True)
+    name = ma.fields.String()
 
 
 class CSchema(ma.Schema):
     id = ma.fields.Integer()
-    data = ma.fields.String(required=True)
+    data = ma.fields.String()
 
     ca = ma.fields.Nested("ASchema")
+
+
+class DSchema(ma.Schema):
+    id = ma.fields.Integer()
+    version = ma.fields.Integer()
+
+    info = ma.fields.String()
+
+    cs = ma.fields.List(ma.fields.Nested("CSchema"))
 
 
 # Api componenents.
@@ -85,9 +113,14 @@ class CController(ResourceController):
         super().__init__(app=app, entity="C", table=C, schema=CSchema)
 
 
+class DController(ResourceController):
+    def __init__(self, app) -> None:
+        super().__init__(app=app, entity="D", table=D, schema=DSchema)
+
+
 app = Api(
     debug=True,
-    controllers=[AController, BController, CController],
+    controllers=[AController, BController, CController, DController],
     test=True
 )
 

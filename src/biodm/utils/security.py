@@ -286,7 +286,10 @@ class PermissionLookupTables:
                 {
                     f"id_{verb}": c,
                     f"{verb}": relationship(
-                        "ListGroup", cascade="save-update, merge, delete", foreign_keys=[c]
+                        "ListGroup",
+                        cascade="save-update, merge, delete, delete-orphan",
+                        foreign_keys=[c],
+                        single_parent=True
                     )
                 }
             )
