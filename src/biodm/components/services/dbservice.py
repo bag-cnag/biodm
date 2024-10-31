@@ -1,8 +1,10 @@
 """Database service: Translates requests data into SQLA statements and execute."""
 from abc import ABCMeta
+from calendar import c
 from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type, Set
 
 from sqlalchemy import select, delete, or_, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
@@ -15,7 +17,7 @@ from biodm import config
 from biodm.component import ApiService
 from biodm.components import Base
 from biodm.exceptions import (
-    DataError, EndpointError, FailedRead, FailedDelete, UpdateVersionedError, UnauthorizedError
+    DataError, EndpointError, FailedRead, FailedDelete, ReleaseVersionError, UpdateVersionedError, UnauthorizedError
 )
 from biodm.managers import DatabaseManager
 from biodm.tables import ListGroup, Group
@@ -25,7 +27,7 @@ from biodm.utils.sqla import CompositeInsert, UpsertStmt, UpsertStmtValuesHolder
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
 
-SUPPORTED_INT_OPERATORS = ("gt", "ge", "lt", "le")
+SUPPORTED_NUM_OPERATORS = ("gt", "ge", "lt", "le", "min", "max")
 
 
 class DatabaseService(ApiService, metaclass=ABCMeta):
@@ -47,10 +49,17 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         session: AsyncSession
     ) -> Base:
         """INSERT one object into the DB, check token write permissions before commit."""
-        # await self._check_permissions("write", user_info, stmt_to_dict(stmt))
         await self._check_permissions("write", user_info, stmt)
-        item = await session.scalar(stmt.to_stmt(self))
-        return item
+        try:
+            item = await session.scalar(stmt.to_stmt(self))
+            return item
+        # May occur in some cases for versioned resources.
+        except IntegrityError as ie:
+            if 'UNIQUE' in ie.args[0] and 'version' in ie.args[0]:
+                raise UpdateVersionedError(
+                    "Attempt at updating versioned resources."
+                )
+            raise
 
     @DatabaseManager.in_session
     async def _insert_list(
@@ -181,16 +190,14 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         if not user_info:
             return
 
-        if self._login_required(verb) and not user_info.info:
-            raise UnauthorizedError("Authentication required.")
-
-        groups = user_info.info[1] if user_info.info else []
+        if self._login_required(verb) and not user_info.is_authenticated:
+            raise UnauthorizedError()
 
         # Special admin case.
-        if groups and 'admin' in groups:
+        if user_info.is_admin:
             return
 
-        if not self._group_required(verb, groups):
+        if not self._group_required(verb, user_info.groups):
             raise UnauthorizedError("Insufficient group privileges for this operation.")
 
         perms = self._get_permissions(verb)
@@ -243,7 +250,7 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
                     # Empty perm list: public.
                     continue
 
-                if not self._group_path_matching(set(g.path for g in allowed.groups), set(groups)):
+                if not self._group_path_matching(set(g.path for g in allowed.groups), set(user_info.groups)):
                     raise UnauthorizedError(f"No {verb} access.")
 
     def _apply_read_permissions(
@@ -274,10 +281,8 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         if not perms or not user_info:
             return stmt
 
-        groups = user_info.info[1] if user_info.info else []
-
         # Special admin case.
-        if groups and 'admin' in groups:
+        if user_info.is_admin:
             return stmt
 
         # Build nested query to filter permitted results.
@@ -286,7 +291,7 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
 
             # public.
             perm_stmt = select(permission['table']).where(lgverb == None)
-            if groups:
+            if user_info.groups:
                 protected = (
                     select(permission['table'])
                     .join(
@@ -298,7 +303,7 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
                     .where(
                         or_(*[ # Group path matching.
                             Group.path.like(upper_level + '%')
-                            for upper_level in groups
+                            for upper_level in user_info.groups
                         ]),
                     )
                 )
@@ -366,12 +371,10 @@ class UnaryEntityService(DatabaseService):
         nested, _ = partition(fields, lambda x: x in self.table.relationships)
         for name in nested:
             target_svc = self._svc_from_rel_name(name)
-            if target_svc._login_required("read") and not user_info.info:
-                raise UnauthorizedError("Authentication required.")
+            if target_svc._login_required("read") and not user_info.is_authenticated:
+                raise UnauthorizedError()
 
-            groups = user_info.info[1] if user_info.info else []
-
-            if not self._group_required("read", groups):
+            if not self._group_required("read", user_info.groups):
                 raise UnauthorizedError(f"Insufficient group privileges to retrieve {name}.")
 
     def takeout_unallowed_nested(self, fields: List[str], user_info: UserInfo) -> List[str]:
@@ -388,12 +391,10 @@ class UnaryEntityService(DatabaseService):
 
         def ncheck(name):
             target_svc = self._svc_from_rel_name(name)
-            if target_svc._login_required("read") and not user_info.info:
+            if target_svc._login_required("read") and not user_info.is_authenticated:
                 return False
 
-            groups = user_info.info[1] if user_info.info else []
-
-            if not self._group_required("read", groups):
+            if not self._group_required("read", user_info.groups):
                 return False
             return True
 
@@ -446,9 +447,9 @@ class UnaryEntityService(DatabaseService):
 
             # submitter_username special col
             elif missing_data == {'submitter_username'} and self.table.has_submitter_username:
-                if not user_info or not user_info.info:
-                    raise UnauthorizedError("Requires authentication.")
-                data['submitter_username'] = user_info.info[0]
+                if not user_info or not user_info.is_authenticated:
+                    raise UnauthorizedError()
+                data['submitter_username'] = user_info.display_name
 
             else:
                 raise DataError(f"{self.table.__name__} missing the following: {missing_data}.")
@@ -505,7 +506,7 @@ class UnaryEntityService(DatabaseService):
         """
         # SQLite support for composite primary keys, with leading id.
         if (
-            'sqlite' in config.DATABASE_URL and
+            'sqlite' in str(config.DATABASE_URL) and
             hasattr(self.table, 'id') and
             len(list(self.table.pk)) > 1
         ):
@@ -594,7 +595,7 @@ class UnaryEntityService(DatabaseService):
                         .svc
                         ._apply_read_permissions(user_info, rel_stmt)
                     )
-                    # stmt = stmt.join(rel_stmt.subquery(), isouter=True)
+
                     stmt = stmt.join_from(
                         self.table,
                         rel_stmt.subquery(),
@@ -650,12 +651,10 @@ class UnaryEntityService(DatabaseService):
             # Special cases for nested, as endpoint protection is not enough.
             target_svc = self._svc_from_rel_name(attribute)
 
-            if target_svc._login_required("read") and not user_info.info:
-                raise UnauthorizedError("Authentication required.")
+            if target_svc._login_required("read") and not user_info.is_authenticated:
+                raise UnauthorizedError()
 
-            groups = user_info.info[1] if user_info.info else []
-
-            if not target_svc._group_required("read", groups):
+            if not target_svc._group_required("read", user_info.groups):
                 raise UnauthorizedError("Insufficient group privileges for this operation.")
 
         # Dynamic permissions are covered by read.
@@ -680,15 +679,19 @@ class UnaryEntityService(DatabaseService):
         :return: Select statement with operator condition applied.
         :rtype: Select
         """
+        col, ctype = self.table.colinfo(field)
         match operator.strip(')').split('('):
             case [("gt" | "ge" | "lt" | "le") as op, arg]:
-                col, ctype = self.table.colinfo(field)
                 op_fct: Callable = getattr(col, f"__{op}__")
                 return stmt.where(op_fct(ctype(arg)))
+            case [("min" | "max") as op, arg]:
+                op_fct: Callable = getattr(func, op)
+                sub = select(op_fct(col))
+                return stmt.where(col == sub.scalar_subquery())
             case _:
                 raise EndpointError(
                     f"Expecting either 'field=v1,v2' pairs or integrer"
-                    f" operators 'field.op(v)' op in {SUPPORTED_INT_OPERATORS}")
+                    f" operators 'field.op([v])' op in {SUPPORTED_NUM_OPERATORS}")
 
     def _filter_parse_field_cond(self, stmt: Select, field: str, values: List[str]) -> Select:
         """Applies field condition on a select statement.
@@ -741,7 +744,8 @@ class UnaryEntityService(DatabaseService):
         offset = int(params.pop('start', 0))
         limit = int(params.pop('end', config.LIMIT))
         reverse = params.pop('reverse', None) # TODO: ?
-        # TODO: apply limit to nested lists as well.
+
+        # start building statement.
         stmt = select(self.table)
 
         # For lower level(s) propagation.
@@ -789,11 +793,19 @@ class UnaryEntityService(DatabaseService):
         stmt = stmt.offset(offset).limit(limit)
         return stmt if stmt_only else await self._select_many(stmt, **kwargs)
 
-    async def delete(self, pk_val, user_info: UserInfo | None = None, **kwargs) -> None:
+    @DatabaseManager.in_session
+    async def delete(
+        self,
+        pk_val: List[Any],
+        session: AsyncSession,
+        user_info: UserInfo | None = None
+    ) -> None:
         """DELETE."""
-        # TODO: user_info ?
+        await self._check_permissions(
+            "write", user_info, dict(zip(self.pk, pk_val)), session=session
+        )
         stmt = delete(self.table).where(self.gen_cond(pk_val))
-        await self._delete(stmt, **kwargs)
+        await self._delete(stmt, session=session)
 
     @DatabaseManager.in_session
     async def release(
@@ -807,9 +819,31 @@ class UnaryEntityService(DatabaseService):
             "write", user_info, dict(zip(self.pk, pk_val)), session=session
         )
         from copy import deepcopy
+        queried_version: int
 
+        # Slightly tweaked read version where we get max column instead.
+        stmt = select(self.table)
+        for i, col in enumerate(self.pk):
+            if col.name == 'version':
+                sub = select(func.max(col)).scalar_subquery()
+                stmt = stmt.where(col == sub)
+                queried_version = pk_val[i]
+            else:
+                stmt = stmt.where(col == col.type.python_type(pk_val[i]))
         # Get item with all columns - covers x-to-one relationships.
-        old_item = await self.read(pk_val, self.table.__table__.columns.keys(), session=session)
+        self._restrict_select_on_fields(
+            stmt,
+            fields=self.table.__table__.columns.keys(),
+            user_info=None
+        )
+        old_item = await self._select(stmt, session=session)
+
+        assert queried_version # here to suppress linters.
+
+        if not old_item.version == queried_version:
+            raise ReleaseVersionError(
+                "Cannot release a versioned entity that has already been released."
+            )
 
         # Copy and put in a `flexible` state where we may edit pk.
         new_item = deepcopy(old_item)

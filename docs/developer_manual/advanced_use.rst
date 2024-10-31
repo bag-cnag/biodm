@@ -183,6 +183,8 @@ a ``ResourceController``.
 .. code-block:: python
     :caption: s3controller.py
 
+    from biodm.routing import Route, PublicRoute
+
     class S3Controller(ResourceController):
         """Controller for entities involving file management leveraging an S3Service."""
         def _infer_svc(self) -> Type[S3Service]:
@@ -200,7 +202,7 @@ a ``ResourceController``.
             prefix = f'{self.prefix}/{self.qp_id}/'
             file_routes = [
                 Route(f'{prefix}download',           self.download,           methods=[HttpMethod.GET]),
-                Route(f'{prefix}post_success',       self.post_success,       methods=[HttpMethod.GET]),
+                PublicRoute(f'{prefix}post_success', self.post_success,       methods=[HttpMethod.GET]),
                 ...
             ]
             # Set an extra attribute for later.
@@ -420,3 +422,20 @@ A lot of that code has to do with retrieving async SQLAlchemy objects attributes
             # Generate a new form.
             await self.gen_upload_form(file, session=session)
             return file
+
+.. _dev-routing:
+
+Routing and Auth
+----------------
+
+As shown in the ``S3Controller`` example above, ``BioDM`` provides two
+``Routes`` class: ``PublicRoute`` and ``Route``.
+
+In case you are defining your own routes you should use those ones instead of
+starlette's ``Route``.
+
+Ultimately, this allows to use the config parameter ``REQUIRE_AUTH`` which when set to ``True``
+will require authentication on all endpoints routed
+with simple ``Routes`` while leaving endpoints marked with ``PublicRoute`` public.
+This distinction can be important as in the example above, s3 bucket is **not** authenticated
+when sending us a successful notice of file upload.

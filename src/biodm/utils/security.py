@@ -4,12 +4,11 @@ from dataclasses import dataclass
 from dataclasses import field as dc_field
 from functools import wraps
 from inspect import getmembers, ismethod
-from typing import TYPE_CHECKING, List, Tuple, Callable, Awaitable, Set, ClassVar, Type, Any, Dict
+from typing import TYPE_CHECKING, List, Tuple, Set, ClassVar, Type, Any, Dict
 
 from marshmallow import fields, Schema
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
+from starlette.requests import HTTPConnection
+from starlette.types import ASGIApp, Receive, Scope, Send
 from sqlalchemy import ForeignKeyConstraint, Column, ForeignKey
 from sqlalchemy.orm import (
     relationship, Relationship, backref, ONETOMANY, mapped_column, MappedColumn
@@ -24,6 +23,9 @@ if TYPE_CHECKING:
     from biodm.managers import KeycloakManager
 
 
+# TODO: [prio: not urgent]
+# possible improvement, would be to rewrite the following classes using
+# starlette builtins from starlette.middleware.authentication.
 class UserInfo(aobject):
     """Hold user info for a given request.
 
@@ -32,8 +34,8 @@ class UserInfo(aobject):
     kc: 'KeycloakManager'
     _info: Tuple[str, List, List] | None = None
 
-    async def __init__(self, request: Request) -> None: # type: ignore [misc]
-        self.token = self.auth_header(request)
+    async def __init__(self, conn: HTTPConnection) -> None: # type: ignore [misc]
+        self.token = self.auth_header(conn)
         if self.token:
             self._info = await self.decode_token(self.token)
 
@@ -42,10 +44,18 @@ class UserInfo(aobject):
         """info getter. Returns user_info if the request is authenticated, else None."""
         return self._info
 
+    @property
+    def display_name(self):
+        return self._info[0] if self._info else "anon"
+
+    @property
+    def groups(self):
+        return self._info[1] if self._info else ["no_groups"]
+
     @staticmethod
-    def auth_header(request) -> str | None:
+    def auth_header(conn: HTTPConnection) -> str | None:
         """Check and return token from headers if present else returns None."""
-        header = request.headers.get("Authorization")
+        header = conn.headers.get("Authorization")
         if not header:
             return None
         return (header.split("Bearer")[-1] if "Bearer" in header else header).strip()
@@ -53,37 +63,42 @@ class UserInfo(aobject):
     async def decode_token(
         self,
         token: str
-    ) -> Tuple[str, List, List]:
+    ) -> Tuple[str, List]:
         """ Decode token."""
-        from biodm.tables import User
-
-        def parse_items(token, name, default=""):
-            n = token.get(name, [])
-            return [s.replace("/", "") for s in n] if n else [default]
-
         decoded = await self.kc.decode_token(token)
-
         # Parse.
         username = decoded.get("preferred_username")
-        user: User = await User.svc.read(pk_val=[username], fields=['id'])
         groups = [
-            group['path'].replace("/", "__")[2:]
-            for group in await self.kc.get_user_groups(user.id)
+            group.replace("/", "__")[2:]
+            for group in decoded.get('groups', [])
         ] or ['no_groups']
-        projects = parse_items(decoded, "group_projects", "no_projects")
-        return username, groups, projects
+        return username, groups
+
+    @property
+    def is_authenticated(self):
+        return bool(self._info)
+
+    @property
+    def is_admin(self):
+        """token bearer is admin flag"""
+        if not self._info:
+            return False
+        return 'admin' in self._info[1]
 
 
-# pylint: disable=too-few-public-methods
-class AuthenticationMiddleware(BaseHTTPMiddleware):
+class AuthenticationMiddleware:
     """Handle token decoding for incoming requests, populate request object with result."""
-    async def dispatch(
-            self,
-            request: Request,
-            call_next: Callable[[Request], Awaitable[Response]]
-        ) -> Response:
-        request.state.user_info = await UserInfo(request)
-        return await call_next(request)
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] not in ["http", "websocket"]:
+            await self.app(scope, receive, send)
+            return
+
+        conn = HTTPConnection(scope)
+        scope["user"] = await UserInfo(conn)
+        await self.app(scope, receive, send)
 
 
 def login_required(f):
@@ -100,9 +115,9 @@ def login_required(f):
     # Else hardcheck here is enough.
     @wraps(f)
     async def lr_wrapper(controller, request, *args, **kwargs):
-        if request.state.user_info.info:
+        if request.user.is_authenticated:
             return await f(controller, request, *args, **kwargs)
-        raise UnauthorizedError("Authentication required.")
+        raise UnauthorizedError()
 
     # Read is protected on its endpoint and is handled specifically for nested cases in codebase.
     if f.__name__ == "read":
@@ -124,9 +139,8 @@ def group_required(f, groups: List[str]):
 
     @wraps(f)
     async def gr_wrapper(controller, request, *args, **kwargs):
-        if request.state.user_info.info:
-            _, user_groups, _ = request.state.user_info.info
-            if any((ug in groups for ug in user_groups)):
+        if request.user.is_authenticated: # TODO: check empty group list edge case 
+            if any((ug in groups for ug in request.user.groups)):
                 return f(controller, request, *args, **kwargs)
 
         raise UnauthorizedError("Insufficient group privileges for this operation.")

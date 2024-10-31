@@ -7,6 +7,10 @@ from typing import Dict, Any
 from bs4 import BeautifulSoup
 
 
+ADMIN_USERNAME = 'admin'
+ADMIN_PASSWORD = '1234'
+
+
 @pytest.fixture(scope="session", autouse=True)
 def srv_endpoint():
     key = 'API_ENDPOINT'
@@ -51,6 +55,13 @@ class Utils:
             return response.text.rstrip('\n')
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def utils():
     return Utils
+
+
+@pytest.fixture(scope="session")
+def admin_header(srv_endpoint, utils):
+    """Set header for admin token bearer."""
+    admin_token = utils.keycloak_login(srv_endpoint, ADMIN_USERNAME, ADMIN_PASSWORD)
+    return {'Authorization': f'Bearer {admin_token}'}

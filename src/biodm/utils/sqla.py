@@ -18,10 +18,10 @@ def _backend_specific_insert() -> Callable[[_DMLTableArgument], Insert]:
     MariaDB/InnoDB have similar constructs, in case we want to support more backends
     the to_stmt method from the UpsertStmtValuesHolder class below should be tweaked as well.
     """
-    if 'postgresql' in config.DATABASE_URL.lower():
+    if 'postgresql' in str(config.DATABASE_URL).lower():
         return postgresql.insert
 
-    if 'sqlite' in config.DATABASE_URL.lower():
+    if 'sqlite' in str(config.DATABASE_URL).lower():
         return sqlite.insert
 
     raise # Should not happen. Here to suppress linters.
@@ -36,11 +36,12 @@ class UpsertStmtValuesHolder(dict):
     Then the actual statement is emitted just before querying the DB with all possible values."""
 
     def to_stmt(self, svc: 'DatabaseService') -> Insert | Update | Select:
-        """Generates an upsert (Insert + .on_conflict_do_x) depending on data population.
-            OR an explicit Update statement for full primary key and data
-            OR an explicit Select statement for full primary key and no data
-        the above edge cases do not necessarily always return a value,
-        hence we handle them that way to guarantee consistency.
+        """Generates an upsert (Insert + .on_conflict_do_x) depending on data population
+        OR an explicit Update/Select statement when the core assesses full primary key and
+        insufficient data to create a record.
+
+        Latter edge cases do not necessarily always return a value, hence we handle them that way
+        to guarantee consistency.
 
         In case of incomplete data, some upserts will fail, and raise it up to controller
         which has the details about initial validation fail.

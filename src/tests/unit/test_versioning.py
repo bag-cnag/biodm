@@ -144,3 +144,24 @@ def test_update_nested_list_after_release_of_parent_resource(client):
     release_json = json.loads(update_response.text)
 
     assert release_json['cs'] == (res_item['cs'] + oracle_nested)
+
+
+@pytest.mark.xfail(raises=exc.ReleaseVersionError)
+def test_release_twice(client):
+    item = {'info': 'toto', 'cs': [{'data': 'nested1'}, {'data': 'nested2'}]}
+    response = client.post('/ds', content=json_bytes(item))
+
+    assert response.status_code == 201
+    res_item = json.loads(response.text)
+
+    release_item = {'info': 'titi'}
+    release_response_1 = client.post(
+        f"/ds/{res_item['id']}_{res_item['version']}/release",
+        content=json_bytes(release_item)
+    )
+    assert release_response_1.status_code == 200
+
+    _ = client.post(
+        f"/ds/{res_item['id']}_{res_item['version']}/release",
+        content=json_bytes(release_item)
+    )

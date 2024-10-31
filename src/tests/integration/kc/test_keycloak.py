@@ -1,11 +1,11 @@
+from httpx import head
 import requests
 import json
 import pytest
-
+from typing import Dict
 
 token: str = ""
 token_with_groups: str = ""
-
 user_with_groups = {
     "username": "u_test_wg",
     "password": "1234",
@@ -14,14 +14,16 @@ user_with_groups = {
         {"path": "g_test_wg2"},
     ]
 }
+user_test: Dict[str, str] = {"username": "u_test", "password": "1234", "firstName": "john", "lastName": "doe"}
 
-user_test = {"username": "u_test", "password": "1234", "firstName": "john", "lastName": "doe"}
 
-tag = {"name": "xyz"}
-
-def test_create_user(srv_endpoint, utils):
+def test_create_user(srv_endpoint, utils, admin_header):
     """"""
-    response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(user_test))
+    response = requests.post(
+        f'{srv_endpoint}/users',
+        data=utils.json_bytes(user_test),
+        headers=admin_header
+    )
 
     assert response.status_code == 201
     json_response = json.loads(response.text)
@@ -32,9 +34,13 @@ def test_create_user(srv_endpoint, utils):
 
 
 @pytest.mark.dependency(name="test_create_user")
-def test_update_user(srv_endpoint, utils):
+def test_update_user(srv_endpoint, utils, admin_header):
     update = {"username": user_test['username'], "firstName": "jack"}
-    response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(update))
+    response = requests.post(
+        f'{srv_endpoint}/users',
+        data=utils.json_bytes(update),
+        headers=admin_header
+    )
 
     assert response.status_code == 201
     json_response = json.loads(response.text)
@@ -45,29 +51,41 @@ def test_update_user(srv_endpoint, utils):
     assert json_response["lastName"] == user_test["lastName"]
 
 
-def test_create_user_no_passwd(srv_endpoint, utils):
+def test_create_user_no_passwd(srv_endpoint, utils, admin_header):
     user_no_passwd = {"username": "u_no_passwd"}
-    response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(user_no_passwd))
+    response = requests.post(
+        f'{srv_endpoint}/users',
+        data=utils.json_bytes(user_no_passwd),
+        headers=admin_header
+    )
 
     assert response.status_code == 400
     assert "Missing password in order to create User." in response.text
 
 
-def test_create_group(srv_endpoint, utils):
+def test_create_group(srv_endpoint, utils, admin_header):
     """"""
     group = {"path": "g_test"}
-    response = requests.post(f'{srv_endpoint}/groups', data=utils.json_bytes(group))
+    response = requests.post(
+        f'{srv_endpoint}/groups',
+        data=utils.json_bytes(group),
+        headers=admin_header
+    )
     json_response = json.loads(response.text)
     assert response.status_code == 201
     assert json_response["path"] == group["path"]
 
 
-def test_login_user_on_keycloak_and_get_token(srv_endpoint, utils):
+def test_login_user_on_keycloak_and_get_token(srv_endpoint, utils, admin_header):
     """"""
     global token
     # Create User
     user = {"username": "u_test", "password": "1234"}
-    response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(user))
+    response = requests.post(
+        f'{srv_endpoint}/users',
+        data=utils.json_bytes(user),
+        headers=admin_header
+    )
     assert response.status_code == 201
 
     token = utils.keycloak_login(srv_endpoint, user['username'], user['password'])
@@ -86,10 +104,14 @@ def test_authenticated_endpoint(srv_endpoint):
     assert "['no_groups']" in response.text
 
 
-def test_create_user_with_nested_group(srv_endpoint, utils):
+def test_create_user_with_nested_group(srv_endpoint, utils, admin_header):
     """"""
     user = user_with_groups
-    response = requests.post(f'{srv_endpoint}/users', data=utils.json_bytes(user))
+    response = requests.post(
+        f'{srv_endpoint}/users',
+        data=utils.json_bytes(user),
+        headers=admin_header
+    )
     json_response = json.loads(response.text)
 
     wg1 = requests.get(f'{srv_endpoint}/groups/{user["groups"][0]["path"]}?fields=users')
@@ -103,7 +125,7 @@ def test_create_user_with_nested_group(srv_endpoint, utils):
     assert any(user['username'] == wg2user['username'] for wg2user in json_wg2['users'])
 
 
-def test_create_groups_with_nested_users(srv_endpoint, utils):
+def test_create_groups_with_nested_users(srv_endpoint, utils, admin_header):
     """"""
     group = {
         "path": "g_test_wu",
@@ -112,7 +134,11 @@ def test_create_groups_with_nested_users(srv_endpoint, utils):
             {"username": "u_test_wu2", "password": "1234"},
         ]
     }
-    response = requests.post(f'{srv_endpoint}/groups',  data=utils.json_bytes(group))
+    response = requests.post(
+        f'{srv_endpoint}/groups',
+        data=utils.json_bytes(group),
+        headers=admin_header
+    )
     json_response = json.loads(response.text)
 
     wu1 = requests.get(f'{srv_endpoint}/users/{group["users"][0]["username"]}?fields=groups')
@@ -139,7 +165,7 @@ def test_login_and_authenticated_with_groups(srv_endpoint, utils):
         f"'{user_with_groups['groups'][1]['path']}']") in response.text
 
 
-def test_create_groups_with_parent(srv_endpoint, utils):
+def test_create_groups_with_parent(srv_endpoint, utils, admin_header):
     parent = {
         "path": "parent"
     }
@@ -149,9 +175,21 @@ def test_create_groups_with_parent(srv_endpoint, utils):
     child2 = {
         "path": f"{parent['path']}__child2"
     }
-    parent_response = requests.post(f'{srv_endpoint}/groups', data=utils.json_bytes(parent))
-    child_response = requests.post(f'{srv_endpoint}/groups', data=utils.json_bytes(child1))
-    child2_response = requests.post(f'{srv_endpoint}/groups', data=utils.json_bytes(child2))
+    parent_response = requests.post(
+        f'{srv_endpoint}/groups',
+        data=utils.json_bytes(parent),
+        headers=admin_header
+    )
+    child_response = requests.post(
+        f'{srv_endpoint}/groups',
+        data=utils.json_bytes(child1),
+        headers=admin_header
+    )
+    child2_response = requests.post(
+        f'{srv_endpoint}/groups',
+        data=utils.json_bytes(child2),
+        headers=admin_header
+    )
 
     assert parent_response.status_code == 201
     assert child_response.status_code == 201
@@ -172,39 +210,3 @@ def test_create_groups_with_parent(srv_endpoint, utils):
     assert len(json_parent['children']) == 2
     assert json_parent['children'][0]['path'] == child1['path']
     assert json_parent['children'][1]['path'] == child2['path']
-
-
-def test_create_tag_no_auth(srv_endpoint, utils):
-    response = requests.post(f'{srv_endpoint}/tags', data=utils.json_bytes(tag))
-
-    assert response.status_code == 511
-
-
-@pytest.mark.dependency(name="test_login_user_on_keycloak_and_get_token")
-def test_create_tag_auth(srv_endpoint, utils):
-    headers = {'Authorization': f'Bearer {token}'}
-
-    response = requests.post(f'{srv_endpoint}/tags', data=utils.json_bytes(tag), headers=headers)
-
-    assert response.status_code == 201
-
-    json_tag = json.loads(response.text)
-    assert tag == json_tag
-
-
-@pytest.mark.dependency(name="test_create_tag_auth")
-def test_read_tag_no_auth(srv_endpoint):
-    response = requests.get(f'{srv_endpoint}/tags/{tag["name"]}')
-
-    assert response.status_code == 511
-
-
-@pytest.mark.dependency(name="test_create_tag_auth")
-def test_read_tag_auth(srv_endpoint, utils):
-    headers = {'Authorization': f'Bearer {token}'}
-    response = requests.get(f'{srv_endpoint}/tags/{tag["name"]}', data=utils.json_bytes(tag), headers=headers)
-
-    assert response.status_code == 200
-
-    json_tag = json.loads(response.text)
-    assert tag == json_tag

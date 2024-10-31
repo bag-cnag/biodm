@@ -131,7 +131,7 @@ def test_filter_resource_op(client):
     item1 = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'},{'name': 'bap'},]}
     item2 = {'x': 3, 'y': 4, 'bs': [{'name': 'tit'},{'name': 'tat'},]}
 
-    res = client.post('/as', content=json_bytes([item1, item2]))
+    _ = client.post('/as', content=json_bytes([item1, item2]))
     response = client.get('/as?x.lt(2)')
     json_response = json.loads(response.text)
 
@@ -142,6 +142,40 @@ def test_filter_resource_op(client):
     assert response.status_code == 200
     assert json_response['x'] == 1
     assert json_response['y'] == 2
+
+
+def test_filter_resource_min_max(client):
+    item1 = {'x': 1, 'y': 2}
+    item2 = {'x': 3, 'y': 4}
+    item3 = {'x': 5, 'y': 6}
+
+    res_post = client.post('/as', content=json_bytes([item1, item2, item3]))
+    assert res_post.status_code == 201
+
+    res_min = client.get('/as?y.min()')
+    res_max = client.get('/as?x.max()')
+
+    assert res_min.status_code == 200
+    assert res_max.status_code == 200
+
+    json_min = next(iter(json.loads(res_min.text)))
+    json_max = next(iter(json.loads(res_max.text)))
+
+    assert json_min['x'] == item1['x'] and json_min['y'] == item1['y']
+    assert json_max['x'] == item3['x'] and json_max['y'] == item3['y']
+
+
+def test_filter_resource_min_and_cond(client):
+    item1 = {'x': 1, 'y': 2}
+    item2 = {'x': 3, 'y': 4}
+    item3 = {'x': 5, 'y': 6}
+
+    res_post = client.post('/as', content=json_bytes([item1, item2, item3]))
+    assert res_post.status_code == 201
+
+    res_filter = client.get('/as?y=4&y.min()')
+    assert res_filter.status_code == 200
+    assert json.loads(res_filter.text) == []
 
 
 def test_filter_resource_nested(client):
@@ -200,7 +234,7 @@ def test_update_unary_resource(client):
     cr_response = client.post('/cs', content=json_bytes(item))
     item_id = json.loads(cr_response.text)['id']
 
-    up_response = client.put(f'/cs/{item_id}', data=json_bytes({'data': 'modified'}))
+    up_response = client.put(f'/cs/{item_id}', content=json_bytes({'data': 'modified'}))
     json_response = json.loads(up_response.text)
 
     assert up_response.status_code == 201
@@ -214,7 +248,7 @@ def test_update_composite_resource(client):
     item_id = json.loads(cr_response.text)['id']
 
     c_oracle = {'data': 'bop'}
-    up_response = client.put(f'/as/{item_id}', data=json_bytes(
+    up_response = client.put(f'/as/{item_id}', content=json_bytes(
         {
             'x': 3,
             'c': c_oracle

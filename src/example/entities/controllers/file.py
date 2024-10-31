@@ -4,10 +4,11 @@ from biodm import config
 from biodm.components.controllers import S3Controller, HttpMethod
 from biodm.exceptions import UnauthorizedError
 from biodm.utils.security import UserInfo
+from biodm.routing import Route
 
 from starlette.requests import Request
 from starlette.responses import Response, PlainTextResponse #, RedirectResponse
-from starlette.routing import BaseRoute, Mount, Route
+from starlette.routing import BaseRoute, Mount
 
 from entities import tables
 
@@ -44,13 +45,11 @@ class FileController(S3Controller):
 
         vis_data = {'file_id': int(request.path_params.get('id'))}
 
-        user_info = await UserInfo(request)
+        if not request.user.is_authenticated:
+            raise UnauthorizedError()
 
-        if not user_info.info:
-            raise UnauthorizedError("Visualizing requires authentication.")
+        vis_data["user_username"] = request.user.display_name
 
-        vis_data["user_username"] = user_info.info[0]
-
-        vis = await vis_svc.write(data=vis_data, stmt_only=False, user_info=user_info)
+        vis = await vis_svc.write(data=vis_data, stmt_only=False, user_info=request.user)
 
         return PlainTextResponse(f"http://{config.K8_HOST}/{vis.name}/")

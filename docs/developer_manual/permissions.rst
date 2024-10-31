@@ -17,6 +17,17 @@ be provided in a ``.env`` file at the same level as your ``demo.py`` script.
     KC_CLIENT_ID=
     KC_CLIENT_SECRET=
 
+
+Server level: REQUIRE_AUTH
+--------------------------
+
+Setting ``REQUIRE_AUTH=True`` config argument, will make all routes, except the ones explicitely
+marked public (such as ``/login`` and ``/[resources/|]schemas)`` require authentication.
+
+
+See more at :ref:`dev-routing`
+
+
 Coarse: Static rule on a Controller endpoint
 ---------------------------------------------
 

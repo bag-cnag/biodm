@@ -143,14 +143,19 @@ public_project: Dict[str, Any] = {
 }
 
 
-def test_create_data_and_login(srv_endpoint, utils):
+tag: Dict[str, str] = {"name": "xyz"}
+
+
+def test_create_data_and_login(srv_endpoint, utils, admin_header):
     global token_user1, token_user2, token_user2_child, project_2_id, project_2_read_id
 
-    groups = requests.post(f"{srv_endpoint}/groups", data=utils.json_bytes(
-        [
-            group1, group2, group3, group2_child,# group2_grandchild
-        ]
-    ))
+    groups = requests.post(
+        f"{srv_endpoint}/groups",
+        data=utils.json_bytes(
+            [group1, group2, group3, group2_child]
+        ),
+        headers=admin_header
+    )
     projects = requests.post(f"{srv_endpoint}/projects", data=utils.json_bytes(
         [
             project1, project2
@@ -332,3 +337,39 @@ def test_change_project_permission(srv_endpoint, utils):
         json_response['perm_datasets']['read']['groups'] ==
         project_update["perm_datasets"]["read"]["groups"]
     )
+
+
+def test_create_tag_no_auth(srv_endpoint, utils):
+    response = requests.post(f'{srv_endpoint}/tags', data=utils.json_bytes(tag))
+
+    assert response.status_code == 511
+
+
+@pytest.mark.dependency(name="test_create_data_and_login")
+def test_create_tag_auth(srv_endpoint, utils):
+    headers = {'Authorization': f'Bearer {token_user1}'}
+
+    response = requests.post(f'{srv_endpoint}/tags', data=utils.json_bytes(tag), headers=headers)
+
+    assert response.status_code == 201
+
+    json_tag = json.loads(response.text)
+    assert tag == json_tag
+
+
+@pytest.mark.dependency(name="test_create_tag_auth")
+def test_read_tag_no_auth(srv_endpoint):
+    response = requests.get(f'{srv_endpoint}/tags/{tag["name"]}')
+
+    assert response.status_code == 511
+
+
+@pytest.mark.dependency(name="test_create_tag_auth")
+def test_read_tag_auth(srv_endpoint, utils):
+    headers = {'Authorization': f'Bearer {token_user1}'}
+    response = requests.get(f'{srv_endpoint}/tags/{tag["name"]}', data=utils.json_bytes(tag), headers=headers)
+
+    assert response.status_code == 200
+
+    json_tag = json.loads(response.text)
+    assert tag == json_tag

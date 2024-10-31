@@ -21,7 +21,7 @@ we will go over the following minimal example.
 
     # Tables
     class Dataset(bd.components.Versioned, bd.components.Base):
-        id = Column(Integer, primary_key=True, autoincrement=not 'sqlite' in config.DATABASE_URL)
+        id = Column(Integer, primary_key=True, autoincrement=not 'sqlite' in str(config.DATABASE_URL))
         name          : sao.Mapped[str]          = sa.Column(sa.String(50),                   nullable=False)
         description   : sao.Mapped[str]          = sa.Column(sa.String(500),                  nullable=False)
         username_owner: sao.Mapped[int]          = sa.Column(sa.ForeignKey("USER.username"),  nullable=False)

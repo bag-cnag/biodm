@@ -55,17 +55,10 @@ class HistoryMiddleware(BaseHTTPMiddleware):
         super().__init__(app, self.dispatch)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Any:
-        if request.state.user_info.info:
-            user_id = request.state.user_info.info[0]
-            user_groups = request.state.user_info.info[1]
-        else:
-            user_id = "anon"
-            user_groups = ['no_groups']
-
         endpoint = str(request.url).rsplit(self.server_host, maxsplit=1)[-1]
         body = await request.body()
         entry = {
-            'user_username': user_id,
+            'user_username': request.user.display_name,
             'endpoint': endpoint,
             'method': request.method,
             'content': str(body) if body else ""
@@ -84,7 +77,7 @@ class HistoryMiddleware(BaseHTTPMiddleware):
         # Log
         timestamp = datetime.now().strftime("%I:%M%p on %B %d, %Y")
         History.svc.app.logger.info(
-            f'{timestamp}\t{user_id}\t{",".join(user_groups)}\t'
+            f'{timestamp}\t{request.user.display_name}\t{",".join(request.user.groups)}\t'
             f'{endpoint}\t-\t{request.method}'
         )
 
@@ -177,7 +170,7 @@ class Api(Starlette):
         # Middlewares -> Stack goes in reverse order.
         self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
         self.add_middleware(AuthenticationMiddleware)
-        if self.scope is Scope.PROD:
+        if Scope.DEBUG not in self.scope:
             self.add_middleware(TimeoutMiddleware, timeout=config.SERVER_TIMEOUT)
         # CORS last (i.e. first).
         self.add_middleware(

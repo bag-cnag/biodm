@@ -6,12 +6,10 @@ from inspect import getmembers, ismethod
 from types import MethodType
 from typing import TYPE_CHECKING, Callable, List, Set, Any, Dict, Type
 
-# from marshmallow import ValidationError
 from marshmallow.schema import RAISE
 from marshmallow.class_registry import get_class
 from marshmallow.exceptions import RegistryError
-from sqlalchemy.exc import IntegrityError
-from starlette.routing import Mount, Route, BaseRoute
+from starlette.routing import Mount, BaseRoute
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -29,12 +27,12 @@ from biodm.exceptions import (
     InvalidCollectionMethod,
     PayloadEmptyError,
     PartialIndex,
-    UpdateVersionedError
 )
 from biodm.utils.security import UserInfo
 from biodm.utils.utils import json_response
 from biodm.utils.apispec import register_runtime_schema, process_apispec_docstrings
 from biodm.components import Base
+from biodm.routing import Route, PublicRoute
 from .controller import HttpMethod, EntityController
 
 if TYPE_CHECKING:
@@ -202,7 +200,7 @@ class ResourceController(EntityController):
             Route(f"{self.prefix}",                   self.create,         methods=[HttpMethod.POST]),
             Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET]),
             Mount(self.prefix, routes=[
-                Route('/schema',                      self.openapi_schema, methods=[HttpMethod.GET]),
+                PublicRoute('/schema',                self.openapi_schema, methods=[HttpMethod.GET]),
                 Route(f'/{self.qp_id}',               self.read,           methods=[HttpMethod.GET]),
                 Route(f'/{self.qp_id}/{{attribute}}', self.read,           methods=[HttpMethod.GET]),
                 Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE]),
@@ -320,23 +318,13 @@ class ResourceController(EntityController):
                 description: Empty Payload.
         """
         body = await self._extract_body(request)
-
-        try:
-            validated_data = self.validate(body, partial=True)
-            created = await self.svc.write(
-                data=validated_data,
-                stmt_only=False,
-                user_info=request.state.user_info,
-                serializer=partial(self.serialize, many=isinstance(validated_data, list))
-            )
-        except IntegrityError as ie:
-            if 'UNIQUE' in ie.args[0] and 'version' in ie.args[0]: # Versioned case.
-                raise UpdateVersionedError(
-                    "Attempt at updating versioned resources via POST detected"
-                )
-            # Shall raise a Validation error, which should give more details about what's missing.
-            self.validate(body, partial=False)
-            raise # reraise primary exception if it did not.
+        validated_data = self.validate(body, partial=True)
+        created = await self.svc.write(
+            data=validated_data,
+            stmt_only=False,
+            user_info=request.user,
+            serializer=partial(self.serialize, many=isinstance(validated_data, list))
+        )
         return json_response(data=created, status_code=201)
  
     async def read(self, request: Request) -> Response:
@@ -391,14 +379,14 @@ class ResourceController(EntityController):
 
         fields = ctrl._extract_fields(
             dict(request.query_params),
-            user_info=request.state.user_info
+            user_info=request.user
         )
         return json_response(
             data=await self.svc.read(
                 pk_val=self._extract_pk_val(request),
                 fields=fields,
                 nested_attribute=nested_attribute,
-                user_info=request.state.user_info,
+                user_info=request.user,
                 serializer=partial(ctrl.serialize, many=many, only=fields),
             ),
             status_code=200,
@@ -445,21 +433,15 @@ class ResourceController(EntityController):
 
         # Plug in pk into the dict.
         validated_data.update(dict(zip(self.pk, pk_val))) # type: ignore [assignment]
-        try:
-            return json_response(
-                data=await self.svc.write(
-                    data=validated_data,
-                    stmt_only=False,
-                    user_info=request.state.user_info,
-                    serializer=partial(self.serialize, many=isinstance(validated_data, list)),
-                ),
-                status_code=201,
-            )
-        except IntegrityError as ie:
-            if 'UNIQUE' in ie.args[0] and 'version' in ie.args[0]:
-                raise UpdateVersionedError(
-                    "Attempt at updating versioned resources via POST detected"
-                )
+        return json_response(
+            data=await self.svc.write(
+                data=validated_data,
+                stmt_only=False,
+                user_info=request.user,
+                serializer=partial(self.serialize, many=isinstance(validated_data, list)),
+            ),
+            status_code=201,
+        )
 
     async def delete(self, request: Request) -> Response:
         """Delete resource.
@@ -483,7 +465,7 @@ class ResourceController(EntityController):
         """
         await self.svc.delete(
             pk_val=self._extract_pk_val(request),
-            user_info=request.state.user_info,
+            user_info=request.user,
         )
         return json_response("Deleted.", status_code=200)
 
@@ -515,12 +497,12 @@ class ResourceController(EntityController):
                         schema: Schema
         """
         params = dict(request.query_params)
-        fields = self._extract_fields(params, user_info=request.state.user_info)
+        fields = self._extract_fields(params, user_info=request.user)
         return json_response(
             await self.svc.filter(
                 fields=fields,
                 params=params,
-                user_info=request.state.user_info,
+                user_info=request.user,
                 serializer=partial(self.serialize, many=True, only=fields),
             ),
             status_code=200,
@@ -561,14 +543,14 @@ class ResourceController(EntityController):
 
         fields = self._extract_fields(
             dict(request.query_params),
-            user_info=request.state.user_info
+            user_info=request.user
         )
 
         return json_response(
             await self.svc.release(
                 pk_val=self._extract_pk_val(request),
                 update=validated_data,
-                user_info=request.state.user_info,
+                user_info=request.user,
                 serializer=partial(self.serialize, many=False, only=fields),
             ), status_code=200
         )

@@ -1,8 +1,6 @@
 import json
 from http import HTTPStatus
 
-from marshmallow.exceptions import ValidationError
-
 from biodm.utils.utils import json_response
 from .exceptions import (
     EndpointError,
@@ -18,7 +16,8 @@ from .exceptions import (
     UpdateVersionedError,
     FileNotUploadedError,
     FileTooLargeError,
-    DataError
+    DataError,
+    ReleaseVersionError
 )
 
 
@@ -46,10 +45,12 @@ async def onerror(_, exc):
 
     if issubclass(exc.__class__, RequestError):
          # TODO: investigate
-        detail = exc.detail + (str(exc.messages) if hasattr(exc, 'messages') else "")
+        detail = exc.detail + (
+            str(exc.messages) if hasattr(exc, 'messages') else ""
+        )
 
         match exc:
-            case ValidationError() | FileTooLargeError():
+            case FileTooLargeError():
                 status = 400
             case DataError() | EndpointError() | PayloadJSONDecodingError():
                 status = 400
@@ -57,7 +58,11 @@ async def onerror(_, exc):
                 status = 404
             case InvalidCollectionMethod():
                 status = 405
-            case UpdateVersionedError() | FileNotUploadedError():
+            case (
+                UpdateVersionedError() |
+                FileNotUploadedError() |
+                ReleaseVersionError()
+            ):
                 status = 409
             case PayloadEmptyError():
                 status = 204

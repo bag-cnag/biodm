@@ -1,14 +1,14 @@
 class RequestError(RuntimeError):
     detail: str
-    # orig: Exception
-    # , orig: Exception = Exception()
+
     def __init__(self, detail: str)  -> None:
         self.detail = detail
-        # self.orig = orig
+
 
 # class DependencyError(RuntimeError):
     # origin: Exception
     # def __init__
+
 
 class DBError(RuntimeError):
     """Raised when DB related errors are catched."""
@@ -53,6 +53,10 @@ class UpdateVersionedError(RequestError):
     """Raised when an attempt at updating a versioned resource is detected."""
 
 
+class ReleaseVersionError(RequestError):
+    """Raised when releasing another version than the max is attempted."""
+
+
 class FileNotUploadedError(RequestError):
     """Raised when trying to download a file that has not been uploaded yet."""
 
@@ -82,6 +86,8 @@ class PartialIndex(RequestError):
 
 class UnauthorizedError(RequestError):
     """Raised when a request on a group restricted route is sent by an unauthorized user."""
+    def __init__(self, detail: str="Authentication required.") -> None:
+        super().__init__(detail)
 
 
 class ManifestError(RequestError):

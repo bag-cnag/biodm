@@ -86,7 +86,7 @@ class Base(DeclarativeBase, AsyncAttrs):
         - https://groups.google.com/g/sqlalchemy/c/o5YQNH5UUko
         """
         # Enforced by DatabaseService.populate_ids_sqlite
-        if name == 'id' and 'sqlite' in config.DATABASE_URL:
+        if name == 'id' and 'sqlite' in str(config.DATABASE_URL):
             return True
 
         if cls.__table__.columns[name] is cls.__table__.autoincrement_column:
