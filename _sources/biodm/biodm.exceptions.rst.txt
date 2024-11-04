@@ -1,0 +1,7 @@
+biodm.exceptions module
+=======================
+
+.. automodule:: biodm.exceptions
+   :members:
+   :undoc-members:
+   :show-inheritance:
