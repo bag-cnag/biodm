@@ -17,6 +17,17 @@ be provided in a ``.env`` file at the same level as your ``demo.py`` script.
     KC_CLIENT_ID=
     KC_CLIENT_SECRET=
 
+
+Server level: REQUIRE_AUTH
+--------------------------
+
+Setting ``REQUIRE_AUTH=True`` config argument, will make all routes, except the ones explicitely
+marked public (such as ``/login`` and ``/[resources/|]schemas)`` require authentication.
+
+
+See more at :ref:`dev-routing`
+
+
 Coarse: Static rule on a Controller endpoint
 ---------------------------------------------
 
@@ -156,6 +167,26 @@ collections. Sharing those permissions between intermediate level and lower leve
     __permissions__ = (
       Permission(datasets, read=True, write=True, download=True, propagates_to=["files"]),
     )
+
+
+Self
+~~~~
+
+The term ``self`` is also supported in this configuration, it will bind those permissions
+on the same resource.
+
+.. code-block:: python
+
+  class Project(Base):
+      ...
+    __permissions__ = (
+      Permission("self", read=True),
+    )
+
+.. warning::
+
+  It shall raise an ``ImplementationError`` if used in conjunction with ``write``
+  as it does not makes sense to tie writing rights directly on a resource.
 
 
 Strict composition

@@ -2,6 +2,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager, AsyncExitStack
 from typing import AsyncGenerator, TYPE_CHECKING, Callable, Any
 
+from databases import DatabaseURL
 from sqlalchemy import event
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
@@ -19,14 +20,14 @@ class DatabaseManager(ApiManager):
     """Manages DB side query execution."""
     def __init__(self, app: Api) -> None:
         super().__init__(app=app)
-        self.database_url: str = self.async_database_url(config.DATABASE_URL)
+        self._database_url: DatabaseURL = self.async_database_url(config.DATABASE_URL)
         try:
             self.engine = create_async_engine(
-                self.database_url,
+                str(self._database_url),
                 echo=Scope.DEBUG in app.scope,
             )
 
-            if "sqlite" in self.database_url:
+            if "sqlite" in str(self._database_url):
                 event.listens_for(self.engine.sync_engine, "connect")(self.sqlite_declare_strrev)
 
             self.async_session = async_sessionmaker(
@@ -42,21 +43,23 @@ class DatabaseManager(ApiManager):
         return f"{self.engine.url.host}:{self.engine.url.port}"
 
     @staticmethod
-    def async_database_url(url) -> str:
+    def async_database_url(url: DatabaseURL) -> str:
         """Adds a matching async driver to a database url."""
+        url = str(url)
         match url.split("://"):
             case ["postgresql", _]:
-                return url.replace( # type: ignore [unreachable]
+                url = url.replace( # type: ignore [unreachable]
                     "postgresql://", "postgresql+asyncpg://"
                 )
             case ["sqlite", _]:
-                return url.replace( # type: ignore [unreachable]
+                url = url.replace( # type: ignore [unreachable]
                     "sqlite://", "sqlite+aiosqlite://"
                 )
             case _:
                 raise DBError(
                     "Only ['postgresql', 'sqlite'] backends are supported at the moment."
                 )
+        return DatabaseURL(url)
 
     @asynccontextmanager
     async def session(self) -> AsyncGenerator[AsyncSession, None]:

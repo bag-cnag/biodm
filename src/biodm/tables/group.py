@@ -41,7 +41,7 @@ class Group(Base):
     @classmethod
     def _parent_path(cls) -> SQLColumnExpression[str]:
         sep = literal('__')
-        if "postgresql" in config.DATABASE_URL:
+        if "postgresql" in str(config.DATABASE_URL):
             return func.substring(
                 cls.path,
                 0,
@@ -52,7 +52,7 @@ class Group(Base):
                     )
                 )
             )
-        elif "sqlite" in config.DATABASE_URL:
+        if "sqlite" in str(config.DATABASE_URL):
             #  sqlite doesn't have reverse
             #            -> strrev declared in dbmanager
             #  postgres.position -> sqlite.instr

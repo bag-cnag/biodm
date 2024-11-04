@@ -137,7 +137,6 @@ Keycloak also needs a databse:
     docker exec -u postgres biodm-pg createdb keycloak
 
 
-
 Then you may start keycloak itself:
 
 .. code-block:: bash
@@ -164,9 +163,32 @@ Once you've created the realm, create the client. Then
     * **dev**: `http://*` and `https://*`
     * **prod**: provide the url of the login callback `{SERVER_HOST}/syn_ack`.
 
+Additionally, ``BioDM`` expects token to feature groups. For this, a client scope is necessary. Go to
+
+  * `Client Scopes` -> `Create Client Scope`
+
+    * Name: `groups`
+    * Protocol: `OpenID Connect`
+    * Type: `Default`
+    * Include in token scope: `On`
+    * Save
+
+  * `Client Scopes` -> `Groups` -> `Mappers` -> `Configure a new mapper` -> `Group membership`
+
+    * Name: `groups`
+    * token claim name: `groups`
+    * At least `Full group path` and `Add to access token`: `On`
+    * Save
+
+  * `Clients` -> `MyClient` -> `Client Scopes` -> `Add Client Scope` -> `Groups` -> `Add - Default`
+
+Moreover, admin privileges are granted to users belonging to `admin` group.
+It is recommended to create that group and at least one user in it,
+if you want to create keycloak entities from the API for instance.
+
 .. note::
 
-    Depending on your keycloak version or running instance `SERVER_HOST` may have to be appended with `/auth`.
+    Depending on your keycloak version or running instance `KC_HOST` may have to be appended with `/auth`.
 
 Then you should provide the server with the `SECRET` field located in the
 `Credentials` tab, that appears **after** you changed access type and the realm public key

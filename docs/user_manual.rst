@@ -143,9 +143,11 @@ This triggers creation of a new row with a version increment.
 
 .. note::
 
-    ``PUT /release`` is the way of updating versioned resources.
-    The endpoint ``PUT /`` (a.k.a ``update``) will not be available for such resources, and
-    any attempt at updating by reference through  ``POST /`` will raise an error.
+    ``POST /release`` is the way of updating versioned resources.
+    The endpoint ``PUT /`` (a.k.a ``update``) is available, however it is meant to be used
+    in order to update nested objects and collections of that resource. Thus,
+    any attempt at updating a versioned resource through either ``PUT /`` or ``POST /``
+    shall raise an error.
 
 
 **E.g.**
@@ -178,15 +180,16 @@ and followed by:
   * Use ``nested.field=val`` to select on a nested attribute field
   * Use ``*`` in a string attribute for wildcards
 
-* ``field.op(value)``
-  
-  * Currently only ``[lt, le, gt, ge]`` operators are supported for numerical values.
+* numeric operators ``field.op([value])``
 
-**e.g.** 
+  * ``[lt, le, gt, ge]`` are supported with a value.
+
+  * ``[min, max]`` are supported without a value
 
 .. note::
 
-    When querying with ``curl``, don't forget to escape ``&`` symbol or enclose the whole url in quotes, else your scripting language may intepret it as several commands.
+    When querying with ``curl``, don't forget to escape ``&`` symbol or enclose the whole url
+    in quotes, else your scripting language may intepret it as several commands.
 
 
 Query a nested collection
@@ -366,6 +369,6 @@ otherwise.
 
     - Passing a top level group will allow all descending children group for that verb/resource tuple.
 
-    - Permissions are taken into account if and only if keyclaok functionalities are enabled.
+    - Permissions are taken into account if and only if keycloak functionalities are enabled.
 
       - Without keycloak, no token exchange -> No way of getting back protected data.

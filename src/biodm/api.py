@@ -21,7 +21,6 @@ from sqlalchemy.exc import IntegrityError
 
 from biodm import Scope, config
 from biodm.basics import CORE_CONTROLLERS, K8sController
-from biodm.components.controllers.resourcecontroller import ResourceController
 from biodm.components.k8smanifest import K8sManifest
 from biodm.managers import DatabaseManager, KeycloakManager, S3Manager, K8sManager
 from biodm.components.controllers import Controller
@@ -56,17 +55,10 @@ class HistoryMiddleware(BaseHTTPMiddleware):
         super().__init__(app, self.dispatch)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Any:
-        if request.state.user_info.info:
-            user_id = request.state.user_info.info[0]
-            user_groups = request.state.user_info.info[1]
-        else:
-            user_id = "anon"
-            user_groups = ['no_groups']
-
         endpoint = str(request.url).rsplit(self.server_host, maxsplit=1)[-1]
         body = await request.body()
         entry = {
-            'user_username': user_id,
+            'user_username': request.user.display_name,
             'endpoint': endpoint,
             'method': request.method,
             'content': str(body) if body else ""
@@ -85,7 +77,7 @@ class HistoryMiddleware(BaseHTTPMiddleware):
         # Log
         timestamp = datetime.now().strftime("%I:%M%p on %B %d, %Y")
         History.svc.app.logger.info(
-            f'{timestamp}\t{user_id}\t{",".join(user_groups)}\t'
+            f'{timestamp}\t{request.user.display_name}\t{",".join(request.user.groups)}\t'
             f'{endpoint}\t-\t{request.method}'
         )
 
@@ -147,20 +139,24 @@ class Api(Starlette):
             routes.extend(self.adopt_controller(K8sController, manifests=manifests))
 
         # Schema Generator.
-        SECURITY_SCHEME = "Authorization"
+        security_scheme = "Authorization"
         self.apispec = APISpecSchemaGenerator(
             APISpec(
                 title=config.API_NAME,
                 version=config.API_VERSION,
                 openapi_version="3.0.0",
                 plugins=[BDMarshmallowPlugin()],
-                info={"description": config.API_DESCRIPTION, "backend": "biodm", "backend_version": CORE_VERSION},
-                security=[{SECURITY_SCHEME: []}]
+                info={
+                    "description": config.API_DESCRIPTION,
+                    "backend": "BioDM",
+                    "backend_version": CORE_VERSION
+                },
+                security=[{security_scheme: []}]
             )
         )
-        self.apispec.spec.components.security_scheme(SECURITY_SCHEME, {
+        self.apispec.spec.components.security_scheme(security_scheme, {
             "type": "http",
-            "name": SECURITY_SCHEME.lower(),
+            "name": security_scheme.lower(),
             "in": "header",
             "scheme": "bearer",
             "bearerFormat": "JWT"
@@ -174,7 +170,7 @@ class Api(Starlette):
         # Middlewares -> Stack goes in reverse order.
         self.add_middleware(HistoryMiddleware, server_host=config.SERVER_HOST)
         self.add_middleware(AuthenticationMiddleware)
-        if self.scope is Scope.PROD:
+        if Scope.DEBUG not in self.scope:
             self.add_middleware(TimeoutMiddleware, timeout=config.SERVER_TIMEOUT)
         # CORS last (i.e. first).
         self.add_middleware(
@@ -190,11 +186,11 @@ class Api(Starlette):
         # self.add_event_handler("shutdown", self.on_app_stop)
 
         # Error handlers
-        self.add_exception_handler(RequestError, onerror)
+        self.add_exception_handler(RuntimeError, onerror)
         # self.add_exception_handler(DatabaseError, on_error)
 
     @property
-    def server_endpoint(cls) -> str:
+    def server_endpoint(self) -> str:
         """Server address, useful to compute callbacks."""
         return f"{config.SERVER_SCHEME}{config.SERVER_HOST}:{config.SERVER_PORT}/"
 

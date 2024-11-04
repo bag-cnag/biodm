@@ -3,7 +3,7 @@
 - S3File entity
 - Versioned
 """
-from typing import TYPE_CHECKING, Any, Tuple, Type, Set, ClassVar, Type
+from typing import TYPE_CHECKING, Any, Tuple, Type, Set, ClassVar, Type, Dict
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -16,8 +16,7 @@ from sqlalchemy.orm import (
 )
 
 from biodm import config
-from biodm.utils.utils import utcnow, classproperty
-from biodm.utils.security import PermissionLookupTables
+from biodm.utils.utils import utcnow, classproperty, OrderedSet
 
 
 if TYPE_CHECKING:
@@ -25,7 +24,6 @@ if TYPE_CHECKING:
     from biodm.components.controllers import ResourceController
     from sqlalchemy.orm import Relationship
     from biodm.tables import Upload
-
 
 class Base(DeclarativeBase, AsyncAttrs):
     """Base class for ORM declarative Tables.
@@ -40,6 +38,7 @@ class Base(DeclarativeBase, AsyncAttrs):
 
     def __init_subclass__(cls, **kw: Any) -> None:
         """Populates permission dict."""
+        from biodm.utils.security import PermissionLookupTables
         if hasattr(cls, "__permissions__"):
             PermissionLookupTables.raw_permissions[cls.__name__] = (cls, cls.__permissions__)
         return super().__init_subclass__(**kw)
@@ -66,12 +65,13 @@ class Base(DeclarativeBase, AsyncAttrs):
         return col.target if isinstance(col, Relationship) else None
 
     @classproperty
-    def pk(cls) -> Set[str]:
+    def pk(cls) -> OrderedSet[str]:
         """Return primary key names."""
-        return set(
-            str(pk).rsplit('.', maxsplit=1)[-1]
-            for pk in cls.__table__.primary_key.columns
-        )
+        pks = [c.name for c in cls.__table__.primary_key.columns]
+        if cls.is_versioned: # ensure version is last.
+            pks.remove('version')
+            pks.append('version')
+        return OrderedSet(pks)
 
     @classmethod
     def col(cls, name: str):
@@ -87,7 +87,7 @@ class Base(DeclarativeBase, AsyncAttrs):
         - https://groups.google.com/g/sqlalchemy/c/o5YQNH5UUko
         """
         # Enforced by DatabaseService.populate_ids_sqlite
-        if name == 'id' and 'sqlite' in config.DATABASE_URL:
+        if name == 'id' and 'sqlite' in str(config.DATABASE_URL):
             return True
 
         if cls.__table__.columns[name] is cls.__table__.autoincrement_column:

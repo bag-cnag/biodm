@@ -7,12 +7,11 @@ if TYPE_CHECKING:
     from biodm.components.controllers import ResourceController
 
 
-"""Inspired by marshmallow registry. Maps classes to instances attached to controllers."""
-_runtime_schema_registry: Dict[Type[Schema], Schema] = {}
+_runtime_schema_registry: Dict[Type[Schema], Schema] = {} # Inspired by marshmallow registry.
 
 
 def register_runtime_schema(cls: Type[Schema], inst: Schema) -> None:
-    """Adds entry to register. Indexed by class, since we should not assume the name."""
+    """Adds entry to registry. Indexed by class, since we should not assume the name."""
     _runtime_schema_registry[cls] = inst
 
 
@@ -28,8 +27,7 @@ class BDMarshmallowPlugin(MarshmallowPlugin):
         """
         if isinstance(schema, str):
             schema_cls = class_registry.get_class(schema)
-            if schema_cls in _runtime_schema_registry:
-                schema = _runtime_schema_registry[schema_cls]
+            schema = _runtime_schema_registry.get(schema_cls, schema)
         # Works because lower level calls are working with an instance.
         return super().schema_helper(name, _, schema, **kwargs)
 
@@ -40,6 +38,7 @@ def replace_docstrings_pattern(
     blocks=List[List[str]]
 ) -> List[str]:
     """Takes a 2 line pattern and replace it by lines in block, matching indentation."""
+    # pylint: disable=consider-using-enumerate
     for i in range(len(apispec)):
         if pattern[0] in apispec[i-1] and pattern[1] in apispec[i]:
             flattened = []
@@ -53,7 +52,7 @@ def replace_docstrings_pattern(
 
 
 def process_apispec_docstrings(ctrl: 'ResourceController', abs_doc: str):
-    """Process an abstract documentation block to adapt it to a controllers instance characteristics.
+    """Process an abstract documentation block to adapt it to a controllers instance characteristics
 
     Current patterns for abstract documentation:
     - Marshmallow Schema |
@@ -83,7 +82,7 @@ def process_apispec_docstrings(ctrl: 'ResourceController', abs_doc: str):
 
     # Template replacement #1: path key.
     path_key = []
-    for key in ctrl.pk:
+    for key in ctrl.table.pk:
         attr = []
         attr.append("- in: path")
         attr.append(f"name: {key}")

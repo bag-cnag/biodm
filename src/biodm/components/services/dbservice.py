@@ -1,33 +1,33 @@
 """Database service: Translates requests data into SQLA statements and execute."""
 from abc import ABCMeta
+from calendar import c
 from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type, Set
 
-from sqlalchemy import select, delete, update, or_, func
-from sqlalchemy.dialects import postgresql, sqlite
+from sqlalchemy import select, delete, or_, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
     load_only, selectinload, joinedload, ONETOMANY, MANYTOONE, make_transient, Relationship
 )
-from sqlalchemy.sql import Insert, Delete, Select, Update
-from sqlalchemy.sql._typing import _DMLTableArgument
+from sqlalchemy.sql import Delete, Select
 from sqlalchemy.sql.selectable import Alias
 
 from biodm import config
 from biodm.component import ApiService
 from biodm.components import Base
 from biodm.exceptions import (
-    DataError, EndpointError, FailedRead, FailedDelete, ImplementionError, UpdateVersionedError, UnauthorizedError
+    DataError, EndpointError, FailedRead, FailedDelete, ReleaseVersionError, UpdateVersionedError, UnauthorizedError
 )
 from biodm.managers import DatabaseManager
 from biodm.tables import ListGroup, Group
 from biodm.tables.asso import asso_list_group
-from biodm.utils.security import UserInfo, Permission, PermissionLookupTables
-from biodm.utils.sqla import CompositeInsert, UpsertStmt, stmt_to_dict
-from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
+from biodm.utils.security import UserInfo, PermissionLookupTables
+from biodm.utils.sqla import CompositeInsert, UpsertStmt, UpsertStmtValuesHolder
+from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition, OrderedSet
 
 
-SUPPORTED_INT_OPERATORS = ("gt", "ge", "lt", "le")
+SUPPORTED_NUM_OPERATORS = ("gt", "ge", "lt", "le", "min", "max")
 
 
 class DatabaseService(ApiService, metaclass=ABCMeta):
@@ -41,28 +41,25 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         """ServiceName(TableName)."""
         return f"{self.__class__.__name__}({self.table.__name__})"
 
-    @property
-    def _backend_specific_insert(self) -> Callable[[_DMLTableArgument], Insert]:
-        """Returns an insert statement builder according to DB backend."""
-        match self.app.db.engine.dialect:
-            case postgresql.asyncpg.dialect():
-                return postgresql.insert
-            case sqlite.aiosqlite.dialect():
-                return sqlite.insert
-            case _: # Should not happen. Here to suppress mypy.
-                raise
-
     @DatabaseManager.in_session
     async def _insert(
         self,
-        stmt: UpsertStmt,
+        stmt: UpsertStmtValuesHolder,
         user_info: UserInfo | None,
         session: AsyncSession
     ) -> Base:
         """INSERT one object into the DB, check token write permissions before commit."""
-        await self._check_permissions("write", user_info, stmt_to_dict(stmt))
-        item = await session.scalar(stmt)
-        return item
+        await self._check_permissions("write", user_info, stmt)
+        try:
+            item = await session.scalar(stmt.to_stmt(self))
+            return item
+        # May occur in some cases for versioned resources.
+        except IntegrityError as ie:
+            if 'unique' in ie.args[0].lower() and 'version' in ie.args[0]:
+                raise UpdateVersionedError(
+                    "Attempt at updating versioned resources."
+                )
+            raise
 
     @DatabaseManager.in_session
     async def _insert_list(
@@ -72,10 +69,10 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         session: AsyncSession
     ) -> Sequence[Base]:
         """INSERT list of items in one go."""
-        items = []
-        for stmt in stmts:
-            await self._check_permissions("write", user_info, stmt_to_dict(stmt))
-            items.append(await session.scalar(stmt))
+        items = [
+            await self._insert(stmt, user_info=user_info, session=session)
+            for stmt in stmts
+        ]
         return items
 
     @DatabaseManager.in_session
@@ -193,16 +190,14 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         if not user_info:
             return
 
-        if self._login_required(verb) and not user_info.info:
-            raise UnauthorizedError("Authentication required.")
-
-        groups = user_info.info[1] if user_info.info else []
+        if self._login_required(verb) and not user_info.is_authenticated:
+            raise UnauthorizedError()
 
         # Special admin case.
-        if groups and 'admin' in groups:
+        if user_info.is_admin:
             return
 
-        if not self._group_required(verb, groups):
+        if not self._group_required(verb, user_info.groups):
             raise UnauthorizedError("Insufficient group privileges for this operation.")
 
         perms = self._get_permissions(verb)
@@ -212,7 +207,6 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
 
         for permission in perms:
             for one in to_it(pending):
-                link, chain = permission['from'][-1], permission['from'][:-1]
                 entity = permission['table'].entity.prop
 
                 stmt = (
@@ -226,19 +220,28 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
                         for local, remote in entity.local_remote_pairs
                     ])
                 )
+                if permission['from']: # remote permissions
+                    # Naturally join the chain
+                    link, chain = permission['from'][-1], permission['from'][:-1]
 
-                # Naturally join the chain
-                for jtable in chain + [link]:
-                    stmt = stmt.join(jtable)
+                    for jtable in chain + [link]:
+                        stmt = stmt.join(jtable)
 
-                # Finally connect the link with pending
-                stmt = stmt.where(
-                    unevalled_all([
-                        one.get(fk.parent.name) == getattr(link, fk.column.name)
-                        for fk in self.table.__table__.foreign_keys
-                        if fk.column.table is link.__table__
-                    ])
-                )
+                    # Finally connect the link with pending
+                    stmt = stmt.where(
+                        unevalled_all([
+                            one.get(fk.parent.name) == getattr(link, fk.column.name)
+                            for fk in self.table.__table__.foreign_keys
+                            if fk.column.table is link.__table__
+                        ])
+                    )
+                else: # self permissions, cannot be write, pk will be present.
+                    stmt = stmt.where(
+                        unevalled_all([
+                            one.get(k) == getattr(self.table, k)
+                            for k in self.table.pk
+                        ])
+                    )
 
                 stmt = stmt.options(selectinload(ListGroup.groups))
                 allowed: ListGroup = await session.scalar(stmt)
@@ -247,7 +250,7 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
                     # Empty perm list: public.
                     continue
 
-                if not self._group_path_matching(set(g.path for g in allowed.groups), set(groups)):
+                if not self._group_path_matching(set(g.path for g in allowed.groups), set(user_info.groups)):
                     raise UnauthorizedError(f"No {verb} access.")
 
     def _apply_read_permissions(
@@ -278,44 +281,21 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         if not perms or not user_info:
             return stmt
 
-        groups = user_info.info[1] if user_info.info else []
-
         # Special admin case.
-        if groups and 'admin' in groups:
+        if user_info.is_admin:
             return stmt
+
+        groups = user_info.info[1] if user_info.info else []
 
         # Build nested query to filter permitted results.
         for permission in perms:
-            link, chain = permission['from'][-1], permission['from'][:-1]
-            entity = permission['table'].entity.prop
             lgverb = permission['table'].__table__.c[f'id_{verb}']
 
-            sub = select(link)
-            for jtable in chain:
-                sub = sub.join(jtable)
-
-            inner = ( # Look for empty permissions.
-                sub
-                .join(
-                    permission['table'],
-                    onclause=unevalled_all([
-                            local == remote
-                            for local, remote in entity.local_remote_pairs
-                        ] + [lgverb == None]
-                    )
-                )
-            )
-            if groups:
-                protected = ( # Join the whole chain.
-                    sub
-                    .join(
-                        permission['table'],
-                        onclause=unevalled_all([
-                                local == remote
-                                for local, remote in entity.local_remote_pairs
-                            ]
-                        )
-                    )
+            # public.
+            perm_stmt = select(permission['table']).where(lgverb == None)
+            if user_info.groups:
+                protected = (
+                    select(permission['table'])
                     .join(
                         ListGroup,
                         onclause=lgverb == ListGroup.id,
@@ -325,12 +305,23 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
                     .where(
                         or_(*[ # Group path matching.
                             Group.path.like(upper_level + '%')
-                            for upper_level in groups
+                            for upper_level in user_info.groups
                         ]),
                     )
                 )
-                inner = inner.union(protected)
-            stmt = stmt.join(inner.subquery())
+                perm_stmt = perm_stmt.union(protected)
+
+            # Remote permissions: chain of tables.
+            if permission['from']:
+                link, chain = permission['from'][-1], permission['from'][:-1]
+
+                sub = select(link)
+                for jtable in chain:
+                    sub = sub.join(jtable)
+
+                perm_stmt= sub.join(perm_stmt.subquery())
+
+            stmt = stmt.join(perm_stmt.subquery())
         return stmt
 
 
@@ -343,12 +334,11 @@ class UnaryEntityService(DatabaseService):
     def __init__(self, app, table: Type[Base], *args, **kwargs) -> None:
         # Entity info.
         self.table = table
-        self.pk = set(table.col(name) for name in table.pk)
+        self.pk = OrderedSet(table.col(name) for name in table.pk)
         # Take a snapshot at declaration time, convenient to isolate runtime permissions.
         self._inst_relationships = self.table.dyn_relationships()
-        # Enable entity - service - table linkage so everything is conveniently available.
+        # Enable service - table linkage
         setattr(table, 'svc', self)
-        setattr(table.__table__, 'decl_class', table)
 
         super().__init__(app, *args, **kwargs)
 
@@ -369,7 +359,7 @@ class UnaryEntityService(DatabaseService):
         if hasattr(rel.target, 'original') and rel.target.original == self.table.__table__:
             return self
         else:
-            return rel.target.decl_class.svc
+            return rel.mapper.entity.svc
 
     def check_allowed_nested(self, fields: List[str], user_info: UserInfo) -> None:
         """Checks whether all user requested fields are allowed by static permissions.
@@ -383,12 +373,10 @@ class UnaryEntityService(DatabaseService):
         nested, _ = partition(fields, lambda x: x in self.table.relationships)
         for name in nested:
             target_svc = self._svc_from_rel_name(name)
-            if target_svc._login_required("read") and not user_info.info:
-                raise UnauthorizedError("Authentication required.")
+            if target_svc._login_required("read") and not user_info.is_authenticated:
+                raise UnauthorizedError()
 
-            groups = user_info.info[1] if user_info.info else []
-
-            if not self._group_required("read", groups):
+            if not self._group_required("read", user_info.groups):
                 raise UnauthorizedError(f"Insufficient group privileges to retrieve {name}.")
 
     def takeout_unallowed_nested(self, fields: List[str], user_info: UserInfo) -> List[str]:
@@ -405,12 +393,10 @@ class UnaryEntityService(DatabaseService):
 
         def ncheck(name):
             target_svc = self._svc_from_rel_name(name)
-            if target_svc._login_required("read") and not user_info.info:
+            if target_svc._login_required("read") and not user_info.is_authenticated:
                 return False
 
-            groups = user_info.info[1] if user_info.info else []
-
-            if not self._group_required("read", groups):
+            if not self._group_required("read", user_info.groups):
                 return False
             return True
 
@@ -432,6 +418,45 @@ class UnaryEntityService(DatabaseService):
                 for pk, val in zip(self.pk, pk_val)
             ]
         )
+
+    def gen_upsert_holder(
+        self,
+        data: Dict[Any, str],
+        futures: List[str],
+        user_info: UserInfo | None = None,
+    ) -> UpsertStmtValuesHolder:
+        """Generates an upsert statement values holder item.
+
+        This statement builder is by design working on a unit entity dict, it checks data
+        completion using 'futures' that are a list of fields that shall be populated at insertion
+        time in CompositeEntityService._insert_composite().
+
+        Versioned resource: in the case of a versioned resource,
+        passing a reference is allowed, updating nested resources through updates as well,
+        BUT an actual update is not as it should go through /release route.
+
+        auto-population of 'special columns' is handled here as well.
+        """
+        pending_keys = data.keys() | set(futures)
+        missing_data = self.table.required - pending_keys
+
+        if missing_data:
+            if all(k in pending_keys for k in self.table.pk): # pk present: UPDATE.
+                if (data.keys() - self.table.pk) and self.table.is_versioned:
+                    raise UpdateVersionedError(
+                        "Attempt at updating versioned resources detected"
+                    )
+
+            # submitter_username special col
+            elif missing_data == {'submitter_username'} and self.table.has_submitter_username:
+                if not user_info or not user_info.is_authenticated:
+                    raise UnauthorizedError()
+                data['submitter_username'] = user_info.display_name
+
+            else:
+                raise DataError(f"{self.table.__name__} missing the following: {missing_data}.")
+
+        return UpsertStmtValuesHolder(data)
 
     @overload
     async def write(
@@ -483,94 +508,24 @@ class UnaryEntityService(DatabaseService):
         """
         # SQLite support for composite primary keys, with leading id.
         if (
-            'sqlite' in config.DATABASE_URL and
+            'sqlite' in str(config.DATABASE_URL) and
             hasattr(self.table, 'id') and
             len(list(self.table.pk)) > 1
         ):
             await self.populate_ids_sqlite(data)
 
-        futures = kwargs.pop('futures', None)
-        stmts = [self.upsert(one, futures=futures, user_info=user_info) for one in to_it(data)]
+        futures = kwargs.pop('futures', [])
+        stmts = [
+            self.gen_upsert_holder(
+                one, futures=futures, user_info=user_info
+            ) for one in to_it(data)
+        ]
 
         if len(stmts) == 1:
-            return stmts[0] if stmt_only else await self._insert(stmts[0], user_info=user_info, **kwargs)
+            return stmts[0] if stmt_only else await self._insert(
+                stmts[0], user_info=user_info, **kwargs
+            )
         return stmts if stmt_only else await self._insert_list(stmts, user_info=user_info, **kwargs)
-
-    def upsert(
-        self,
-        data: Dict[Any, str],
-        futures: List[str] | None = None,
-        user_info: UserInfo | None = None,
-    ) -> Insert | Update:
-        """Generates an upsert (Insert + .on_conflict_do_x) depending on data population.
-            OR an explicit Update statement for partial data with full primary key.
-
-        This statement builder is by design taking a unit entity dict and
-        cannot check if partial data is complete in case this is coming from upper resources
-        in the hierarchical structure.
-        In that case statements are patched on the fly at insertion time at
-        CompositeEntityService._insert_composite().
-
-        In case of actually incomplete data, some upserts will fail, and raise it up to controller
-        which has the details about initial validation fail.
-        Ultimately, the goal is to offer support for a more flexible and tolerant mode of writing
-        data, use of it is optional.
-
-        Versioned resource: in the case of a versioned resource, passing a reference is allowed
-        BUT an update is not as updates shall go through /release route.
-        Statement will still be emited but simply discard the update.
-
-        :param data: validated data, unit - i.e. one single entity, no depth - dictionary
-        :type data: Dict[Any, str]
-        :param futures: Fields that will get populated at insertion time, defaults to none
-        :type futures: List[str], optional
-        :return: statement
-        :rtype: Insert | Update
-        """
-        pk = self.table.pk
-        pending_keys = (data.keys() | set(futures or []))
-        missing_data = self.table.required - pending_keys
-
-        if missing_data:
-            if all(k in pending_keys for k in pk): # pk present: UPDATE.
-                values = {k: data.get(k) for k in data.keys() - pk}
-                if values and self.table.is_versioned:
-                    raise UpdateVersionedError(
-                        "Attempt at updating versioned resources via POST detected"
-                    )
-
-                stmt = (
-                    update(self.table)
-                    .where(self.gen_cond([data.get(k) for k in pk]))
-                    .values(**values)
-                    .returning(self.table)
-                )
-                return stmt
-            elif missing_data == {'submitter_username'} and self.table.has_submitter_username:
-                if not user_info or not user_info.info:
-                    raise UnauthorizedError("Requires authentication.")
-                data['submitter_username'] = user_info.info[0]
-            else:
-                raise DataError(f"{self.table.__name__} missing the following: {missing_data}.")
-
-        # Regular case
-        stmt = self._backend_specific_insert(self.table)
-        stmt = stmt.values(**data)
-
-        set_ = {
-            key: data[key]
-            for key in data.keys() - pk
-        }
-
-        if not self.table.is_versioned:
-            if set_: # upsert
-                stmt = stmt.on_conflict_do_update(index_elements=pk, set_=set_)
-            else: # effectively a select.
-                stmt = stmt.on_conflict_do_nothing(index_elements=pk)
-        # Else (implicit): on_conflict_do_error -> catched by Controller.
-
-        stmt = stmt.returning(self.table)
-        return stmt
 
     @DatabaseManager.in_session
     async def getattr_in_session(
@@ -586,7 +541,7 @@ class UnaryEntityService(DatabaseService):
     def _restrict_select_on_fields(
         self,
         stmt: Select,
-        fields: List[str],
+        fields: Sequence[str],
         user_info: UserInfo | None,
     ) -> Select:
         """Set load_only options of a select(table) statement given a list of fields.
@@ -624,8 +579,7 @@ class UnaryEntityService(DatabaseService):
 
         for n in nested:
             relationship = self.table.relationships[n]
-            target = relationship.target
-            target = self.table if isinstance(target, Alias) else target.decl_class
+            target = self.table if isinstance(relationship.target, Alias) else relationship.mapper.entity
 
             if relationship.direction in (MANYTOONE, ONETOMANY):
                 if target == self.table:
@@ -643,6 +597,7 @@ class UnaryEntityService(DatabaseService):
                         .svc
                         ._apply_read_permissions(user_info, rel_stmt)
                     )
+
                     stmt = stmt.join_from(
                         self.table,
                         rel_stmt.subquery(),
@@ -650,7 +605,7 @@ class UnaryEntityService(DatabaseService):
                     )
             else:
                 # TODO: check permissions ?
-                # Possible edge cases in o2o relationships
+                # Possible edge cases in o2o relationships ??
                 stmt = stmt.options(
                     selectinload(
                         getattr(self.table, n)
@@ -698,12 +653,10 @@ class UnaryEntityService(DatabaseService):
             # Special cases for nested, as endpoint protection is not enough.
             target_svc = self._svc_from_rel_name(attribute)
 
-            if target_svc._login_required("read") and not user_info.info:
-                raise UnauthorizedError("Authentication required.")
+            if target_svc._login_required("read") and not user_info.is_authenticated:
+                raise UnauthorizedError()
 
-            groups = user_info.info[1] if user_info.info else []
-
-            if not target_svc._group_required("read", groups):
+            if not target_svc._group_required("read", user_info.groups):
                 raise UnauthorizedError("Insufficient group privileges for this operation.")
 
         # Dynamic permissions are covered by read.
@@ -728,15 +681,19 @@ class UnaryEntityService(DatabaseService):
         :return: Select statement with operator condition applied.
         :rtype: Select
         """
+        col, ctype = self.table.colinfo(field)
         match operator.strip(')').split('('):
             case [("gt" | "ge" | "lt" | "le") as op, arg]:
-                col, ctype = self.table.colinfo(field)
                 op_fct: Callable = getattr(col, f"__{op}__")
                 return stmt.where(op_fct(ctype(arg)))
+            case [("min" | "max") as op, arg]:
+                op_fct: Callable = getattr(func, op)
+                sub = select(op_fct(col))
+                return stmt.where(col == sub.scalar_subquery())
             case _:
                 raise EndpointError(
                     f"Expecting either 'field=v1,v2' pairs or integrer"
-                    f" operators 'field.op(v)' op in {SUPPORTED_INT_OPERATORS}")
+                    f" operators 'field.op([v])' op in {SUPPORTED_NUM_OPERATORS}")
 
     def _filter_parse_field_cond(self, stmt: Select, field: str, values: List[str]) -> Select:
         """Applies field condition on a select statement.
@@ -789,7 +746,8 @@ class UnaryEntityService(DatabaseService):
         offset = int(params.pop('start', 0))
         limit = int(params.pop('end', config.LIMIT))
         reverse = params.pop('reverse', None) # TODO: ?
-        # TODO: apply limit to nested lists as well.
+
+        # start building statement.
         stmt = select(self.table)
 
         # For lower level(s) propagation.
@@ -837,17 +795,24 @@ class UnaryEntityService(DatabaseService):
         stmt = stmt.offset(offset).limit(limit)
         return stmt if stmt_only else await self._select_many(stmt, **kwargs)
 
-    async def delete(self, pk_val, user_info: UserInfo | None = None, **kwargs) -> None:
+    @DatabaseManager.in_session
+    async def delete(
+        self,
+        pk_val: List[Any],
+        session: AsyncSession,
+        user_info: UserInfo | None = None
+    ) -> None:
         """DELETE."""
-        # TODO: user_info ?
+        await self._check_permissions(
+            "write", user_info, dict(zip(self.pk, pk_val)), session=session
+        )
         stmt = delete(self.table).where(self.gen_cond(pk_val))
-        await self._delete(stmt, **kwargs)
+        await self._delete(stmt, session=session)
 
     @DatabaseManager.in_session
     async def release(
         self,
         pk_val: List[Any],
-        fields: List[str],
         update: Dict[str, Any],
         session: AsyncSession,
         user_info: UserInfo | None = None,
@@ -855,19 +820,50 @@ class UnaryEntityService(DatabaseService):
         await self._check_permissions(
             "write", user_info, dict(zip(self.pk, pk_val)), session=session
         )
+        queried_version: int
 
-        item = await self.read(pk_val, fields, session=session)
-        # Put item in a `flexible` state where we may edit pk.
-        make_transient(item)
-        item.version += 1
+        # Slightly tweaked read version where we get max column instead.
+        stmt = select(self.table)
+        for i, col in enumerate(self.pk):
+            if col.name == 'version':
+                sub = select(func.max(col)).scalar_subquery()
+                stmt = stmt.where(col == sub)
+                queried_version = pk_val[i]
+            else:
+                stmt = stmt.where(col == col.type.python_type(pk_val[i]))
 
-        # Apply update.
-        for key, val in update.items():
-            setattr(item, key, val)
+        # Get item with all columns - covers x-to-one relationships.
+        fields = set(self.table.__table__.columns.keys())
+        self._restrict_select_on_fields(
+            stmt,
+            fields=fields,
+            user_info=None
+        )
+        old_item = await self._select(stmt, session=session)
 
-        # new pk -> new row.
-        session.add(item)
-        return item
+        assert queried_version # here to suppress linters.
+
+        if not old_item.version == queried_version:
+            raise ReleaseVersionError(
+                "Cannot release a versioned entity that has already been released."
+            )
+
+        # build new item
+        new_item_values = {k:getattr(old_item, k) for k in fields - update.keys()}
+        new_item_values.update(update)
+        new_item_values['version'] = queried_version + 1
+        new_item = await self.write(
+            new_item_values, stmt_only=False, user_info=None, session=session
+        )
+
+        # covers x-to-many relationships
+        x_to_many = [key for key, rel in self.table.relationships.items() if rel.uselist]
+        await session.refresh(old_item, x_to_many)
+        await session.refresh(new_item, x_to_many)
+        for key in x_to_many:
+            setattr(new_item, key, getattr(old_item, key))
+
+        return new_item
 
 
 class CompositeEntityService(UnaryEntityService):
@@ -904,13 +900,13 @@ class CompositeEntityService(UnaryEntityService):
         :rtype: Base
         """
         def patch(ins, mapping):
-            """On the fly statement patcher."""
+            """Apply dict update."""
             match ins:
                 case CompositeInsert():
-                    ins.item = ins.item.values(**mapping)
-                    return ins
-                case Insert() | Update():
-                    return ins.values(**mapping)
+                    ins.item.update(mapping)
+                case UpsertStmtValuesHolder():
+                    ins.update(mapping)
+            return ins
 
         rels = self.table.relationships
         # Pack in session in kwargs for lower level calls.
@@ -921,8 +917,8 @@ class CompositeEntityService(UnaryEntityService):
             rel = rels[key]
             composite.nested[key] = await (
                 rel
-                .target
-                .decl_class
+                .mapper
+                .entity
                 .svc
             )._insert(sub, **kwargs)
 
@@ -932,7 +928,7 @@ class CompositeEntityService(UnaryEntityService):
                     local.name: getattr(composite.nested[key], remote.name)
                     for local, remote in rel.local_remote_pairs
                 }
-                composite.item = patch(composite.item, mapping)
+                composite = patch(composite, mapping)
 
         # Insert main object.
         item = await self._insert(composite.item, **kwargs)
@@ -975,8 +971,15 @@ class CompositeEntityService(UnaryEntityService):
                 # Refresh objects that were present so item comes back with updated values.
                 for u in updated:
                     await session.refresh(u)
+
                 # Add new stuff
-                attr.extend(delay)
+                if isinstance(attr, list):
+                    attr.extend(delay)
+                elif isinstance(attr, set):
+                    for d in delay:
+                        attr.add(d)
+                else: # Should not happen, but will trigger a warning in case.
+                    raise NotImplementedError
             else:
                 setattr(item, key, await svc._insert(delay, **kwargs))
         return item
@@ -988,9 +991,9 @@ class CompositeEntityService(UnaryEntityService):
         **kwargs
     ) -> Base:
         """Redirect in case of composite insert."""
-        if isinstance(stmt, Insert | Update):
-            return await super()._insert(stmt, **kwargs)
-        return await self._insert_composite(stmt, **kwargs)
+        if isinstance(stmt, CompositeInsert):
+            return await self._insert_composite(stmt, **kwargs)
+        return await super()._insert(stmt, **kwargs)
 
     # pylint: disable=arguments-differ
     async def _insert_list(
@@ -1009,6 +1012,7 @@ class CompositeEntityService(UnaryEntityService):
         data: Dict[str, Any],
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
+        futures: List[str] = [],
         **kwargs,
     ) -> Base | CompositeInsert:
         """Parsing: recursive tree builder.
@@ -1017,34 +1021,22 @@ class CompositeEntityService(UnaryEntityService):
             Each service is responsible for building statements for its own associated table.
             Ultimately all statements (except permissions) are built by UnaryEntityService class.
         """
-        nested, delayed, futures = {}, {}, kwargs.pop('futures', [])
-
-        for key, rel in self.permission_relationships.items():
-            # IMPORTANT: Create an entry even for empty permissions.
-            # It is necessary in order to query permissions from nested entities.
-            perm_stmt = self._backend_specific_insert(rel.target.decl_class)
-
-            perm_listgroups = {}
-            if key in data.keys():
-                sub = data.pop(key)
-                for verb in Permission.verbs & set(sub.keys()):
-                    perm_listgroups[str(verb)] = await ListGroup.svc.write(
-                        sub.get(verb), stmt_only=True,
-                    )
-
-            # Do nothing in case the entry already exists.
-            # potential updates of listgroups are ensured by _insert_composite.
-            perm_stmt = perm_stmt.on_conflict_do_nothing(index_elements=rel.target.decl_class.pk)
-            perm_stmt = perm_stmt.returning(rel.target.decl_class)
-            delayed[key] = CompositeInsert(item=perm_stmt, nested={}, delayed=perm_listgroups)
-
-        # Remaining table relationships.
-        for key in self._inst_relationships.keys() & data.keys():
-            svc, sub = self._svc_from_rel_name(key), data.pop(key)
-            rel = self._inst_relationships[key]
+        # Initialize composite.
+        nested, delayed = {}, {}
+        # For present table relationships
+        #   and all permission_relationships: need to exist, even empty, in order to check them.
+        for key in (
+            (
+                self._inst_relationships.keys() & data.keys()
+            )
+            | set(self.permission_relationships.keys())
+        ):
+            svc = self._svc_from_rel_name(key)
+            sub = data.pop(key, {}) # {} default value -> only happens for empty permissions.
+            rel = self.table.relationships[key]
 
             # Infer fields that will get populated at insertion time (for error detection).
-            nested_futures = None
+            nested_futures = []
             if rel.secondary is None:
                 if hasattr(rel, 'remote_side'):
                     nested_futures = [c.name for c in rel.remote_side if c.foreign_keys]
@@ -1054,14 +1046,16 @@ class CompositeEntityService(UnaryEntityService):
 
             # Get statement(s) for nested entity.
             nested_stmt = await svc.write(
-                sub, stmt_only=True, user_info=user_info, futures=nested_futures
+                sub,
+                stmt_only=True,
+                user_info=user_info,
+                futures=nested_futures,
             )
 
-            # Single nested entity.
-            if isinstance(sub, dict):
+            # Warning: not checked for MANYTOMANY
+            if rel.direction is MANYTOONE:
                 nested[key] = nested_stmt
-            # List of entities: one - to - many relationship.
-            elif isinstance(sub, list):
+            else:
                 delayed[key] = nested_stmt
 
         # Statement for original item.

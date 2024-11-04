@@ -6,12 +6,10 @@ from inspect import getmembers, ismethod
 from types import MethodType
 from typing import TYPE_CHECKING, Callable, List, Set, Any, Dict, Type
 
-# from marshmallow import ValidationError
 from marshmallow.schema import RAISE
 from marshmallow.class_registry import get_class
 from marshmallow.exceptions import RegistryError
-from sqlalchemy.exc import IntegrityError
-from starlette.routing import Mount, Route, BaseRoute
+from starlette.routing import Mount, BaseRoute
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -29,12 +27,12 @@ from biodm.exceptions import (
     InvalidCollectionMethod,
     PayloadEmptyError,
     PartialIndex,
-    UpdateVersionedError
 )
 from biodm.utils.security import UserInfo
 from biodm.utils.utils import json_response
 from biodm.utils.apispec import register_runtime_schema, process_apispec_docstrings
 from biodm.components import Base
+from biodm.routing import Route, PublicRoute
 from .controller import HttpMethod, EntityController
 
 if TYPE_CHECKING:
@@ -91,7 +89,6 @@ class ResourceController(EntityController):
         self.table = table if table else self._infer_table()
         self.table.ctrl = self
 
-        self.pk = set(self.table.pk)
         self.svc: UnaryEntityService = self._infer_svc()(app=self.app, table=self.table)
         # Inst schema, and set registry entry for apispec.
         schema_cls = schema if schema else self._infer_schema()
@@ -144,7 +141,7 @@ class ResourceController(EntityController):
     @property
     def qp_id(self) -> str:
         """Return primary key in queryparam form."""
-        return "".join(["{" + f"{k}" + "}_" for k in self.pk])[:-1]
+        return "".join(["{" + f"{k}" + "}_" for k in self.table.pk])[:-1]
 
     def _infer_svc(self) -> Type[DatabaseService]:
         """Set approriate service for given controller.
@@ -202,15 +199,14 @@ class ResourceController(EntityController):
             Route(f"{self.prefix}",                   self.create,         methods=[HttpMethod.POST]),
             Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET]),
             Mount(self.prefix, routes=[
-                Route('/schema',                      self.openapi_schema, methods=[HttpMethod.GET]),
+                PublicRoute('/schema',                self.openapi_schema, methods=[HttpMethod.GET]),
                 Route(f'/{self.qp_id}',               self.read,           methods=[HttpMethod.GET]),
                 Route(f'/{self.qp_id}/{{attribute}}', self.read,           methods=[HttpMethod.GET]),
                 Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE]),
-            ] + [(
+                Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT]),
+            ] + ([
                 Route(f"/{self.qp_id}/release",       self.release,        methods=[HttpMethod.POST])
-                if self.table.is_versioned else
-                Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT])
-            )])
+            ] if self.table.is_versioned else []))
         ]
 
     def _extract_pk_val(self, request: Request) -> List[Any]:
@@ -222,12 +218,16 @@ class ResourceController(EntityController):
         :return: Primary key values
         :rtype: List[Any]
         """
-        pk_val = [request.path_params.get(k) for k in self.pk]
+        pk_val = [
+            self.table.col(k).type.python_type(
+                request.path_params.get(k)
+            ) for k in self.table.pk
+        ]
+
         if not pk_val:
             raise InvalidCollectionMethod()
 
-
-        if len(pk_val) != len(self.pk):
+        if len(pk_val) != len(self.table.pk):
             raise PartialIndex(
                 "Request is missing some resource index values in the path. "
                 "Index elements have to be provided in definition order, separated by '_'"
@@ -258,8 +258,7 @@ class ResourceController(EntityController):
     def _extract_fields(
         self,
         query_params: Dict[str, Any],
-        user_info: UserInfo,
-        no_depth: bool = False,
+        user_info: UserInfo
     ) -> Set[str]:
         """Extracts fields from request query parameters.
            Defaults to ``self.schema.dump_fields.keys()``.
@@ -273,7 +272,7 @@ class ResourceController(EntityController):
         fields = fields.split(',') if fields else None
 
         if fields: # User input case, check and raise.
-            fields = set(fields) | self.pk
+            fields = set(fields) | self.table.pk
             for field in fields:
                 if field not in self.schema.dump_fields.keys():
                     raise DataError(f"Requested field {field} does not exists.")
@@ -282,7 +281,6 @@ class ResourceController(EntityController):
         else: # Default case, gracefully populate allowed fields.
             fields = [
                 k for k,v in self.schema.dump_fields.items()
-                if not no_depth or not (hasattr(v, 'nested') or hasattr(v, 'inner'))
             ]
             fields = self.svc.takeout_unallowed_nested(fields, user_info=user_info)
         return fields
@@ -319,23 +317,13 @@ class ResourceController(EntityController):
                 description: Empty Payload.
         """
         body = await self._extract_body(request)
-
-        try:
-            validated_data = self.validate(body, partial=True)
-            created = await self.svc.write(
-                data=validated_data,
-                stmt_only=False,
-                user_info=request.state.user_info,
-                serializer=partial(self.serialize, many=isinstance(validated_data, list))
-            )
-        except IntegrityError as ie:
-            if 'UNIQUE' in ie.args[0] and 'version' in ie.args[0]: # Versioned case.
-                raise UpdateVersionedError(
-                    "Attempt at updating versioned resources via POST detected"
-                )
-            # Shall raise a Validation error, which should give more details about what's missing.
-            self.validate(body, partial=False)
-            raise # reraise primary exception if it did not.
+        validated_data = self.validate(body, partial=True)
+        created = await self.svc.write(
+            data=validated_data,
+            stmt_only=False,
+            user_info=request.user,
+            serializer=partial(self.serialize, many=isinstance(validated_data, list))
+        )
         return json_response(data=created, status_code=201)
  
     async def read(self, request: Request) -> Response:
@@ -380,8 +368,8 @@ class ResourceController(EntityController):
             # Serialization and field extraction done by target controller.
             ctrl: ResourceController = (
                 target_rel
-                .target
-                .decl_class
+                .mapper
+                .entity
                 .svc
                 .table
                 .ctrl
@@ -390,14 +378,14 @@ class ResourceController(EntityController):
 
         fields = ctrl._extract_fields(
             dict(request.query_params),
-            user_info=request.state.user_info
+            user_info=request.user
         )
         return json_response(
             data=await self.svc.read(
                 pk_val=self._extract_pk_val(request),
                 fields=fields,
                 nested_attribute=nested_attribute,
-                user_info=request.state.user_info,
+                user_info=request.user,
                 serializer=partial(ctrl.serialize, many=many, only=fields),
             ),
             status_code=200,
@@ -443,18 +431,16 @@ class ResourceController(EntityController):
             raise DataError("Attempt at updating a single resource with multiple values.")
 
         # Plug in pk into the dict.
-        validated_data.update(dict(zip(self.pk, pk_val))) # type: ignore [assignment]
-
+        validated_data.update(dict(zip(self.table.pk, pk_val))) # type: ignore [assignment]
         return json_response(
             data=await self.svc.write(
                 data=validated_data,
                 stmt_only=False,
-                user_info=request.state.user_info,
+                user_info=request.user,
                 serializer=partial(self.serialize, many=isinstance(validated_data, list)),
             ),
             status_code=201,
         )
-
 
     async def delete(self, request: Request) -> Response:
         """Delete resource.
@@ -478,7 +464,7 @@ class ResourceController(EntityController):
         """
         await self.svc.delete(
             pk_val=self._extract_pk_val(request),
-            user_info=request.state.user_info,
+            user_info=request.user,
         )
         return json_response("Deleted.", status_code=200)
 
@@ -510,12 +496,12 @@ class ResourceController(EntityController):
                         schema: Schema
         """
         params = dict(request.query_params)
-        fields = self._extract_fields(params, user_info=request.state.user_info)
+        fields = self._extract_fields(params, user_info=request.user)
         return json_response(
             await self.svc.filter(
                 fields=fields,
                 params=params,
-                user_info=request.state.user_info,
+                user_info=request.user,
                 serializer=partial(self.serialize, many=True, only=fields),
             ),
             status_code=200,
@@ -551,23 +537,19 @@ class ResourceController(EntityController):
         validated_data = self.validate(await request.body() or b'{}', partial=True)
 
         assert not isinstance(validated_data, list)
-        if any([pk in validated_data.keys() for pk in self.pk]):
+        if any([pk in validated_data.keys() for pk in self.table.pk]):
             raise DataError("Cannot edit versioned resource primary key.")
 
         fields = self._extract_fields(
             dict(request.query_params),
-            user_info=request.state.user_info,
-            no_depth=True
+            user_info=request.user
         )
 
-        # Note: serialization is delayed. Hence the no_depth.
         return json_response(
-            self.serialize(
-                await self.svc.release(
-                    pk_val=self._extract_pk_val(request),
-                    fields=fields,
-                    update=validated_data,
-                    user_info=request.state.user_info,
-                ), many=False, only=fields
+            await self.svc.release(
+                pk_val=self._extract_pk_val(request),
+                update=validated_data,
+                user_info=request.user,
+                serializer=partial(self.serialize, many=False, only=fields),
             ), status_code=200
         )

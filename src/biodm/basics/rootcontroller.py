@@ -3,25 +3,30 @@ from typing import List
 
 from starlette.requests import Request
 from starlette.responses import Response, PlainTextResponse
-from starlette.routing import Route
+# from starlette.routing import Route
 
 from biodm import config
 from biodm.components.controllers import Controller
-from biodm.utils.security import login_required
+from biodm.utils.security import admin_required, login_required
 from biodm.utils.utils import json_response
+from biodm.routing import Route, PublicRoute
+
+from biodm import tables as bt
 
 
 class RootController(Controller):
-    """Bundles Routes located at the root of the app i.e. '/'.
-    """
+    """Bundles Routes located at the root of the app i.e. '/'."""
     def routes(self, **_):
         return [
-            Route("/live", endpoint=self.live),
-            Route("/login", endpoint=self.login),
-            Route("/syn_ack", endpoint=self.syn_ack),
+            PublicRoute("/live",    endpoint=self.live),
+            PublicRoute("/login",   endpoint=self.login),
+            PublicRoute("/syn_ack", endpoint=self.syn_ack),
+            PublicRoute("/schema",  endpoint=self.openapi_schema),
             Route("/authenticated", endpoint=self.authenticated),
-            Route("/schema", endpoint=self.openapi_schema),
-        ]
+        ] + (
+            [Route("/kc_sync", endpoint=self.keycloak_sync)]
+            if hasattr(self.app, 'kc') else []
+        )
 
     @staticmethod
     async def live(_) -> Response:
@@ -103,6 +108,21 @@ class RootController(Controller):
             description: Unauthorized.
 
         """
-        assert request.state.user_info.info
-        user_id, groups, projects = request.state.user_info.info
-        return PlainTextResponse(f"{user_id}, {groups}, {projects}\n")
+        return PlainTextResponse(f"{request.user.display_name}, {request.user.groups}\n")
+
+    @admin_required
+    async def keycloak_sync(self, _) -> Response:
+        """Fetch in all keycloak entities.
+
+        ---
+        description: Route to sync DB with keycloak entities, reserved to administrators.
+        responses:
+          200:
+            description: Ok
+          403:
+            description: Unauthorized.
+
+        """
+        # bt = bt
+        # TODO: implement.
+        return PlainTextResponse('OK')

@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List, Type
 
 from marshmallow import Schema, RAISE
-from starlette.routing import Route, Mount, BaseRoute
+from starlette.routing import Mount, BaseRoute
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
@@ -14,6 +14,7 @@ from biodm.schemas import PartsEtagSchema
 from biodm.exceptions import ImplementionError
 from biodm.utils.security import UserInfo
 from biodm.utils.utils import json_response
+from biodm.routing import PublicRoute, Route
 from .controller import HttpMethod
 from .resourcecontroller import ResourceController
 
@@ -50,10 +51,10 @@ class S3Controller(ResourceController):
         prefix = f'{self.prefix}/{self.qp_id}/'
         file_routes = [
             Route(f'{prefix}download',           self.download,           methods=[HttpMethod.GET]),
-            Route(f'{prefix}post_success',       self.post_success,       methods=[HttpMethod.GET]),
             Route(f'{prefix}complete_multipart', self.complete_multipart, methods=[HttpMethod.PUT]),
+            PublicRoute(f'{prefix}post_success', self.post_success,       methods=[HttpMethod.GET]),
         ]
-        self.post_upload_callback = Path(file_routes[1].path)
+        self.post_upload_callback = Path(file_routes[-1].path)
 
         return file_routes + super().routes()
 

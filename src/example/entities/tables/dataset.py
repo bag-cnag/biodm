@@ -15,7 +15,7 @@ from .project import Project
 
 
 class Dataset(Versioned, Base):
-    id = Column(Integer, primary_key=True, autoincrement=not 'sqlite' in config.DATABASE_URL)
+    id = Column(Integer, primary_key=True, autoincrement=not 'sqlite' in str(config.DATABASE_URL))
     # data fields
     name:        Mapped[str] = mapped_column(String(50), nullable=False)
     description: Mapped[str] = mapped_column(Text,       nullable=True)
