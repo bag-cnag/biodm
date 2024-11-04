@@ -860,26 +860,8 @@ class UnaryEntityService(DatabaseService):
         x_to_many = [key for key, rel in self.table.relationships.items() if rel.uselist]
         await session.refresh(old_item, x_to_many)
         await session.refresh(new_item, x_to_many)
-
         for key in x_to_many:
-            ls = getattr(new_item, key)
-            for item in getattr(old_item, key):
-                if isinstance(ls, set):
-                    ls.add(item)
-                elif isinstance(ls, list):
-                    ls.append(item)
-                else:
-                    raise NotImplementedError
-
-        await session.commit()
-
-        # TODO: remove extra check
-        q = [getattr(new_item, k) for k in self.table.pk]
-        try:
-            async with self.app.db.session() as s:
-                await self.read(pk_val=q, fields=self.table.__table__.columns.keys(), session=s)
-        except FailedRead:
-            raise Exception("bibibi")
+            setattr(new_item, key, getattr(old_item, key))
 
         return new_item
 
