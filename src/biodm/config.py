@@ -1,9 +1,14 @@
 from starlette.config import Config
+from databases import DatabaseURL
 
 try:
     config = Config('.env')
 except FileNotFoundError:
     config = Config()
+
+# TODO: [prio medium - before release]
+# Change credentials to Secret type
+# Avoids leaking them in stacktraces
 
 # Server.
 API_NAME        = config("API_NAME",        cast=str,  default="biodm_instance")
@@ -14,6 +19,7 @@ SERVER_HOST     = config("SERVER_HOST",     cast=str,  default="0.0.0.0")
 SERVER_PORT     = config("SERVER_PORT",     cast=int,  default=8000)
 SECRET_KEY      = config("SECRET_KEY",      cast=str,  default="r4nD0m_p455")
 SERVER_TIMEOUT  = config("SERVER_TIMEOUT",  cast=int,  default=30)
+REQUIRE_AUTH    = config("REQUIRE_AUTH",    cast=bool, default=False)
 
 # Responses.
 INDENT          = config('INDENT',          cast=int,  default=2)

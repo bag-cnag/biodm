@@ -6,10 +6,8 @@ from enum import StrEnum
 from io import BytesIO
 from typing import Any, Iterable, List, Dict, TYPE_CHECKING, Optional
 
-from marshmallow import RAISE
 from marshmallow.schema import Schema
 from marshmallow.exceptions import ValidationError
-from marshmallow.types import StrSequenceOrSet
 from sqlalchemy.exc import MissingGreenlet
 from starlette.requests import Request
 from starlette.responses import Response
@@ -18,7 +16,7 @@ from starlette.routing import Mount, Route, BaseRoute
 from biodm import config
 from biodm.component import ApiComponent
 from biodm.exceptions import (
-    PayloadJSONDecodingError, AsyncDBError, SchemaError
+    DataError, PayloadJSONDecodingError, AsyncDBError, SchemaError
 )
 from biodm.utils.utils import json_response
 
@@ -104,6 +102,9 @@ class EntityController(Controller):
 
             json_data = json.loads(data) # Accepts **kwargs in case support needed.
             return cls.schema.load(json_data, many=many, partial=partial)
+
+        except ValidationError as ve:
+            raise DataError(str(ve.messages))
 
         except json.JSONDecodeError as e:
             raise PayloadJSONDecodingError(cls.__name__) from e

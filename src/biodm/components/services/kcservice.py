@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Any, Dict, List
 from pathlib import Path
 
-from biodm.exceptions import DataError
+from biodm.exceptions import DataError, UnauthorizedError
 from biodm.managers import KeycloakManager
 from biodm.tables import Group, User
 from biodm.utils.security import UserInfo
@@ -18,10 +18,16 @@ class KCService(CompositeEntityService):
         return cls.app.kc
 
     @abstractmethod
-    async def update(self, remote_id: str, data: Dict[str, Any]):
+    async def _update(self, remote_id: str, data: Dict[str, Any]):
+        """Keycloak entity update method."""
         raise NotImplementedError
 
-    async def sync(self, remote: Dict[str, Any], data: Dict[str, Any]):
+    async def sync(
+        self,
+        remote: Dict[str, Any],
+        data: Dict[str, Any],
+        user_info: UserInfo
+    ):
         """Sync Keycloak and input data."""
         inter = remote.keys() & (set(c.name for c in self.table.__table__.columns) - self.table.pk)
         fill = {
@@ -32,11 +38,20 @@ class KCService(CompositeEntityService):
             if data.get(key, None) and data.get(key, None) != remote.get(key, None)
         }
         if update:
-            await self.update(remote['id'], update)
+            if not user_info.is_admin:
+                raise UnauthorizedError(
+                    f"only administrators are allowed to update keycloak entities."
+                )
+            await self._update(remote['id'], update)
         data.update(fill)
 
     @abstractmethod
-    async def read_or_create(self, data: Dict[str, Any], /) -> None:
+    async def read_or_create(
+        self,
+        data: Dict[str, Any],
+        user_info: UserInfo,
+        /
+    ) -> None:
         """Query entity from keycloak, create it in case it does not exists, update in case it does.
         Populates data with resulting id and/or found information."""
         raise NotImplementedError
@@ -48,21 +63,32 @@ class KCGroupService(KCService):
         """Compute keycloak path from api path."""
         return Path("/" + path.replace("__", "/"))
 
-    async def update(self, remote_id: str, data: Dict[str, Any]):
+    async def _update(self, remote_id: str, data: Dict[str, Any]):
         return await self.kc.update_group(group_id=remote_id, data=data)
 
-    async def read_or_create(self, data: Dict[str, Any]) -> None:
+    async def read_or_create(
+        self,
+        data: Dict[str, Any],
+        user_info: UserInfo
+    ) -> None:
         """READ group from keycloak, CREATE if missing, UPDATE if exists.
 
         :param data: Group data
         :type data: Dict[str, Any]
+        :param user_info: requesting user info
+        :type user_info: UserInfo
         """
         path = self.kcpath(data['path'])
         group = await self.kc.get_group_by_path(str(path))
 
         if group:
-            await self.sync(group, data)
+            await self.sync(group, data, user_info=user_info)
             return
+
+        if not user_info.is_admin:
+            raise UnauthorizedError(
+                f"group {path} does not exists, only administrators are allowed to create new ones."
+            )
 
         parent_id = None
         if not path.parent.parts == ('/',):
@@ -81,18 +107,20 @@ class KCGroupService(KCService):
         **kwargs
     ):
         """Create entities on Keycloak Side before passing to parent class for DB."""
-        # Check permissions beforehand.
-        await self._check_permissions("write", user_info, data)
-
         # Create on keycloak side
         for group in to_it(data):
             # Group first.
-            await self.read_or_create(group)
+            await self.read_or_create(group, user_info=user_info)
             # Then Users.
             for user in group.get("users", []):
-                await User.svc.read_or_create(user, [group["path"]], [group["id"]],)
+                await User.svc.read_or_create(
+                    user,
+                    user_info=user_info,
+                    groups=[group["path"]],
+                    group_ids=[group["id"]]
+                )
 
-        # Send to DB
+        # Send to DB without user_info.
         return await super().write(data, stmt_only=stmt_only, **kwargs)
 
     async def delete(self, pk_val: List[Any], user_info: UserInfo | None = None, **_) -> None:
@@ -103,12 +131,13 @@ class KCGroupService(KCService):
 
 
 class KCUserService(KCService):
-    async def update(self, remote_id: str, data: Dict[str, Any]):
+    async def _update(self, remote_id: str, data: Dict[str, Any]):
         return await self.kc.update_user(user_id=remote_id, data=data)
 
     async def read_or_create(
         self,
         data: Dict[str, Any],
+        user_info: UserInfo,
         groups: List[str] | None = None,
         group_ids: List[str] | None = None,
     ) -> None:
@@ -116,6 +145,8 @@ class KCUserService(KCService):
 
         :param data: Entry object representation
         :type data: Dict[str, Any]
+        :param user_info: requesting user info
+        :type user_info: UserInfo
         :param groups: User groups names, defaults to None
         :type groups: List[str], optional
         :param group_ids: User groups ids, defaults to None
@@ -130,13 +161,20 @@ class KCUserService(KCService):
             group_ids = group_ids or []
             for gid in group_ids:
                 await self.kc.group_user_add(user['id'], gid)
-            await self.sync(user, data)
+            await self.sync(user, data, user_info=user_info)
+
+        elif not user_info.is_admin:
+            raise UnauthorizedError(
+                f"user {data['username']} does not exists, "
+                "only administrators are allowed to create new ones."
+            )
 
         elif not data.get('password', None):
             raise DataError("Missing password in order to create User.")
 
         else:
             data['id'] = await self.kc.create_user(data, groups)
+
         # Important to remove password as it is not stored locally, SQLA would throw error.
         data.pop('password', None)
 
@@ -148,17 +186,23 @@ class KCUserService(KCService):
         **kwargs
     ):
         """CREATE entities on Keycloak, before inserting in DB."""
-        await self._check_permissions("write", user_info, data)
-
         for user in to_it(data):
             # Groups first.
             group_paths, group_ids = [], []
             for group in user.get("groups", []):
-                await Group.svc.read_or_create(group)
+                await Group.svc.read_or_create(
+                    group,
+                    user_info=user_info,
+                )
                 group_paths.append(group['path'])
                 group_ids.append(group['id'])
             # Then User.
-            await self.read_or_create(user, groups=group_paths, group_ids=group_ids)
+            await self.read_or_create(
+                user,
+                user_info=user_info,
+                groups=group_paths,
+                group_ids=group_ids
+            )
 
         return await super().write(data, stmt_only=stmt_only, **kwargs)
 

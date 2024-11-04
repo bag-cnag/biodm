@@ -1,6 +1,5 @@
 from marshmallow import Schema
 
-from biodm.components import Base
 from biodm.utils.security import admin_required, login_required
 from .resourcecontroller import ResourceController
 

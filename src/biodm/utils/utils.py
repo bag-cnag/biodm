@@ -5,7 +5,8 @@ from functools import reduce, update_wrapper
 import operator
 from os import path, utime
 from typing import (
-    Any, List, Callable, Tuple, TypeVar, Dict, Iterator, Self, Generic
+    Any, List, Callable, Tuple, TypeVar, Dict, Iterator, Self, Generic,
+    MutableSet, Iterable, Sequence
 )
 
 from starlette.responses import Response
@@ -96,10 +97,10 @@ def to_it(x: _T | Tuple[_T, ...] | List[_T]) -> Tuple[_T, ...] | List[_T]:
 
 
 def partition(
-    ls: List[_T],
+    ls: Sequence[_T],
     cond: Callable[[_T], bool],
     excl_na: bool = True
-) -> Tuple[List[_T], List[_T]]:
+) -> Tuple[Sequence[_T], Sequence[_T]]:
     """Partition a list into two based on condition.
     Return list of values checking condition.
     If `excl_na`, values whose truth value is `False` will be evicted from both lists.
@@ -138,3 +139,35 @@ def coalesce_dicts(ls: List[Dict[_T, _U]]) -> Dict[_T, _U]:
     """Assembles multiple dicts into one.
     - Overlapping keys: override value in order."""
     return reduce(operator.or_, ls, {})
+
+
+
+
+class OrderedSet(MutableSet[_T]):
+    """A set that preserves insertion order by internally using a dict.
+
+    courtesy of: https://stackoverflow.com/a/62019678/6847689
+    """
+    def __init__(self, iterable: Iterable[_T]):
+        self._d = dict.fromkeys(iterable)
+
+    def add(self, x: _T) -> None:
+        self._d[x] = None
+
+    def discard(self, x: _T) -> None:
+        self._d.pop(x, None)
+
+    def __contains__(self, x: object) -> bool:
+        return self._d.__contains__(x)
+
+    def __len__(self) -> int:
+        return self._d.__len__()
+
+    def __iter__(self) -> Iterator[_T]:
+        return self._d.__iter__()
+
+    def __str__(self):
+        return f"{{{', '.join(str(i) for i in self)}}}"
+
+    def __repr__(self):
+        return f"<OrderedSet {self}>"

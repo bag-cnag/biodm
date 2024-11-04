@@ -48,7 +48,7 @@ jobs:
       run: |
         pylint -d W0221 $(git ls-files 'src/biodm/*.py') --exit-zero
 
-    # TODO: Debug
+    #  TODO: Debug
     # - name: Build and cache integration test images
     #   uses: whoan/docker-build-with-cache-action@v5
     #   with:

@@ -54,7 +54,6 @@ class ApiService(ApiComponent, metaclass=ABCMeta):
     async def release(
         self,
         pk_val: List[Any],
-        fields: List[str],
         update: Dict[str, Any],
         session: AsyncSession,
         user_info: UserInfo | None = None,
@@ -86,7 +85,7 @@ class ApiService(ApiComponent, metaclass=ABCMeta):
     async def delete(
         self,
         pk_val: List[Any],
-        user_info: UserInfo | None = None,
-        **kwargs: Dict[str, Any]
+        session: AsyncSession,
+        user_info: UserInfo | None = None
     ) -> None:
         raise NotImplementedError

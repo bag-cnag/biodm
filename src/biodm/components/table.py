@@ -16,7 +16,7 @@ from sqlalchemy.orm import (
 )
 
 from biodm import config
-from biodm.utils.utils import utcnow, classproperty
+from biodm.utils.utils import utcnow, classproperty, OrderedSet
 
 
 if TYPE_CHECKING:
@@ -65,12 +65,13 @@ class Base(DeclarativeBase, AsyncAttrs):
         return col.target if isinstance(col, Relationship) else None
 
     @classproperty
-    def pk(cls) -> Set[str]:
+    def pk(cls) -> OrderedSet[str]:
         """Return primary key names."""
-        return set(
-            str(pk).rsplit('.', maxsplit=1)[-1]
-            for pk in cls.__table__.primary_key.columns
-        )
+        pks = [c.name for c in cls.__table__.primary_key.columns]
+        if cls.is_versioned: # ensure version is last.
+            pks.remove('version')
+            pks.append('version')
+        return OrderedSet(pks)
 
     @classmethod
     def col(cls, name: str):
@@ -86,7 +87,7 @@ class Base(DeclarativeBase, AsyncAttrs):
         - https://groups.google.com/g/sqlalchemy/c/o5YQNH5UUko
         """
         # Enforced by DatabaseService.populate_ids_sqlite
-        if name == 'id' and 'sqlite' in config.DATABASE_URL:
+        if name == 'id' and 'sqlite' in str(config.DATABASE_URL):
             return True
 
         if cls.__table__.columns[name] is cls.__table__.autoincrement_column:

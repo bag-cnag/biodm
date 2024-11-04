@@ -82,7 +82,7 @@ def process_apispec_docstrings(ctrl: 'ResourceController', abs_doc: str):
 
     # Template replacement #1: path key.
     path_key = []
-    for key in ctrl.pk:
+    for key in ctrl.table.pk:
         attr = []
         attr.append("- in: path")
         attr.append(f"name: {key}")
