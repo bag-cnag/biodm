@@ -5,6 +5,7 @@ from biodm.utils.utils import json_response
 from .exceptions import (
     EndpointError,
     FailedUpdate,
+    FileUploadSuccessError,
     PayloadJSONDecodingError,
     RequestError,
     FailedDelete,
@@ -50,7 +51,7 @@ async def onerror(_, exc):
         )
 
         match exc:
-            case FileTooLargeError():
+            case FileTooLargeError() | FileUploadSuccessError():
                 status = 400
             case DataError() | EndpointError() | PayloadJSONDecodingError():
                 status = 400

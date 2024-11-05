@@ -5,6 +5,7 @@ from keycloak.keycloak_admin import KeycloakAdmin
 from keycloak.openid_connection import KeycloakOpenIDConnection
 from keycloak.keycloak_openid import KeycloakOpenID
 from keycloak.exceptions import KeycloakError, KeycloakDeleteError, KeycloakGetError
+from starlette.datastructures import Secret
 
 from biodm.component import ApiManager
 from biodm.exceptions import (
@@ -26,9 +27,9 @@ class KeycloakManager(ApiManager):
         realm: str,
         public_key: str,
         admin: str,
-        admin_password: str,
+        admin_password: Secret,
         client_id: str,
-        client_secret: str,
+        client_secret: Secret,
         jwt_options: dict
     ) -> None:
         super().__init__(app=app)
@@ -44,14 +45,14 @@ class KeycloakManager(ApiManager):
                 user_realm_name="master",
                 realm_name=realm,
                 username=admin,
-                password=admin_password,
+                password=str(admin_password),
                 verify=True,
             )
             self._openid = KeycloakOpenID(
                 server_url=host,
                 realm_name=realm,
                 client_id=client_id,
-                client_secret_key=client_secret,
+                client_secret_key=str(client_secret),
             )
         except KeycloakError as e:
             raise KeycloakUnavailableError(

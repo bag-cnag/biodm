@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, List
 from boto3 import client
 from botocore.config import Config
 from botocore.exceptions import ClientError
+from starlette.datastructures import Secret
 
 from biodm.component import ApiManager
 from biodm.utils.utils import utcnow
@@ -19,8 +20,8 @@ class S3Manager(ApiManager):
         app: Api,
         endpoint_url: str,
         bucket_name: str,
-        access_key_id: str,
-        secret_access_key: str,
+        access_key_id: Secret,
+        secret_access_key: Secret,
         url_expiration: int,
         pending_expiration: int,
         region_name: str,
@@ -36,8 +37,8 @@ class S3Manager(ApiManager):
         self.s3_client = client(
             's3',
             endpoint_url=endpoint_url,
-            aws_access_key_id=access_key_id,
-            aws_secret_access_key=secret_access_key,
+            aws_access_key_id=str(access_key_id),
+            aws_secret_access_key=str(secret_access_key),
             region_name=self.region_name,
             config=Config(
                 signature_version='s3'

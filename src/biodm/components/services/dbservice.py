@@ -17,7 +17,7 @@ from biodm import config
 from biodm.component import ApiService
 from biodm.components import Base
 from biodm.exceptions import (
-    DataError, EndpointError, FailedRead, FailedDelete, ReleaseVersionError, UpdateVersionedError, UnauthorizedError
+    DataError, EndpointError, FailedCreate, FailedRead, FailedDelete, ReleaseVersionError, UpdateVersionedError, UnauthorizedError
 )
 from biodm.managers import DatabaseManager
 from biodm.tables import ListGroup, Group
@@ -59,7 +59,7 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
                 raise UpdateVersionedError(
                     "Attempt at updating versioned resources."
                 )
-            raise
+            raise FailedCreate(str(ie))
 
     @DatabaseManager.in_session
     async def _insert_list(

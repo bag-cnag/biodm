@@ -44,7 +44,7 @@ class K8sManager(ApiManager):
 
     def authenticate(self, token, host, cert):
         """Set configuration with the credentials and certificate"""
-        self._config.api_key["authorization"] = token
+        self._config.api_key["authorization"] = str(token)
         self._config.api_key_prefix['authorization'] = 'Bearer'
         self._config.host = host
         self._config.ssl_ca_cert = cert

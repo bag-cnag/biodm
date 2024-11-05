@@ -4,6 +4,7 @@ import json
 from functools import reduce, update_wrapper
 import operator
 from os import path, utime
+import re
 from typing import (
     Any, List, Callable, Tuple, TypeVar, Dict, Iterator, Self, Generic,
     MutableSet, Iterable, Sequence
@@ -141,8 +142,6 @@ def coalesce_dicts(ls: List[Dict[_T, _U]]) -> Dict[_T, _U]:
     return reduce(operator.or_, ls, {})
 
 
-
-
 class OrderedSet(MutableSet[_T]):
     """A set that preserves insertion order by internally using a dict.
 
@@ -171,3 +170,19 @@ class OrderedSet(MutableSet[_T]):
 
     def __repr__(self):
         return f"<OrderedSet {self}>"
+
+
+_hash_regexp = re.compile(r'^[0-9a-f]{32}$', re.IGNORECASE)
+
+
+def check_hash(s: str) -> bool:
+    """Check if input string looks like a md5/sha1/sha2 hash.
+
+    i.e. a string of exactly 32 hexadecimal characters
+
+    :param s: string to match
+    :type s: str
+    :return: string matches flag
+    :rtype: bool
+    """
+    return bool(_hash_regexp.match(s))

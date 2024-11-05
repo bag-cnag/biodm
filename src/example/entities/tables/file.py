@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 import uuid
 
-from sqlalchemy import Column, Integer, ForeignKey, Boolean, String, ForeignKeyConstraint, SmallInteger
+from sqlalchemy import Column, Integer, ForeignKey, Boolean, String, ForeignKeyConstraint, SmallInteger, UniqueConstraint
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +27,13 @@ class File(S3File, Base):
             ["DATASET.id", "DATASET.version"],
             name="fk_file_dataset",
         ),
+        UniqueConstraint(
+            "filename",
+            "extension",
+            "dataset_id",
+            "dataset_version",
+            name="uc_file_in_dataset"
+        )
     )
 
     @hybrid_property

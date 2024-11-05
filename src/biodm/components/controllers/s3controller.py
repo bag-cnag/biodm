@@ -54,7 +54,7 @@ class S3Controller(ResourceController):
             Route(f'{prefix}complete_multipart', self.complete_multipart, methods=[HttpMethod.PUT]),
             PublicRoute(f'{prefix}post_success', self.post_success,       methods=[HttpMethod.GET]),
         ]
-        self.post_upload_callback = Path(file_routes[-1].path)
+        self.svc.post_upload_callback = Path(file_routes[-1].path)
 
         return file_routes + super().routes()
 
@@ -94,6 +94,9 @@ class S3Controller(ResourceController):
         """
         await self.svc.post_success(
             pk_val=self._extract_pk_val(request),
+            bucket=request.query_params.get('bucket', ''),
+            key=request.query_params.get('key', ''),
+            etag=request.query_params.get('etag', '').strip('"'),
         )
 
         return json_response("Uploaded.", status_code=201)

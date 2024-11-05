@@ -1,15 +1,16 @@
 from asyncio import iscoroutine
 from math import ceil
+from pathlib import Path
 from typing import List, Any, Sequence, Dict
 
 from sqlalchemy import Insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from biodm.components.table import Base, S3File
-from biodm.exceptions import FileNotUploadedError, FileTooLargeError
+from biodm.exceptions import FileNotUploadedError, FileTooLargeError, FileUploadSuccessError
 from biodm.managers import DatabaseManager, S3Manager
 from biodm.tables import Upload, UploadPart
-from biodm.utils.utils import utcnow, classproperty
+from biodm.utils.utils import utcnow, classproperty, check_hash
 from biodm.utils.security import UserInfo
 from .dbservice import CompositeEntityService
 
@@ -19,6 +20,8 @@ CHUNK_SIZE = 100*1024**2 # 100MB as recomended by AWS S3 documentation.
 
 class S3Service(CompositeEntityService):
     """Class for automatic management of S3 bucket transactions for file resources."""
+    post_upload_callback: Path # set by S3Controller.
+
     @classproperty
     def s3(cls) -> S3Manager:
         return cls.app.s3
@@ -29,21 +32,34 @@ class S3Service(CompositeEntityService):
             for key in self.table.pk
         }
 
-        route = str(self.table.ctrl.post_upload_callback) # TODO: svc argument ?
+        route = str(self.post_upload_callback)
         for key, val in mapping.items():
             route = route.replace("{" + f"{key}" + "}", str(val))
 
         srv = self.app.server_endpoint.strip('/')
         return f"{srv}{route}"
 
-    async def gen_key(self, item, session: AsyncSession):
-        """Generate a unique bucket key from file elements."""
-        await session.refresh(item, ['filename', 'extension']) 
-        version = ""
-        if self.table.is_versioned:
-            await session.refresh(item, ['version'])
-            version = "_v" + str(item.version)
+    @property
+    def key_fields(self) -> List[str]:
+        """List of fields used to compute the key."""
+        return ['filename', 'extension'] + (['version'] if self.table.is_versioned else [])
 
+    async def gen_key(self, item: S3File, session: AsyncSession, refresh=True) -> str:
+        """Generate a unique bucket key from file elements.
+
+        :param item: file
+        :type item: S3File
+        :param session: current sqla session
+        :type session: AsyncSession
+        :param refresh: if key fields should be fetched - can save a db request, defaults to True
+        :type refresh: bool, optional
+        :return: unique s3 bucket file key
+        :rtype: str
+        """
+        if refresh:
+            await session.refresh(item, self.key_fields)
+
+        version = "_v" + str(item.version) if self.table.is_versioned else ""
         key_salt = await getattr(item.awaitable_attrs, 'key_salt')
         if iscoroutine(key_salt):
             item.__dict__['session'] = session
@@ -69,7 +85,7 @@ class S3Service(CompositeEntityService):
         await session.flush()
         parts = await getattr(file.upload.awaitable_attrs, 'parts')
 
-        key = await self.gen_key(file, session=session)
+        key = await self.gen_key(file, session=session, refresh=False)
         n_chunks = ceil(file.size / CHUNK_SIZE)
 
         if n_chunks > 1:
@@ -127,8 +143,31 @@ class S3Service(CompositeEntityService):
         return files
 
     @DatabaseManager.in_session
-    async def post_success(self, pk_val: List[Any], session: AsyncSession):
-        file = await self.read(pk_val, fields=['ready', 'upload'], session=session)
+    async def post_success(
+        self,
+        pk_val: List[Any],
+        bucket: str,
+        key: str,
+        etag: str,
+        session: AsyncSession
+    ):
+        file = await self.read(
+            pk_val,
+            fields=['ready', 'upload'] + self.key_fields,
+            session=session
+        )
+
+        # Weak check. TODO: [prio not urgent] can be improved ?
+        indb_key = await self.gen_key(file, session=session, refresh=False)
+        if (
+            not check_hash(etag) or
+            bucket != self.s3.bucket_name or
+            indb_key != key
+        ):
+            raise FileUploadSuccessError(
+                "Critical: Manual attempt at validating file detected !"
+            )
+
         file.validated_at = utcnow()
         file.ready = True
         file.upload_id, file.upload = None, None
@@ -141,10 +180,14 @@ class S3Service(CompositeEntityService):
         session: AsyncSession
     ):
         # parts should take the form of [{'PartNumber': part_number, 'ETag': etag}, ...]
-        file = await self.read(pk_val, fields=['ready', 'upload'], session=session)
+        file = await self.read(
+            pk_val,
+            fields=['ready', 'upload'] + self.key_fields,
+            session=session
+        )
         upload = await getattr(file.awaitable_attrs, 'upload')
         complete = self.s3.complete_multipart_upload(
-            object_name=await self.gen_key(file, session=session),
+            object_name=await self.gen_key(file, session=session, refresh=False),
             upload_id=upload.s3_uploadId,
             parts=parts
         )
@@ -176,7 +219,7 @@ class S3Service(CompositeEntityService):
         :rtype: str
         """
         # File management.
-        fields = ['filename', 'extension', 'dl_count', 'ready']
+        fields = ['dl_count', 'ready'] + self.key_fields
         # Also fetch foreign keys, as some may be necessary for permission check.
         fields += list(c.name for c in self.table.__table__.columns if c.foreign_keys)
         file = await self.read(pk_val, fields=fields, session=session)
@@ -188,7 +231,9 @@ class S3Service(CompositeEntityService):
         if not file.ready:
             raise FileNotUploadedError("File exists but has not been uploaded yet.")
 
-        url = self.s3.create_presigned_download_url(await self.gen_key(file, session=session))
+        url = self.s3.create_presigned_download_url(
+            await self.gen_key(file, session=session, refresh=False)
+        )
         file.dl_count += 1
         return url
 
@@ -196,7 +241,6 @@ class S3Service(CompositeEntityService):
     async def release(
         self,
         pk_val: List[Any],
-        fields: List[str],
         update: Dict[str, Any],
         session: AsyncSession,
         user_info: UserInfo | None = None,
@@ -204,7 +248,6 @@ class S3Service(CompositeEntityService):
         # Bumps version.
         file = await super().release(
             pk_val=pk_val,
-            fields=fields,
             update=update,
             session=session,
             user_info=user_info

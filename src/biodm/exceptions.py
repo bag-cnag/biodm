@@ -65,6 +65,10 @@ class FileTooLargeError(RequestError):
     """Raised when trying to create a too large file."""
 
 
+class FileUploadSuccessError(RequestError):
+    """Raised when file upload success route is visted with wrong information."""
+
+
 class DataError(RequestError):
     """Raised when input data is incorrect."""
 

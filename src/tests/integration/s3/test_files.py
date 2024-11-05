@@ -90,10 +90,9 @@ def test_file_upload():
     assert response.status_code == 201
 
 
-@pytest.mark.dependency(name="test_create_file")
-def test_create_oversized_file(srv_endpoint, utils, tmpdir):
+def test_create_oversized_file(srv_endpoint, utils):
     small_file = {
-        "filename": small_file_path.name.split('.')[0],
+        "filename": small_file_path.name.split('.')[0] + "_os1",
         "extension": small_file_path.name.split('.')[1],
         "size": 1000*1024**3, # 1000GB
         "dataset_id": "1",
@@ -105,11 +104,10 @@ def test_create_oversized_file(srv_endpoint, utils, tmpdir):
     assert "File exceeding 100 GB" in response.text
 
 
-@pytest.mark.dependency(name="test_create_file")
 def test_create_and_upload_oversized_file(srv_endpoint, utils):
     # create, with lower size.
     small_file = {
-        "filename": small_file_path.name.split('.')[0],
+        "filename": small_file_path.name.split('.')[0] + "_os2",
         "extension": small_file_path.name.split('.')[1],
         "size": small_file_path.stat().st_size - 10,
         "dataset_id": "1",
@@ -253,3 +251,24 @@ def test_download_large_file(srv_endpoint, tmp_path):
         f.write(response.content)
 
     assert filecmp.cmp(tmp_file, big_file_path)
+
+
+def test_create_file_and_manually_visit_success_route(srv_endpoint, utils):
+    file = {
+        "filename": "test",
+        "extension": "xyz",
+        "size": CHUNK_SIZE * 0.10,
+        "dataset_id": "1",
+        "dataset_version": "1",
+    }
+
+    response = requests.post(f"{srv_endpoint}/files", data=utils.json_bytes(file))
+    assert response.status_code == 201
+
+    json_file = json.loads(response.text)
+    file_id = json_file['id']
+
+    # Hit success route ourselves.
+    response = requests.get(f"{srv_endpoint}/files/{file_id}/post_success")
+    assert response.status_code == 400
+    assert "Critical: Manual attempt at validating file detected !" in response.text

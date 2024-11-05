@@ -38,6 +38,20 @@ can be done by overloading ``key_salt`` with a ``hybrid_property`` in the follow
                 session = self.__dict__.pop('session')
                 # Use session to fetch what you need.
                 await session.refresh(self, ['dataset'])
-                await session.refresh(self.dataset, ['project'])
                 # Build your custom prefix.
-                return f"{self.dataset.project.name}_{self.dataset.name}"
+                return f"{self.dataset.name}"
+
+        __table_args__ = (
+            UniqueConstraint(
+                "filename",
+                "extension",
+                "dataset_id",
+                name="uc_file_in_dataset"
+            ),
+        )
+
+.. note::
+
+    The ``uuid4`` prefix guarantees us key uniqueness in all probable cases.
+    In case you are replacing it by one of your own like above, you should
+    also add a unique constraint on the table for that purpose.
