@@ -7,7 +7,7 @@ from starlette.responses import Response, PlainTextResponse
 
 from biodm import config
 from biodm.components.controllers import Controller
-from biodm.utils.security import admin_required, login_required
+from biodm.utils.security import admin_required, group_required, login_required
 from biodm.utils.utils import json_response
 from biodm.routing import Route, PublicRoute
 
@@ -33,7 +33,10 @@ class RootController(Controller):
         """Liveness endpoint.
 
         ---
-        description: Liveness check endpoint.
+        description: Liveness check endpoint
+        responses:
+          200:
+            description: Ok
         """
         return PlainTextResponse("live\n")
 
@@ -42,7 +45,9 @@ class RootController(Controller):
 
         ---
         description: Returns full API schema
-
+        responses:
+          200:
+            description: OpenAPIv3 schema
         """
         return json_response(json.dumps(
             self.app.apispec.get_schema(routes=self.app.routes),
@@ -55,9 +60,6 @@ class RootController(Controller):
 
         :return: Syn_Ack url
         :rtype: str
-
-        ---
-
         """
         return (
             f"{config.SERVER_SCHEME}{config.SERVER_HOST}:"
@@ -70,10 +72,8 @@ class RootController(Controller):
         ---
         description: Returns the url for keycloak login page
         responses:
-            200:
-                description: Login URL.
-                examples: https://mykeycloak/realms/myrealm/protocol/openid-connect/auth?scope=openid&response_type=code&client_id=myclientid&redirect_uri=http://myapp/syn_ack
-
+          200:
+            description: Login URL
         """
         auth_url = await self.app.kc.auth_url(redirect_uri=self.handshake())
         return PlainTextResponse(auth_url)
@@ -110,8 +110,8 @@ class RootController(Controller):
         """
         return PlainTextResponse(f"{request.user.display_name}, {request.user.groups}\n")
 
-    @admin_required
-    async def keycloak_sync(self, _) -> Response:
+    @group_required(groups=["admin", "query"])
+    async def keycloak_sync(self, request: Request) -> Response:
         """Fetch in all keycloak entities.
 
         ---
@@ -123,6 +123,8 @@ class RootController(Controller):
             description: Unauthorized.
 
         """
-        # bt = bt
+        # await bt.User.svc.import_all()
+
+        await bt.Group.svc.import_all(user_info=request.user)
         # TODO: implement.
         return PlainTextResponse('OK')

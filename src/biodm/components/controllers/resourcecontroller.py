@@ -307,9 +307,6 @@ class ResourceController(EntityController):
         responses:
             201:
                 description: Creates associated entit(y|ies).
-                examples: |
-                    {"username": "user"}
-                    [{"name": "tag1"}, {"name": "tag2"}]
                 content:
                     application/json:
                         schema: Schema
@@ -351,12 +348,15 @@ class ResourceController(EntityController):
         responses:
             200:
                 description: Found matching item
-                examples: |
-                    {"username": "user", "email": "Null", "groups": []}
+                content:
+                    application/json:
+                        schema: Schema
             404:
                 description: Not Found
         """
         # Read nested collection case:
+        # TODO: [prio-medium]
+        #  make it a separate endpoint and document proper schema output.
         nested_attribute = request.path_params.get('attribute', None)
         ctrl, many = self, False
         if nested_attribute:
@@ -476,7 +476,7 @@ class ResourceController(EntityController):
         description: Uses a querystring to filter all resources of that type.
         parameters:
           - in: query
-            name: fields_conditions
+            schema: Schema
           - in: query
             name: fields
             description: |
@@ -484,16 +484,24 @@ class ResourceController(EntityController):
                 e.g. /datasets/1_1?name,description,contact,files
           - in: query
             name: offset
+            required: False
             description: page start
+            schema:
+              type: integer
           - in: query
             name: limit
+            required: False
             description: page end
+            schema:
+              type: integer
         responses:
             201:
                 description: Filtered list.
                 content:
                     application/json:
-                        schema: Schema
+                        schema:
+                          type: array
+                          items: Schema
         """
         params = dict(request.query_params)
         fields = self._extract_fields(params, user_info=request.user)

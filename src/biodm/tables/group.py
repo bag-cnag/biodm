@@ -16,11 +16,7 @@ if TYPE_CHECKING:
 
 class Group(Base):
     """Group table."""
-    # GroupAlias = aliased("Group")
-    # nullable=False is a problem when creating parent entity with just the User.username.
-    # id on creation is ensured by read_or_create method from KCService subclasses.
-    # KC fields managed internally (not part of the Schema).
-    id: Mapped[str] = mapped_column(nullable=True)
+    id: Mapped[str] = mapped_column(nullable=not (config.KC_HOST and config.KC_REALM))
     path: Mapped[str] = mapped_column(String(500), primary_key=True)
     # relationships
     users: Mapped[List["User"]] = relationship(

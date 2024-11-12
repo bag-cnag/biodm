@@ -52,7 +52,11 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         await self._check_permissions("write", user_info, stmt)
         try:
             item = await session.scalar(stmt.to_stmt(self))
-            return item
+            if item:
+                return item
+
+            missing = self.table.required - stmt.keys()
+            raise DataError(f"{self.table.__name__} missing the following: {missing}.")
         # May occur in some cases for versioned resources.
         except IntegrityError as ie:
             if 'unique' in ie.args[0].lower() and 'version' in ie.args[0]:

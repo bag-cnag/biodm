@@ -62,11 +62,6 @@ def process_apispec_docstrings(ctrl: 'ResourceController', abs_doc: str):
             name: id
         ->
         List of table primary keys, with their description from marshmallow schema if any.
-    - field conditions |
-        - in: query
-            name: field_conditions
-        ->
-        List of available fields to set conditions on.
 
     :param ctrl: ResourceController
     :type ctrl: ResourceController
@@ -75,11 +70,6 @@ def process_apispec_docstrings(ctrl: 'ResourceController', abs_doc: str):
     :return: Processed documentation block
     :rtype: str
     """
-    # Use intance schema.
-    abs_doc = abs_doc.replace(
-        'schema: Schema', f"schema: {ctrl.schema.__class__.__name__}"
-    )
-
     # Template replacement #1: path key.
     path_key = []
     for key in ctrl.table.pk:
@@ -91,30 +81,6 @@ def process_apispec_docstrings(ctrl: 'ResourceController', abs_doc: str):
         attr.append("description: " + desc)
         path_key.append(attr)
 
-    # Template replacement #2: field conditions.
-    field_conditions = []
-    load_cols = [
-        col for col in ctrl.table.__table__.columns
-        if col.name in ctrl.schema.load_fields
-    ]
-    for col in load_cols:
-        condition = []
-        condition.append("- in: query")
-        condition.append(f"name: {col.name}")
-        if col.type.python_type == str:
-            condition.append(
-                "description: text - key=val | key=pattern "
-                "where pattern may contain '*' for wildcards"
-            )
-        elif col.type.python_type in (int, float):
-            condition.append(
-                "description: numeric - key=val | key=val1,val2.. | key.op(val) "
-                "for op in (le|lt|ge|gt)"
-            )
-        else:
-            condition.append(f"description: {ctrl.resource} {col.name}")
-        field_conditions.append(condition)
-
     # Split.
     doc = abs_doc.split('---')
     if len(doc) > 1:
@@ -124,11 +90,16 @@ def process_apispec_docstrings(ctrl: 'ResourceController', abs_doc: str):
         apispec = replace_docstrings_pattern(
             apispec=apispec, pattern=('- in: path', 'name: id'), blocks=path_key
         )
-        apispec = replace_docstrings_pattern(
-            apispec=apispec,
-            pattern=('- in: query', 'name: fields_conditions'),
-            blocks=field_conditions
-        )
+
         # Join.
         abs_doc = sphinxdoc + "\n---\n" + "\n".join(apispec)
+
+    # Use intance schema.
+    abs_doc = abs_doc.replace(
+        'schema: Schema', f"schema: {ctrl.schema.__class__.__name__}"
+    )
+    abs_doc = abs_doc.replace(
+        'items: Schema', f"items: {ctrl.schema.__class__.__name__}"
+    )
+
     return abs_doc

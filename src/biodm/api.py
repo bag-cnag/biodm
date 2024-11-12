@@ -135,8 +135,8 @@ class Api(Starlette):
         routes: List[Route] = []
         for ctrl in CORE_CONTROLLERS + (controllers or []):
             routes.extend(self.adopt_controller(ctrl))
-        if hasattr(self, 'k8') and manifests:
-            routes.extend(self.adopt_controller(K8sController, manifests=manifests))
+        # if hasattr(self, 'k8') and manifests:
+        #     routes.extend(self.adopt_controller(K8sController, manifests=manifests))
 
         # Schema Generator.
         security_scheme = "Authorization"
@@ -222,7 +222,7 @@ class Api(Starlette):
             conf = self._parse_config(mprefix)
             if all(
                 (
-                    param in conf and bool(conf[param])
+                    param in conf and (conf[param] is not None)
                     for param in margs
                 )
             ):

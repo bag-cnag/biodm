@@ -32,6 +32,8 @@ class UserInfo(aobject):
     If the request contains an authentication header, self.info shall return User Info, else None
     """
     kc: 'KeycloakManager'
+    token: str
+    _keycloak_admin = None
     _info: Tuple[str, List, List] | None = None
 
     async def __init__(self, conn: HTTPConnection) -> None: # type: ignore [misc]
@@ -85,6 +87,17 @@ class UserInfo(aobject):
             return False
         return 'admin' in self._info[1]
 
+    @property
+    def keycloak_admin(self):
+        """Keycloak admin connection for priviledged operations."""
+        if not self.token:
+            return None
+
+        if not self._keycloak_admin:
+            self._keycloak_admin = self.kc.admin(self.token)
+
+        return self._keycloak_admin
+
 
 class AuthenticationMiddleware:
     """Handle token decoding for incoming requests, populate request object with result."""
@@ -126,34 +139,35 @@ def login_required(f):
     return lr_wrapper
 
 
-def group_required(f, groups: List[str]):
-    """Decorator for endpoints requiring authenticated user to be part of one of the list of paths.
-    """
-    if f.__name__ == "create":
+def group_required(groups: List[str]):
+    """Decorator for endpoints requiring authenticated user to be part of one of the list of paths."""
+    def _group_required(f):
+        if f.__name__ == "create":
+            @wraps(f)
+            async def gr_write_wrapper(controller, request, *args, **kwargs):
+                return await f(controller, request, *args, **kwargs)
+
+            gr_write_wrapper.group_required = {'write', groups}
+            return gr_write_wrapper
+
         @wraps(f)
-        async def gr_write_wrapper(controller, request, *args, **kwargs):
-            return await f(controller, request, *args, **kwargs)
+        async def gr_wrapper(controller, request, *args, **kwargs):
+            if request.user.is_authenticated: # TODO: check empty group list edge case 
+                if any((ug in groups for ug in request.user.groups)):
+                    return await f(controller, request, *args, **kwargs)
 
-        gr_write_wrapper.group_required = {'write', groups}
-        return gr_write_wrapper
+            raise UnauthorizedError("Insufficient group privileges for this operation.")
 
-    @wraps(f)
-    async def gr_wrapper(controller, request, *args, **kwargs):
-        if request.user.is_authenticated: # TODO: check empty group list edge case 
-            if any((ug in groups for ug in request.user.groups)):
-                return f(controller, request, *args, **kwargs)
+        if f.__name__ == "read":
+            gr_wrapper.group_required = {'read', groups}
 
-        raise UnauthorizedError("Insufficient group privileges for this operation.")
-
-    if f.__name__ == "read":
-        gr_wrapper.group_required = {'read', groups}
-
-    return gr_wrapper
+        return gr_wrapper
+    return _group_required
 
 
 def admin_required(f):
     """group_required special case for admin group."""
-    return group_required(f, groups=["admin"])
+    return group_required(groups=["admin"])(f)
 
 
 @dataclass
