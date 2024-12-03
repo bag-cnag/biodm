@@ -7,14 +7,11 @@ try:
 except FileNotFoundError:
     config = Config()
 
-# TODO: [prio medium - before release]
-# Change credentials to Secret type
-# Avoids leaking them in stacktraces
-
 # Server.
 API_NAME        = config("API_NAME",        cast=str,  default="biodm_instance")
 API_VERSION     = config("API_VERSION",     cast=str,  default="0.1.0")
 API_DESCRIPTION = config("API_DESCRIPTION", cast=str,  default="")
+
 SERVER_SCHEME   = config("SERVER_SCHEME",   cast=str,  default="http://")
 SERVER_HOST     = config("SERVER_HOST",     cast=str,  default="0.0.0.0")
 SERVER_PORT     = config("SERVER_PORT",     cast=int,  default=8000)
@@ -44,12 +41,8 @@ S3_FILE_SIZE_LIMIT     = config('S3_FILE_SIZE_LIMIT',     cast=int,     default=
 KC_HOST            = config("KC_HOST",            cast=str,    default=None)
 KC_REALM           = config("KC_REALM",           cast=str,    default=None)
 KC_PUBLIC_KEY      = config("KC_PUBLIC_KEY",      cast=str,    default=None)
-KC_ADMIN           = config("KC_ADMIN",           cast=str,    default=None)
-KC_ADMIN_PASSWORD  = config("KC_ADMIN_PASSWORD",  cast=Secret, default=None)
 KC_CLIENT_ID       = config("KC_CLIENT_ID",       cast=str,    default=None)
 KC_CLIENT_SECRET   = config("KC_CLIENT_SECRET",   cast=Secret, default=None)
-KC_JWT_OPTIONS     = config("KC_JWT_OPTIONS",     cast=dict,   default={'verify_exp': False,
-                                                                       'verify_aud': False})
 
 # Kubernetes.
 K8_IP         = config("K8_IP",         cast=str,     default=None)

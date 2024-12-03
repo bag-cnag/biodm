@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 
 ADMIN_USERNAME = 'admin'
-ADMIN_PASSWORD = '1234'
+ADMIN_PASSWORD = '12345'
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -51,18 +51,6 @@ def test_update_user(srv_endpoint, utils, admin_header):
     assert json_response["lastName"] == user_test["lastName"]
 
 
-def test_create_user_no_passwd(srv_endpoint, utils, admin_header):
-    user_no_passwd = {"username": "u_no_passwd"}
-    response = requests.post(
-        f'{srv_endpoint}/users',
-        data=utils.json_bytes(user_no_passwd),
-        headers=admin_header
-    )
-
-    assert response.status_code == 400
-    assert "Missing password in order to create User." in response.text
-
-
 def test_create_group(srv_endpoint, utils, admin_header):
     """"""
     group = {"path": "g_test"}

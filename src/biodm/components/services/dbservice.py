@@ -4,11 +4,11 @@ from calendar import c
 from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type, Set
 
 from sqlalchemy import select, delete, or_, func
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
-    load_only, selectinload, joinedload, ONETOMANY, MANYTOONE, make_transient, Relationship
+    load_only, selectinload, joinedload, ONETOMANY, MANYTOONE, Relationship
 )
 from sqlalchemy.sql import Delete, Select
 from sqlalchemy.sql.selectable import Alias
@@ -17,7 +17,7 @@ from biodm import config
 from biodm.component import ApiService
 from biodm.components import Base
 from biodm.exceptions import (
-    DataError, EndpointError, FailedCreate, FailedRead, FailedDelete, ReleaseVersionError, UpdateVersionedError, UnauthorizedError
+    DataError, EndpointError, FailedCreate, FailedRead, FailedDelete, ImplementionError, ReleaseVersionError, UpdateVersionedError, UnauthorizedError
 )
 from biodm.managers import DatabaseManager
 from biodm.tables import ListGroup, Group
@@ -57,13 +57,9 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
 
             missing = self.table.required - stmt.keys()
             raise DataError(f"{self.table.__name__} missing the following: {missing}.")
-        # May occur in some cases for versioned resources.
-        except IntegrityError as ie:
-            if 'unique' in ie.args[0].lower() and 'version' in ie.args[0]:
-                raise UpdateVersionedError(
-                    "Attempt at updating versioned resources."
-                )
-            raise FailedCreate(str(ie))
+
+        except SQLAlchemyError as se:
+            raise FailedCreate(str(se))
 
     @DatabaseManager.in_session
     async def _insert_list(
@@ -445,17 +441,17 @@ class UnaryEntityService(DatabaseService):
         missing_data = self.table.required - pending_keys
 
         if missing_data:
-            if all(k in pending_keys for k in self.table.pk): # pk present: UPDATE.
+            # submitter_username special col
+            if missing_data == {'submitter_username'} and self.table.has_submitter_username:
+                if not user_info or not user_info.is_authenticated:
+                    raise UnauthorizedError()
+                data['submitter_username'] = user_info.display_name
+
+            elif all(k in pending_keys for k in self.table.pk): # pk present: UPDATE.
                 if (data.keys() - self.table.pk) and self.table.is_versioned:
                     raise UpdateVersionedError(
                         "Attempt at updating versioned resources detected"
                     )
-
-            # submitter_username special col
-            elif missing_data == {'submitter_username'} and self.table.has_submitter_username:
-                if not user_info or not user_info.is_authenticated:
-                    raise UnauthorizedError()
-                data['submitter_username'] = user_info.display_name
 
             else:
                 raise DataError(f"{self.table.__name__} missing the following: {missing_data}.")
@@ -741,6 +737,7 @@ class UnaryEntityService(DatabaseService):
         self,
         fields: List[str],
         params: Dict[str, str],
+        count: bool = False,
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs
@@ -752,7 +749,7 @@ class UnaryEntityService(DatabaseService):
         reverse = params.pop('reverse', None) # TODO: ?
 
         # start building statement.
-        stmt = select(self.table)
+        stmt = select(self.table).distinct()
 
         # For lower level(s) propagation.
         propagate = {"start": offset, "end": limit, "reverse": reverse}
@@ -796,7 +793,16 @@ class UnaryEntityService(DatabaseService):
 
         # if exclude:
         #     stmt = select(self.table.not_in(stmt))
+        if count: # Count can only be passed from a controller.
+            if stmt_only:
+                raise ImplementionError(
+                    "filter arguments: count cannot be used in conjunction with stmt_only !"
+                )
+            stmt = select(func.count()).select_from(stmt)
+            return await self._select(stmt)
+
         stmt = stmt.offset(offset).limit(limit)
+        # stmt = stmt.slice(offset-1, limit-1) # TODO [prio-low] investigate
         return stmt if stmt_only else await self._select_many(stmt, **kwargs)
 
     @DatabaseManager.in_session
