@@ -1,12 +1,15 @@
 from typing import TYPE_CHECKING, Type, Dict, List, Tuple
 
 from apispec.ext.marshmallow import MarshmallowPlugin
+from apispec.ext.marshmallow.field_converter import FieldConverterMixin
 from marshmallow import Schema, class_registry
+from apispec.ext.marshmallow.common import make_schema_key
 
 if TYPE_CHECKING:
     from biodm.components.controllers import ResourceController
 
 
+_fcm = FieldConverterMixin()
 _runtime_schema_registry: Dict[Type[Schema], Schema] = {} # Inspired by marshmallow registry.
 
 
@@ -25,10 +28,23 @@ class BDMarshmallowPlugin(MarshmallowPlugin):
 
         :param type|Schema schema: A marshmallow Schema class or instance.
         """
+        rt_schema = None
+
+        # Plug in one of our runtime schema whenever possible.
         if isinstance(schema, str):
             schema_cls = class_registry.get_class(schema)
-            schema = _runtime_schema_registry.get(schema_cls, schema)
-        # Works because lower level calls are working with an instance.
+            rt_schema = _runtime_schema_registry.get(schema_cls)
+
+        if isinstance(schema, Schema):
+            rt_schema = _runtime_schema_registry.get(schema.__class__)
+
+        # Ensure not to add a duplicate.
+        if rt_schema:
+            skey = make_schema_key(rt_schema)
+            if not skey in self.converter.refs:
+                schema = rt_schema
+
+        # Lower levels can take an instance
         return super().schema_helper(name, _, schema, **kwargs)
 
 
@@ -76,10 +92,15 @@ def process_apispec_docstrings(ctrl: 'ResourceController', abs_doc: str):
         attr = []
         attr.append("- in: path")
         attr.append(f"name: {key}")
+        attr.append(f"required: True")
         field = ctrl.schema.declared_fields[key]
         desc  = field.metadata.get("description", f"{ctrl.resource} {key}")
         attr.append("description: " + desc)
-        path_key.append(attr)
+        taf = _fcm.field2type_and_format(type(field))
+        if 'type' in taf:
+            attr.append("schema:")
+            attr.append(f"  type: {taf['type']}")
+            path_key.append(attr)
 
     # Split.
     doc = abs_doc.split('---')

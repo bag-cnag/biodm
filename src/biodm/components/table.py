@@ -99,7 +99,7 @@ class Base(DeclarativeBase, AsyncAttrs):
     def has_default(cls, name: str) -> bool:
         """Flag if column has default value."""
         col = cls.col(name)
-        return col.default or col.server_default
+        return bool(col.default or col.server_default or cls.is_autoincrement(name))
 
     @classmethod
     def colinfo(cls, name: str) -> Tuple[Column, type]:
@@ -122,8 +122,7 @@ class Base(DeclarativeBase, AsyncAttrs):
             c.name for c in cls.__table__.columns
             if not (
                 c.nullable or
-                cls.has_default(c.name) or
-                cls.is_autoincrement(c.name)
+                cls.has_default(c.name)
             )
         )
 

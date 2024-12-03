@@ -1,6 +1,5 @@
 """Database service: Translates requests data into SQLA statements and execute."""
 from abc import ABCMeta
-from calendar import c
 from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type, Set
 
 from sqlalchemy import select, delete, or_, func
