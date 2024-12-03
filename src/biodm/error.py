@@ -4,8 +4,9 @@ from http import HTTPStatus
 from biodm.utils.utils import json_response
 from .exceptions import (
     EndpointError,
+    FailedCreate,
     FailedUpdate,
-    FileUploadSuccessError,
+    FileUploadCompleteError,
     PayloadJSONDecodingError,
     RequestError,
     FailedDelete,
@@ -51,7 +52,7 @@ async def onerror(_, exc):
         )
 
         match exc:
-            case FileTooLargeError() | FileUploadSuccessError():
+            case FileTooLargeError() | FileUploadCompleteError():
                 status = 400
             case DataError() | EndpointError() | PayloadJSONDecodingError():
                 status = 400
@@ -62,7 +63,8 @@ async def onerror(_, exc):
             case (
                 UpdateVersionedError() |
                 FileNotUploadedError() |
-                ReleaseVersionError()
+                ReleaseVersionError() |
+                FailedCreate()
             ):
                 status = 409
             case PayloadEmptyError():

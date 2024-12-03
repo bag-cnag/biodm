@@ -4,11 +4,9 @@ import requests
 import filecmp
 from pathlib import Path
 from math import ceil
-
 from typing import Dict, Any
 
-
-CHUNK_SIZE = 100*1024**2
+from conftest import CHUNK_SIZE
 
 
 project = {"name": "pr_test"}
@@ -71,23 +69,19 @@ def test_create_file(srv_endpoint, utils, tmpdir):
     upload = json_rf['upload']
     assert 'parts' in upload
     assert len(upload['parts']) == 1
-    small_file_upload_form = upload['parts'][0]['form']
+    small_file_upload_form = upload['parts']
 
 
 @pytest.mark.dependency(name="test_create_file")
-def test_file_upload():
-    postv4 = json.loads(small_file_upload_form.replace("'", "\""))
-    with open(small_file_path, 'rb') as f:
-        files = {'file': (small_file_name, f)}
-        response = requests.post(
-            postv4['url'],
-            data=postv4['fields'],
-            files=files,
-            verify=True,
-            allow_redirects=True
-        )
-    assert "Uploaded." in response.text
-    assert response.status_code == 201
+def test_file_upload(srv_endpoint, utils):
+    parts_etags = utils.multipart_upload(small_file_path, small_file_upload_form)
+    # Send completion notice.
+    complete = requests.put(
+        f"{srv_endpoint}/files/{small_file['id']}/complete",
+        data=utils.json_bytes(parts_etags)
+    )
+    assert complete.status_code == 201
+    assert 'Completed.' in complete.text
 
 
 def test_create_oversized_file(srv_endpoint, utils):
@@ -104,38 +98,6 @@ def test_create_oversized_file(srv_endpoint, utils):
     assert "File exceeding 100 GB" in response.text
 
 
-def test_create_and_upload_oversized_file(srv_endpoint, utils):
-    # create, with lower size.
-    small_file = {
-        "filename": small_file_path.name.split('.')[0] + "_os2",
-        "extension": small_file_path.name.split('.')[1],
-        "size": small_file_path.stat().st_size - 10,
-        "dataset_id": "1",
-        "dataset_version": "1",
-    }
-    response = requests.post(f"{srv_endpoint}/files", data=utils.json_bytes(small_file))
-    assert response.status_code == 201
-    # Get form.
-    json_rf = json.loads(response.text)
-    upload = json_rf['upload']
-    assert 'parts' in upload
-    assert len(upload['parts']) == 1
-    upload_form = upload['parts'][0]['form']
-    # Upload
-    postv4 = json.loads(upload_form.replace("'", "\""))
-    with open(small_file_path, 'rb') as f:
-        files = {'file': (small_file_name, f)}
-        response = requests.post(
-            postv4['url'],
-            data=postv4['fields'],
-            files=files,
-            verify=True,
-            allow_redirects=True
-        )
-    assert response.status_code == 400
-    assert "EntityTooLarge" in response.text
-
-
 @pytest.mark.dependency(name="test_file_upload")
 def test_file_readiness(srv_endpoint):
     response = requests.get(f"{srv_endpoint}/files/{small_file['id']}")
@@ -150,16 +112,22 @@ def test_file_readiness(srv_endpoint):
 
 @pytest.mark.dependency(name="test_file_upload")
 def test_file_download(srv_endpoint, tmp_path):
-    response = requests.get(
-        f"{srv_endpoint}/files/{small_file['id']}/download", allow_redirects=True, stream=True
+    url_response = requests.get(
+        f"{srv_endpoint}/files/{small_file['id']}/download"
     )
 
-    assert response.status_code == 200
+    assert url_response.status_code == 200
+
+    file_response = requests.get(url_response.text, stream=True)
+
+    tmp_file = tmp_path / 'dl_big.bin'
+
+    assert file_response.status_code == 200
 
     tmp_file = tmp_path / 'dl_small.bin'
 
     with open(tmp_file, 'ba+') as f:
-        f.write(response.content)
+        f.write(file_response.content)
 
     assert filecmp.cmp(tmp_file, small_file_path)
 
@@ -210,28 +178,11 @@ def test_create_large_file(srv_endpoint, utils, tmpdir):
 def test_upload_large_file(srv_endpoint, utils):
     global big_file, big_file_path, big_file_upload_forms
 
-    parts_etags = []
-
-    # Upload file
-    with open(big_file_path, 'rb') as file:
-        for part in big_file_upload_forms:
-            assert 'form' in part
-
-            part_data = file.read(CHUNK_SIZE)
-            response = requests.put(
-                part['form'], data=part_data, headers={'Content-Encoding': 'gzip'}
-            )
-            assert response.status_code == 200
-
-            # Get etag.
-            etag = response.headers.get('ETag', "").replace('"', '') # comes with trailing quotes.
-            assert etag
-
-            parts_etags.append({'PartNumber': part['part_number'], 'ETag': etag})
+    parts_etags = utils.multipart_upload(big_file_path, big_file_upload_forms)
 
     # Send completion notice.
     complete = requests.put(
-        f"{srv_endpoint}/files/{big_file['id']}/complete_multipart",
+        f"{srv_endpoint}/files/{big_file['id']}/complete",
         data=utils.json_bytes(parts_etags)
     )
     assert complete.status_code == 201
@@ -240,35 +191,47 @@ def test_upload_large_file(srv_endpoint, utils):
 
 @pytest.mark.dependency(name="test_upload_large_file")
 def test_download_large_file(srv_endpoint, tmp_path):
-    response = requests.get(
-        f"{srv_endpoint}/files/{big_file['id']}/download", allow_redirects=True, stream=True
+    url_response = requests.get(
+        f"{srv_endpoint}/files/{big_file['id']}/download"
     )
-    assert response.status_code == 200
+
+    assert url_response.status_code == 200
+
+    file_response = requests.get(url_response.text, stream=True)
 
     tmp_file = tmp_path / 'dl_big.bin'
 
+    assert file_response.status_code == 200
+
     with open(tmp_file, 'ba+') as f:
-        f.write(response.content)
+        f.write(file_response.content)
 
     assert filecmp.cmp(tmp_file, big_file_path)
 
 
-def test_create_file_and_manually_visit_success_route(srv_endpoint, utils):
-    file = {
-        "filename": "test",
-        "extension": "xyz",
-        "size": CHUNK_SIZE * 0.10,
+@pytest.mark.dependency(name="test_upload_large_file")
+def test_create_updload_and_complete_undersized_file(srv_endpoint, utils):
+    big_file = {
+        "filename": big_file_path.name.split('.')[0] + "_us2",
+        "extension": big_file_path.name.split('.')[1],
+        "size": big_file_path.stat().st_size + CHUNK_SIZE,
         "dataset_id": "1",
         "dataset_version": "1",
     }
 
-    response = requests.post(f"{srv_endpoint}/files", data=utils.json_bytes(file))
+    response = requests.post(f"{srv_endpoint}/files", data=utils.json_bytes(big_file))
     assert response.status_code == 201
-
-    json_file = json.loads(response.text)
-    file_id = json_file['id']
-
-    # Hit success route ourselves.
-    response = requests.get(f"{srv_endpoint}/files/{file_id}/post_success")
-    assert response.status_code == 400
-    assert "Critical: Manual attempt at validating file detected !" in response.text
+    # Get form.
+    json_rf = json.loads(response.text)
+    upload = json_rf['upload']
+    assert 'parts' in upload
+    assert len(upload['parts']) == len(big_file_upload_forms) + 1
+    # Upload
+    parts_etags = utils.multipart_upload(small_file_path, upload['parts'])
+    # Send completion notice.
+    complete = requests.put(
+        f"{srv_endpoint}/files/{json_rf['id']}/complete",
+        data=utils.json_bytes(parts_etags)
+    )
+    assert complete.status_code == 400
+    assert 'EntityTooSmall' in complete.text

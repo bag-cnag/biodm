@@ -1,11 +1,9 @@
-import json
-from pathlib import Path
 from typing import List, Type
 
 from marshmallow import Schema, RAISE
 from starlette.routing import Mount, BaseRoute
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
+from starlette.responses import Response, PlainTextResponse
 
 from biodm.components import S3File
 from biodm.components.services import S3Service
@@ -14,7 +12,7 @@ from biodm.schemas import PartsEtagSchema
 from biodm.exceptions import ImplementionError
 from biodm.utils.security import UserInfo
 from biodm.utils.utils import json_response
-from biodm.routing import PublicRoute, Route
+from biodm.routing import Route
 from .controller import HttpMethod
 from .resourcecontroller import ResourceController
 
@@ -47,18 +45,14 @@ class S3Controller(ResourceController):
 
     def routes(self, **_) -> List[Mount | Route] | List[Mount] | List[BaseRoute]:
         """Add an endpoint for successful file uploads and direct download."""
-        # flake8: noqa: E501  pylint: disable=line-too-long
         prefix = f'{self.prefix}/{self.qp_id}/'
         file_routes = [
-            Route(f'{prefix}download',           self.download,           methods=[HttpMethod.GET]),
-            Route(f'{prefix}complete_multipart', self.complete_multipart, methods=[HttpMethod.PUT]),
-            PublicRoute(f'{prefix}post_success', self.post_success,       methods=[HttpMethod.GET]),
+            Route(f'{prefix}download',        self.download,           methods=[HttpMethod.GET]),
+            Route(f'{prefix}complete',        self.complete_multipart, methods=[HttpMethod.PUT]),
         ]
-        self.svc.post_upload_callback = Path(file_routes[-1].path)
-
         return file_routes + super().routes()
 
-    async def download(self, request: Request):
+    async def download(self, request: Request) -> Response:
         """Returns boto3 presigned download URL with a redirect header.
 
         ---
@@ -68,38 +62,19 @@ class S3Controller(ResourceController):
           - in: path
             name: id
         responses:
-            307:
-                description: Download URL, with a redirect header.
+            200:
+                description: File download url
+                content:
+                    application/json:
+                        schema:
+                            type: string
         """
-        return RedirectResponse(
+        return PlainTextResponse(
             await self.svc.download(
                 pk_val=self._extract_pk_val(request),
                 user_info=await UserInfo(request),
             )
         )
-
-    async def post_success(self, request: Request):
-        """ Used as a callback in the s3 presigned upload urls that are emitted.
-            Uppon receival, update entity status in the DB.
-
-        ---
-
-        description: File upload callback - hit by s3 bucket on success upload.
-        parameters:
-          - in: path
-            name: id
-        responses:
-            201:
-                description: Upload confirmation 'Uploaded.'
-        """
-        await self.svc.post_success(
-            pk_val=self._extract_pk_val(request),
-            bucket=request.query_params.get('bucket', ''),
-            key=request.query_params.get('key', ''),
-            etag=request.query_params.get('etag', '').strip('"'),
-        )
-
-        return json_response("Uploaded.", status_code=201)
 
     async def complete_multipart(self, request: Request):
         """Unlike with a pre-signed POST, it is not possible to setup a callback for each part.
@@ -114,6 +89,14 @@ class S3Controller(ResourceController):
         ---
 
         description: Multipart upload completion.
+        requestBody:
+            description: payload.
+            required: true
+            content:
+                application/json:
+                    schema:
+                        type: array
+                        items: PartsEtagSchema
         parameters:
           - in: path
             name: id
@@ -126,4 +109,5 @@ class S3Controller(ResourceController):
             parts=self.parts_etag_schema.loads(await request.body())
         )
 
-        return json_response("Completed.", status_code=201)
+        return json_response({"message": "Completed."}, status_code=201)
+        # return json_response("Completed.", status_code=201)

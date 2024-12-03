@@ -1,13 +1,13 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from boto3 import client
-from botocore.config import Config
+from botocore import response
 from botocore.exceptions import ClientError
 from starlette.datastructures import Secret
 
+from biodm.exceptions import FailedCreate, FailedRead, FileUploadCompleteError
 from biodm.component import ApiManager
-from biodm.utils.utils import utcnow
 
 if TYPE_CHECKING:
     from biodm.api import Api
@@ -40,9 +40,6 @@ class S3Manager(ApiManager):
             aws_access_key_id=str(access_key_id),
             aws_secret_access_key=str(secret_access_key),
             region_name=self.region_name,
-            config=Config(
-                signature_version='s3'
-            ),
         )
         # Will raise an error if configuration doesn't point to a valid bucket.
         # self.s3_client.head_bucket(Bucket=self.bucket_name)
@@ -51,54 +48,7 @@ class S3Manager(ApiManager):
     def endpoint(self) -> str:
         return self.endpoint_url
 
-    def create_presigned_post(self,
-                              object_name,
-                              file_size,
-                              callback,
-    ) -> Any:
-        """ Generates a presigned url + form fiels to upload a given file on s3 bucket.
-
-        Relevant links:
-        - https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-presigned-urls.html
-        - https://github.com/minio/minio/issues/19811#issue-2317920163
-        """
-        t = utcnow()
-        algorithm = 'AWS4-HMAC-SHA256'
-        credential_scope = '/'.join([t.strftime('%Y%m%d'), self.region_name, 's3', 'aws4_request'])
-
-        conditions = [
-            # {"acl": "authenticated-read"},
-            {"x-amz-algorithm": algorithm},
-            {"x-amz-credential": credential_scope},
-            {"x-amz-date": t.isoformat()},
-            {"success_action_status": "201"},
-            ["starts-with", "$success_action_redirect", ""], # self.app.server_endpoint
-            ["content-length-range", 2, file_size],
-            {"bucket": self.bucket_name},
-        ]
-
-        fields = {
-            "x-amz-algorithm": algorithm,
-            "x-amz-credential": credential_scope,
-            'success_action_redirect': callback,
-            "x-amz-date": t.isoformat(),
-            "success_action_status": "201",
-        }
-
-        try:
-            return self.s3_client.generate_presigned_post(
-                Key=object_name,
-                Bucket=self.bucket_name,
-                Fields=fields,
-                Conditions=conditions,
-                ExpiresIn=self.url_expiration
-            )
-
-        except ClientError as e:
-            # TODO: better error
-            raise e
-
-    def create_presigned_download_url(self, object_name: str) -> Any:
+    def create_presigned_download_url(self, object_name: str) -> str:
         """Generate a presigned URL to share an S3 object
 
         :param object_name: Object Key
@@ -116,18 +66,18 @@ class S3Manager(ApiManager):
             )
 
         except ClientError as e:
-            raise e
+            raise FailedRead(str(e))
 
-    def create_multipart_upload(self, object_name) -> List[Any]:
-        """_summary_
+    def create_multipart_upload(self, object_name: str) -> Dict[str, str]:
+        """Create multipart upload
 
         - resource: https://vsgump.medium.com/enhancing-file-uploads-to-amazon-s3-with-pre-signed-urls-and-threaded-parallelism-23890b9d6c54
 
-        :param object_name: _description_
-        :type object_name: _type_
-        :raises e: _description_
-        :return: _description_
-        :rtype: List[Any]
+        :param object_name: object key
+        :type object_name: str
+        :raises FailedCreate: When client fails to create multipart upload
+        :return: Multipart upload descriptior, containing 'UploadId'
+        :rtype: Dict[str, str]
         """
         try:
             return self.s3_client.create_multipart_upload(
@@ -136,7 +86,7 @@ class S3Manager(ApiManager):
             )
 
         except ClientError as e:
-            raise e
+            raise FailedCreate(str(e))
 
     def create_upload_part(self, object_name, upload_id, part_number):
         try:
@@ -152,9 +102,26 @@ class S3Manager(ApiManager):
                 )
 
         except ClientError as e:
-            raise e
+            raise FailedCreate(str(e))
 
-    def complete_multipart_upload(self, object_name, upload_id, parts):
+    def complete_multipart_upload(
+        self,
+        object_name: str,
+        upload_id: str,
+        parts: List[Dict[str, str]]
+    ) -> Dict[str, str]:
+        """Multipart upload Completion notice
+
+        :param object_name: object key
+        :type object_name: str
+        :param upload_id: multipart upload id
+        :type upload_id: str
+        :param parts: Part - ETag mapping for all parts
+        :type parts: List[Dict[str, str]]
+        :raises FileUploadCompleteError: Bucket returns an error
+        :return: Bucket response
+        :rtype: Dict[str, str]
+        """
         try:
             return self.s3_client.complete_multipart_upload(
                 Bucket=self.bucket_name,
@@ -164,9 +131,19 @@ class S3Manager(ApiManager):
             )
 
         except ClientError as e:
-            raise e
+            raise FileUploadCompleteError(str(e.response['Error']))
 
-    def abort_multipart_upload(self, object_name, upload_id):
+    def abort_multipart_upload(self, object_name: str, upload_id: str) -> Dict[str, str]:
+        """Multipart upload termination notice
+
+        :param object_name: object key
+        :type object_name: str
+        :param upload_id: multipart upload id
+        :type upload_id: str
+        :raises FailedCreate: Bucket returns an error
+        :return: Bucket response
+        :rtype: Dict[str, str]
+        """
         try:
             return self.s3_client.abort_multipart_upload(
                 Bucket=self.bucket_name,
@@ -175,4 +152,4 @@ class S3Manager(ApiManager):
             )
 
         except ClientError as e:
-            raise e
+            raise FailedCreate(str(e))

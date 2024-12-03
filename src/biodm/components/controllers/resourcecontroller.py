@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING, Callable, List, Set, Any, Dict, Type
 from marshmallow.schema import RAISE
 from marshmallow.class_registry import get_class
 from marshmallow.exceptions import RegistryError
-from starlette.routing import Mount, BaseRoute
+from starlette.datastructures import QueryParams
+import starlette.routing as sr
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -187,7 +188,7 @@ class ResourceController(EntityController):
                 "provide the schema class as 'schema' argument when defining a new controller"
             ) from e
 
-    def routes(self, **_) -> List[Mount | Route] | List[Mount] | List[BaseRoute]:
+    def routes(self, **_) -> List[sr.Mount | sr.Route] | List[sr.Mount] | List[sr.Route]:
         """Sets up standard RESTful endpoints.
             child_routes: from children classes calling super().__init__().
 
@@ -198,7 +199,7 @@ class ResourceController(EntityController):
         return [
             Route(f"{self.prefix}",                   self.create,         methods=[HttpMethod.POST]),
             Route(f"{self.prefix}",                   self.filter,         methods=[HttpMethod.GET]),
-            Mount(self.prefix, routes=[
+            sr.Mount(self.prefix, routes=[
                 PublicRoute('/schema',                self.openapi_schema, methods=[HttpMethod.GET]),
                 Route(f'/{self.qp_id}',               self.read,           methods=[HttpMethod.GET]),
                 Route(f'/{self.qp_id}/{{attribute}}', self.read,           methods=[HttpMethod.GET]),
@@ -483,17 +484,29 @@ class ResourceController(EntityController):
                 a comma separated list of fields to query only a subset of the resource
                 e.g. /datasets/1_1?name,description,contact,files
           - in: query
-            name: offset
-            required: False
+            name: start
+            required: false
             description: page start
             schema:
               type: integer
           - in: query
-            name: limit
-            required: False
+            name: end
+            required: false
             description: page end
             schema:
               type: integer
+          - in: query
+            name: q
+            required: false
+            description: supplementary query
+            schema:
+              type: string
+          - in: query
+            name: count
+            required: false
+            description: Flag to include X-Total-Count header, comes with an extra query overhead
+            schema:
+              type: boolean
         responses:
             201:
                 description: Filtered list.
@@ -504,16 +517,36 @@ class ResourceController(EntityController):
                           items: Schema
         """
         params = dict(request.query_params)
+
+        extra_query = params.pop('q', None)
+        if extra_query:
+            params.update(QueryParams(extra_query))
+        count = bool(params.pop('count', 0))
+
         fields = self._extract_fields(params, user_info=request.user)
-        return json_response(
-            await self.svc.filter(
-                fields=fields,
-                params=params,
-                user_info=request.user,
-                serializer=partial(self.serialize, many=True, only=fields),
-            ),
-            status_code=200,
+        result = await self.svc.filter(
+            fields=fields,
+            params=params,
+            user_info=request.user,
+            serializer=partial(self.serialize, many=True, only=fields),
         )
+
+        # Prepare response object.
+        response = json_response(result, status_code=200)
+
+        if count:
+            if result == '[]' or len(result) == 0:
+                n_items = 0
+            else: # Fire a second request to get the count when requested.
+                n_items = await self.svc.filter(
+                    fields=fields,
+                    params=params,
+                    count=True,
+                    user_info=request.user,
+                )
+            response.headers.append('X-Total-Count', str(n_items))
+
+        return response
 
     async def release(self, request: Request) -> Response:
         """Releases a new version for a versioned resource.

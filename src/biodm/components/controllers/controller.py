@@ -11,7 +11,7 @@ from marshmallow.exceptions import ValidationError
 from sqlalchemy.exc import MissingGreenlet
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.routing import Mount, Route, BaseRoute
+import starlette.routing as sr
 
 from biodm import config
 from biodm.component import ApiComponent
@@ -38,9 +38,22 @@ class Controller(ApiComponent):
     endpoints including openapi schema generation for that given set.
     """
     @abstractmethod
-    def routes(self, **kwargs) -> List[Mount | Route] | List[Mount] |  List[BaseRoute]:
+    def routes(self, **kwargs) -> List[sr.Mount | sr.Route] | List[sr.Mount] |  List[sr.Route]:
         """Controller routes."""
         raise NotImplementedError
+
+    def _is_endpoint(self, method):
+        """Goes over route table to determine if a method is an endpoint."""
+        def rec(ls, method):
+            for r in ls:
+                if isinstance(r, sr.Mount):
+                    if rec(r.routes, method):
+                        return True
+                else:
+                    if r.endpoint == method:
+                        return True
+            return False
+        return rec(self.routes(), method)
 
     async def openapi_schema(self, _):
         """ Generates openapi schema for this controllers' routes.

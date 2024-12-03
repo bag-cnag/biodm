@@ -315,3 +315,13 @@ def test_update_resource_through_create(client):
     json_response = json.loads(response.text)
     assert len(json_response) == 1
     assert json_response[0]['data'] == update['data']
+
+def test_requesting_count_in_filter(client):
+    items = [{'name': 'bip'}, {'name': 'bap'}, {'name': 'bop'}]
+    response = client.post('/bs', content=json_bytes(items))
+    assert response.status_code == 201
+
+    findall = client.get('/bs?count=True')
+    assert findall.status_code == 200
+    assert 'x-total-count' in findall.headers
+    assert int(findall.headers.get('x-total-count')) == 3

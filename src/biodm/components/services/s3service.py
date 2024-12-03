@@ -7,7 +7,7 @@ from sqlalchemy import Insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from biodm.components.table import Base, S3File
-from biodm.exceptions import FileNotUploadedError, FileTooLargeError, FileUploadSuccessError
+from biodm.exceptions import FileNotUploadedError, FileTooLargeError
 from biodm.managers import DatabaseManager, S3Manager
 from biodm.tables import Upload, UploadPart
 from biodm.utils.utils import utcnow, classproperty, check_hash
@@ -25,19 +25,6 @@ class S3Service(CompositeEntityService):
     @classproperty
     def s3(cls) -> S3Manager:
         return cls.app.s3
-
-    def post_callback(self, item) -> str:
-        mapping = { # Map primary key values to route elements.
-            key: getattr(item, key)
-            for key in self.table.pk
-        }
-
-        route = str(self.post_upload_callback)
-        for key, val in mapping.items():
-            route = route.replace("{" + f"{key}" + "}", str(val))
-
-        srv = self.app.server_endpoint.strip('/')
-        return f"{srv}{route}"
 
     @property
     def key_fields(self) -> List[str]:
@@ -88,30 +75,16 @@ class S3Service(CompositeEntityService):
         key = await self.gen_key(file, session=session, refresh=False)
         n_chunks = ceil(file.size / CHUNK_SIZE)
 
-        if n_chunks > 1:
-            res = self.s3.create_multipart_upload(key)
-            file.upload.s3_uploadId = res['UploadId']
-            for i in range(1, n_chunks+1):
-                parts.append(
-                    UploadPart(
-                        upload_id=file.upload.id,
-                        part_number=i,
-                        form=str(
-                            self.s3.create_upload_part(
-                                object_name=key, upload_id=res['UploadId'], part_number=i
-                            )
-                        )
-                    )
-                )
-        else:
+        mpu = self.s3.create_multipart_upload(key)
+        file.upload.s3_uploadId = mpu['UploadId']
+        for i in range(1, n_chunks+1):
             parts.append(
                 UploadPart(
                     upload_id=file.upload.id,
+                    part_number=i,
                     form=str(
-                        self.s3.create_presigned_post(
-                            object_name=key,
-                            file_size=file.size,
-                            callback=self.post_callback(file),
+                        self.s3.create_upload_part(
+                            object_name=key, upload_id=mpu['UploadId'], part_number=i
                         )
                     )
                 )
@@ -141,36 +114,6 @@ class S3Service(CompositeEntityService):
         for file in files:
             await self.gen_upload_form(file, session=session)
         return files
-
-    @DatabaseManager.in_session
-    async def post_success(
-        self,
-        pk_val: List[Any],
-        bucket: str,
-        key: str,
-        etag: str,
-        session: AsyncSession
-    ):
-        file = await self.read(
-            pk_val,
-            fields=['ready', 'upload'] + self.key_fields,
-            session=session
-        )
-
-        # Weak check. TODO: [prio not urgent] can be improved ?
-        indb_key = await self.gen_key(file, session=session, refresh=False)
-        if (
-            not check_hash(etag) or
-            bucket != self.s3.bucket_name or
-            indb_key != key
-        ):
-            raise FileUploadSuccessError(
-                "Critical: Manual attempt at validating file detected !"
-            )
-
-        file.validated_at = utcnow()
-        file.ready = True
-        file.upload_id, file.upload = None, None
 
     @DatabaseManager.in_session
     async def complete_multipart(
