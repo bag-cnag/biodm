@@ -29,7 +29,7 @@ class Utils:
         return json.dumps(d).encode('utf-8')
 
     @staticmethod
-    def keycloak_login(srv_endpoint, username, password):
+    def keycloak_login(srv_endpoint, username, password, access_only=True):
         # Get and Parse form with bs
         # Courtesy of: https://www.pythonrequests.com/python-requests-keycloak-login/
         login_url = requests.get(f'{srv_endpoint}/login')
@@ -52,7 +52,10 @@ class Utils:
 
             assert response.status_code == 200
 
-            return response.text.rstrip('\n')
+            token = json.loads(response.text)
+            if access_only:
+                return token['access_token']
+            return token
 
 
 @pytest.fixture(scope="session")

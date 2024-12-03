@@ -10,7 +10,7 @@ from starlette.datastructures import Secret
 
 from biodm.component import ApiManager
 from biodm.exceptions import (
-    KeycloakUnavailableError, FailedDelete, FailedUpdate, FailedCreate, TokenDecodingError
+    KeycloakUnavailableError, FailedDelete, TokenDecodingError
 )
 from biodm.utils.security import UserInfo
 

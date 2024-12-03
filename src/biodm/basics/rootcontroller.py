@@ -1,25 +1,38 @@
 import json
-from typing import List
+from typing import TYPE_CHECKING
 
+from keycloak import KeycloakError
+from marshmallow import RAISE, ValidationError
 from starlette.requests import Request
 from starlette.responses import Response, PlainTextResponse
-# from starlette.routing import Route
 
 from biodm import config
-from biodm.components.controllers import Controller
-from biodm.utils.security import admin_required, group_required, login_required
+from biodm.components.controllers import Controller, HttpMethod
+from biodm.utils.security import group_required, login_required
 from biodm.utils.utils import json_response
 from biodm.routing import Route, PublicRoute
+from biodm.exceptions import DataError
+from biodm.schemas import RefreshSchema
 
 from biodm import tables as bt
+
+if TYPE_CHECKING:
+  from biodm.api import Api
+
 
 
 class RootController(Controller):
     """Bundles Routes located at the root of the app i.e. '/'."""
+    def __init__(self, app: 'Api') -> None:
+        super().__init__(app)
+        self.logout_schema = RefreshSchema(many=False, unknown=RAISE)
+
     def routes(self, **_):
         return [
             PublicRoute("/live",    endpoint=self.live),
             PublicRoute("/login",   endpoint=self.login),
+            PublicRoute("/refresh", endpoint=self.refresh, methods=[HttpMethod.POST]),
+            PublicRoute("/logout",  endpoint=self.logout,  methods=[HttpMethod.POST]),
             PublicRoute("/syn_ack", endpoint=self.syn_ack),
             PublicRoute("/schema",  endpoint=self.openapi_schema),
             Route("/authenticated", endpoint=self.authenticated),
@@ -66,16 +79,28 @@ class RootController(Controller):
             f"{config.SERVER_PORT}/syn_ack"
         )
 
-    async def login(self, _) -> Response:
+    async def login(self, request: Request) -> Response:
         """Login endpoint.
 
         ---
         description: Returns the url for keycloak login page
+        parameters:
+          - in: query
+            name: redirect_uri
+            required: False
+            description: Redirect page
+            schema:
+              type: string
         responses:
           200:
             description: Login URL
+            content:
+              text/plain:
+                schema:
+                  type: string
         """
-        auth_url = await self.app.kc.auth_url(redirect_uri=self.handshake())
+        redirect_uri = request.query_params.get('redirect_uri', self.handshake())
+        auth_url = await self.app.kc.auth_url(redirect_uri=redirect_uri)
         return PlainTextResponse(auth_url)
 
     async def syn_ack(self, request: Request) -> Response:
@@ -85,15 +110,47 @@ class RootController(Controller):
 
         ---
         description: Login callback function.
+        parameters:
+          - in: query
+            name: code
+            required: True
+            description: Login code, that will be redeemed for token
+            schema:
+              type: string
+          - in: query
+            name: redirect_uri
+            required: False
+            description: Redirect page, matching login request one
+            schema:
+              type: string
         responses:
           200:
-            description: Access token 'ey...verylongtoken'
+            description: Keycloak token, containing access_token and refresh_token
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    access_token:
+                      type: string
+                      description: Access token
+                    expires_in:
+                      type: int
+                      description: Access token expiration
+                    refresh_expires_in:
+                      type: int
+                      description: Refresh token expiration
+                    refresh_token:
+                      type: string
+                      description: Refresh token
           403:
             description: Unauthorized
         """
         code = request.query_params['code']
-        token = await self.app.kc.redeem_code_for_token(code, redirect_uri=self.handshake())
-        return PlainTextResponse(token['access_token'] + '\n')
+        redirect_uri = request.query_params.get('redirect_uri', self.handshake())
+        token = await self.app.kc.redeem_code_for_token(code, redirect_uri=redirect_uri)
+        # TODO: [prio-low] complete schema above, or restrict what is returned.
+        return json_response(token, 200)
 
     @login_required
     async def authenticated(self, request: Request) -> Response:
@@ -103,12 +160,103 @@ class RootController(Controller):
         description: Route to check token validity.
         responses:
           200:
-            description: Userinfo - (user_id, groups, projects).
+            description: Userinfo - (user_id, groups).
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    username:
+                      type: string
+                      description: User name
+                    groups:
+                      type: array
+                      items:
+                        type: string
           403:
             description: Unauthorized.
-
         """
-        return PlainTextResponse(f"{request.user.display_name}, {request.user.groups}\n")
+        return json_response({
+            'username': request.user.display_name,
+            'groups': request.user.groups
+        }, status_code=200)
+
+    async def refresh(self, request: Request) -> Response:
+        """Refresh token
+
+        ---
+        description: Refresh
+        requestBody:
+          required: true
+          content:
+            application/json:
+              description: Refresh token
+              schema: RefreshSchema
+        responses:
+          200:
+            description: Keycloak token, containing access_token and refresh_token
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    access_token:
+                      type: string
+                      description: Access token
+                    expires_in:
+                      type: int
+                      description: Access token expiration
+                    refresh_expires_in:
+                      type: int
+                      description: Refresh token expiration
+                    refresh_token:
+                      type: string
+                      description: Refresh token
+          400:
+            description: Missing or Invalid Refresh token
+        """
+        body = await request.body()
+        try:
+          token = self.logout_schema.loads(body)
+          # TODO [prio-low] - make shell method / delete all shell methods ?
+          token = await self.app.kc.openid.a_refresh_token(token.get('refresh_token'))
+          return json_response(token, 200)
+
+        except ValidationError:
+            raise DataError("Refresh token missing.")
+
+        except KeycloakError:
+            raise DataError("Invalid refresh token.")
+
+    async def logout(self, request: Request) -> Response:
+        """Sends token session termination message to keycloak.
+
+        ---
+        description: Logout
+        requestBody:
+          required: true
+          content:
+            application/json:
+              description: Refresh token
+              schema: RefreshSchema
+        responses:
+          200:
+            description: Ok
+          400:
+            description: Missing or Invalid Refresh token
+        """
+        body = await request.body()
+        try:
+          token = self.logout_schema.loads(body)
+          # TODO [prio-low] - make shell method / delete all shell methods ?
+          await self.app.kc.openid.a_logout(token.get('refresh_token'))
+          return PlainTextResponse('OK')
+
+        except ValidationError:
+            raise DataError("Refresh token missing.")
+
+        except KeycloakError:
+            raise DataError("Invalid refresh token.")
 
     @group_required(groups=["admin", "query"])
     async def keycloak_sync(self, request: Request) -> Response:

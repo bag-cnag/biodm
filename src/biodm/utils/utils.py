@@ -70,6 +70,8 @@ def utcnow() -> dt.datetime:
 
 def json_response(data: Any, status_code: int) -> Response:
     """Formats a Response object and set application/json header."""
+    if isinstance(data, dict):
+        data = json.dumps(data)
     return Response(
         str(data) + "\n",
         status_code=status_code,
@@ -140,36 +142,6 @@ def coalesce_dicts(ls: List[Dict[_T, _U]]) -> Dict[_T, _U]:
     """Assembles multiple dicts into one.
     - Overlapping keys: override value in order."""
     return reduce(operator.or_, ls, {})
-
-
-class OrderedSet(MutableSet[_T]):
-    """A set that preserves insertion order by internally using a dict.
-
-    courtesy of: https://stackoverflow.com/a/62019678/6847689
-    """
-    def __init__(self, iterable: Iterable[_T]):
-        self._d = dict.fromkeys(iterable)
-
-    def add(self, x: _T) -> None:
-        self._d[x] = None
-
-    def discard(self, x: _T) -> None:
-        self._d.pop(x, None)
-
-    def __contains__(self, x: object) -> bool:
-        return self._d.__contains__(x)
-
-    def __len__(self) -> int:
-        return self._d.__len__()
-
-    def __iter__(self) -> Iterator[_T]:
-        return self._d.__iter__()
-
-    def __str__(self):
-        return f"{{{', '.join(str(i) for i in self)}}}"
-
-    def __repr__(self):
-        return f"<OrderedSet {self}>"
 
 
 _hash_regexp = re.compile(r'^[0-9a-f]{32}$', re.IGNORECASE)

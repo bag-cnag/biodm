@@ -59,7 +59,9 @@ def overload_docstring(f: Callable): # flake8: noqa: E501  pylint: disable=line-
     :param f: The method we overload the docstrings of
     :type f: Callable
     """
-    return ResourceController.replace_method_docstrings(f.__name__, f.__doc__ or "")
+    return ResourceController.replace_method_docstrings(
+        f.__name__, f.__doc__ or "", overloaded=True
+    )
 
 
 class ResourceController(EntityController):
@@ -94,32 +96,36 @@ class ResourceController(EntityController):
         # Inst schema, and set registry entry for apispec.
         schema_cls = schema if schema else self._infer_schema()
         self.__class__.schema = schema_cls(unknown=RAISE)
+        # TODO [prio-low]: Improve dynamic schema instanciation, at serializer generation time
+        # To handle nested cases. Implies storing dynamically generated schemas in a registry on the side.
         register_runtime_schema(schema_cls, self.__class__.schema)
         self._infuse_schema_in_apispec_docstrings()
 
     @staticmethod
-    def replace_method_docstrings(method: str, doc: str):
+    def replace_method_docstrings(method: str, doc: str, overloaded: bool = False):
         """Set a mirror function documented by input and calling parent class method.
 
         :param method: method name
         :type method: str
         :param doc: new documentation
         :type doc: str
+        :param overloaded: overloaded flag, defaults to False
+        :type overloaded: bool, optional
         """
         async def mirror(self, *args, **kwargs):
             return await getattr(super(self.__class__, self), method)(*args, **kwargs)
         mirror.__name__, mirror.__doc__ = method, doc
+        mirror.overloaded = overloaded
         return mirror
 
     def _infuse_schema_in_apispec_docstrings(self):
-        """Substitute endpoint documentation template bits with adapted ones for this resource.
-        Handling APIspec/Marshmallow/OpenAPISchema support for abstract endpoints.
+        """Substitute endpoint documentation template bits with adapted ones for this resource,
+            Handling APIspec/Marshmallow/OpenAPISchema support for abstract endpoints,
+            Does not apply to overloaded methods.
         """
         for method, fct in getmembers(
-            self, predicate=lambda x: ( # Use typing anotations to identify endpoints.
-                ismethod(x) and hasattr(x, '__annotations__') and
-                x.__annotations__.get('request', '') == 'Request' and
-                x.__annotations__.get('return', '') == 'Response'
+            self, predicate=lambda x: (
+                ismethod(x) and self._is_endpoint(x) and not getattr(x, 'overloaded', False)
             )
         ):
             # Replace with processed docstrings.
@@ -345,6 +351,7 @@ class ResourceController(EntityController):
                 e.g. /datasets/1_1?name,description,contact,files
           - in: path
             name: attribute
+            required: false
             description: nested collection name
         responses:
             200:

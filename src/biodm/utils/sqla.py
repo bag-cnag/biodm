@@ -89,7 +89,7 @@ class UpsertStmtValuesHolder(dict):
                     one = select(stmt.cte())
                     two = select(svc.table).where(svc.gen_cond([self.get(k) for k in pk]))
                     stmt = select(svc.table).from_statement(one.union(two))
-        # Else (implicit): on_conflict_do_error -> catched by Controller.
+        # Else (implicit): on_conflict_do_error -> catched above.
         return stmt
 
 

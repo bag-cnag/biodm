@@ -88,8 +88,9 @@ def test_authenticated_endpoint(srv_endpoint):
     headers = {'Authorization': f'Bearer {token}'}
     response = requests.get(f'{srv_endpoint}/authenticated', headers=headers)
 
-    assert "u_test" in response.text
-    assert "['no_groups']" in response.text
+    userinfo = json.loads(response.text)
+    assert "u_test" == userinfo["username"]
+    assert ['no_groups'] == userinfo["groups"]
 
 
 def test_create_user_with_nested_group(srv_endpoint, utils, admin_header):
@@ -147,10 +148,10 @@ def test_login_and_authenticated_with_groups(srv_endpoint, utils):
     headers = {'Authorization': f'Bearer {token_with_groups}'}
     response = requests.get(f'{srv_endpoint}/authenticated', headers=headers)
 
-    assert user_with_groups['username'] in response.text
-    assert (
-        f"['{user_with_groups['groups'][0]['path']}', "
-        f"'{user_with_groups['groups'][1]['path']}']") in response.text
+    userinfo = json.loads(response.text)
+
+    assert userinfo['username'] == user_with_groups['username']
+    assert userinfo['groups'] == [group['path'] for group in user_with_groups['groups']]
 
 
 def test_create_groups_with_parent(srv_endpoint, utils, admin_header):

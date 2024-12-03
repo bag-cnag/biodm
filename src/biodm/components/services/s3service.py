@@ -10,7 +10,7 @@ from biodm.components.table import Base, S3File
 from biodm.exceptions import FileNotUploadedError, FileTooLargeError
 from biodm.managers import DatabaseManager, S3Manager
 from biodm.tables import Upload, UploadPart
-from biodm.utils.utils import utcnow, classproperty, check_hash
+from biodm.utils.utils import utcnow, classproperty
 from biodm.utils.security import UserInfo
 from .dbservice import CompositeEntityService
 

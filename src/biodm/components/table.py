@@ -3,9 +3,10 @@
 - S3File entity
 - Versioned
 """
-from typing import TYPE_CHECKING, Any, Tuple, Type, Set, ClassVar, Type, Dict
+from typing import TYPE_CHECKING, Any, Tuple, Type, Set, ClassVar, Type
 from uuid import uuid4
 
+from marshmallow.orderedset import OrderedSet
 from sqlalchemy import (
     BOOLEAN, Integer, inspect, Column, String, TIMESTAMP, ForeignKey, BigInteger
 )
@@ -16,7 +17,7 @@ from sqlalchemy.orm import (
 )
 
 from biodm import config
-from biodm.utils.utils import utcnow, classproperty, OrderedSet
+from biodm.utils.utils import utcnow, classproperty
 
 
 if TYPE_CHECKING:

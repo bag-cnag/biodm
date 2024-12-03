@@ -2,6 +2,7 @@
 from abc import ABCMeta
 from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type, Set
 
+from marshmallow.orderedset import OrderedSet
 from sqlalchemy import select, delete, or_, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,7 +24,7 @@ from biodm.tables import ListGroup, Group
 from biodm.tables.asso import asso_list_group
 from biodm.utils.security import UserInfo, PermissionLookupTables
 from biodm.utils.sqla import CompositeInsert, UpsertStmt, UpsertStmtValuesHolder
-from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition, OrderedSet
+from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
 
 SUPPORTED_NUM_OPERATORS = ("gt", "ge", "lt", "le", "min", "max")
@@ -283,8 +284,6 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         # Special admin case.
         if user_info.is_admin:
             return stmt
-
-        groups = user_info.info[1] if user_info.info else []
 
         # Build nested query to filter permitted results.
         for permission in perms:
