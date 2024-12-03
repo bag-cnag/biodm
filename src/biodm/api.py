@@ -178,6 +178,7 @@ class Api(Starlette):
             allow_origins=["*"], # self._network_ips + ["http://localhost:9080"], # + swagger-ui.
             allow_methods=["*"],
             allow_headers=["*"],
+            expose_headers=["X-Total-Count"],
             max_age=config.CACHE_MAX_AGE
         )
 

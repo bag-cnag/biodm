@@ -186,6 +186,28 @@ and followed by:
 
   * ``[min, max]`` are supported without a value
 
+* special parameters
+
+  * Partial results
+
+    *  ``?fields=f1,...,fn`` to get a subset of fields 
+
+  * Count
+
+    *  ``?count=True`` will set ``x-total-count`` header with filter count regardless of paging. 
+
+  * Paging
+
+    *  ``?start=x`` start at
+
+    *  ``?end=y`` end at
+
+ * Supplementary query
+
+   *  ``?q={extra_query}`` another way to pass query parameters. Provides a way of using
+      undocumented parameters from code generated clients such as deep nesting and operators,
+      which are tricky and or messy to extensively document with apispec
+ 
 .. note::
 
     When querying with ``curl``, don't forget to escape ``&`` symbol or enclose the whole url
@@ -201,7 +223,7 @@ Alternatively you may get a resource nested collection like this
 
     curl ${SERVER_ENDPOINT}/my_resources/{id}/{collection}
 
-It also supports partial results. i.e. by appending ``?fields=f1,...,fn`` 
+It also supports partial results.
 
 
 File management
@@ -218,44 +240,6 @@ you can obtain from its descriptor.
 The resource shall contain a nested dictionary called ``upload`` composed of ``parts``,
 containing presigned form for direct file upload.
 
-Next we distinguish two cases:
-
-Small files
-~~~~~~~~~~~
-
-In the case of a `small` file, i.e. less than `100MB` there is a single ``part``, containing a
-presigned ``POST`` and you may simply use the ``form`` to perform the upload.
-
-The following snippet demonstrates how to do this in `python`:
-
-.. code-block:: python
-    :caption: upload_small_file.py
-
-    import requests
-
-    # obtained from file['upload']['parts'][0]['form'] creation response
-    post = {'url': ..., 'fields': ...}
-
-    file_path = "/path/to/my_file.ext"
-    file_name = "my_file.ext"
-
-    with open(file_path, 'rb') as f:
-        files = {'file': (file_name, f)}
-        http_response = requests.post(
-            post['url'],
-            data=post['fields'],
-            files=files,
-            verify=True,
-            allow_redirects=True)
-        assert http_response.status_code == 201
-
-
-Upon completion, BioDM will be notified back via a callback, so the file is immediately available.
-
-
-Large files
-~~~~~~~~~~~
-
 For large files, several parts will be present. Each allowing you to upload a chunk of
 `size=100MB`, possibly less for the last one.
 
@@ -263,13 +247,12 @@ For each part successfuly uploaded, the bucket will return you an ``ETag`` that 
 keep track of and associate with the correct ``part_number``.
 
 Ultimately, the process has to be completed by submitting that mapping in order for the bucket
-to aggregate all chunks into a file stored on the bucket. The bucket does not supports passing a
-callback for a ``part_upload``.
+to aggregate all chunks into a single stored file.
 
-Similarely here is an example using ``python``:
+Following is an example using ``python``:
 
 .. code-block:: python
-    :caption: upload_large_file.py
+    :caption: upload_file.py
 
     import requests
 
@@ -295,7 +278,7 @@ Similarely here is an example using ``python``:
 
     # Send completion notice with the mapping.
     complete = requests.put(
-        f"{host}/files/{file_id}/complete_multipart",
+        f"{host}/files/{file_id}/complete",
         data=json.dumps(parts_etags).encode('utf-8')
     )
     assert complete.status_code == 201
@@ -320,11 +303,6 @@ To download a file use the following endpoint.
     curl ${SERVER_ENDPOINT}/my_file_resources/{id}/download
 
 That will return a url to directly download the file via ``GET`` request.
-
-.. note::
-
-    Download urls are coming back with a redirect header, thus you may use
-    ``allow_redirects=True`` flag or equivalent when visiting this route to download in one go.
 
 
 User permissions
