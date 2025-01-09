@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Type, Dict, List, Tuple
 from apispec.ext.marshmallow import MarshmallowPlugin
 from apispec.ext.marshmallow.field_converter import FieldConverterMixin
 from marshmallow import Schema, class_registry
+import marshmallow.fields as mf
 from apispec.ext.marshmallow.common import make_schema_key
 
 if TYPE_CHECKING:
@@ -16,6 +17,36 @@ _runtime_schema_registry: Dict[Type[Schema], Schema] = {} # Inspired by marshma
 def register_runtime_schema(cls: Type[Schema], inst: Schema) -> None:
     """Adds entry to registry. Indexed by class, since we should not assume the name."""
     _runtime_schema_registry[cls] = inst
+
+
+def update_runtime_schema(cls: Type[Schema], name: str, field: mf.Field) -> None:
+    """Adds field to a runtime schema, and all its instances.
+
+    :param cls: Schema class
+    :type cls: Type[Schema]
+    :param name: New field name
+    :type name: str
+    :param field: New field
+    :type field: mf.Field
+    """
+    def update(inst: Schema, name: str, field: mf.Field) -> None:
+        inst.fields.update({name: field})
+        inst.load_fields.update({name: field})
+        inst.dump_fields.update({name: field})
+
+    update(_runtime_schema_registry[cls], name, field)
+    for schema_instance in _runtime_schema_registry.values():
+        for schema_field in schema_instance.fields.values():
+            if (
+                isinstance(schema_field, mf.Nested) and
+                issubclass(schema_field.schema.__class__, cls)
+            ):
+                update(schema_field.schema, name, field)
+            if (
+                isinstance(schema_field, mf.List) and
+                issubclass(schema_field.inner.schema.__class__, cls)
+            ):
+                update(schema_field.inner.schema, name, field)
 
 
 class BDMarshmallowPlugin(MarshmallowPlugin):

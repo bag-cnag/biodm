@@ -1,5 +1,7 @@
 """Database service: Translates requests data into SQLA statements and execute."""
 from abc import ABCMeta
+from copy import deepcopy
+from os import write
 from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type, Set
 
 from marshmallow.orderedset import OrderedSet
@@ -8,7 +10,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
-    load_only, selectinload, joinedload, ONETOMANY, MANYTOONE, Relationship
+    load_only, selectinload, joinedload,
+    ONETOMANY, MANYTOONE, MANYTOMANY,
+    Relationship, make_transient
 )
 from sqlalchemy.sql import Delete, Select
 from sqlalchemy.sql.selectable import Alias
@@ -17,7 +21,8 @@ from biodm import config
 from biodm.component import ApiService
 from biodm.components import Base
 from biodm.exceptions import (
-    DataError, EndpointError, FailedCreate, FailedRead, FailedDelete, ImplementionError, ReleaseVersionError, UpdateVersionedError, UnauthorizedError
+    DataError, EndpointError, FailedCreate, FailedRead, FailedDelete,
+    ImplementionError, ReleaseVersionError, UpdateVersionedError, UnauthorizedError
 )
 from biodm.managers import DatabaseManager
 from biodm.tables import ListGroup, Group
@@ -830,7 +835,7 @@ class UnaryEntityService(DatabaseService):
         )
         queried_version: int
 
-        # Slightly tweaked read version where we get max column instead.
+        # Slightly tweaked read version where we get max version column instead.
         stmt = select(self.table)
         for i, col in enumerate(self.pk):
             if col.name == 'version':
@@ -840,7 +845,7 @@ class UnaryEntityService(DatabaseService):
             else:
                 stmt = stmt.where(col == col.type.python_type(pk_val[i]))
 
-        # Get item with all columns - covers x-to-one relationships.
+        # Get item with all columns - covers many-to-one relationships.
         fields = set(self.table.__table__.columns.keys())
         self._restrict_select_on_fields(
             stmt,
@@ -856,21 +861,88 @@ class UnaryEntityService(DatabaseService):
                 "Cannot release a versioned entity that has already been released."
             )
 
-        # build new item
+        async def clone(
+            item: Base,
+            s: AsyncSession,
+            new_item: Base | None = None,
+            updated_rels: List[str] | None = None
+        ):
+            if not new_item: # Will be set for top level call
+                new_item = deepcopy(item)
+                make_transient(new_item)
+
+                # Delete defaultable pk parts and let flush regen
+                for key in item.svc.table.pk - {'version'}:
+                    if item.svc.table.has_default(key):
+                        delattr(new_item, key)
+
+            s.add(new_item)
+
+            with s.no_autoflush:
+                for key, rel in item.svc.table.relationships.items():
+                    if key in (updated_rels or []): # overwritten by update
+                        continue
+                    if rel.direction is MANYTOONE: # handled by copying local fks
+                        continue
+
+                    old_attached = await getattr(item.awaitable_attrs, key)
+                    await getattr(new_item.awaitable_attrs, key)
+
+                    if rel.direction is MANYTOMANY:
+                        new_collection = rel.collection_class(old_attached)
+                        setattr(new_item, key, new_collection)
+
+                    elif rel.direction is ONETOMANY:
+                        if rel.collection_class:
+                            new_collection = rel.collection_class([
+                                await clone(one, s)
+                                for one in old_attached
+                            ])
+                            setattr(new_item, key, new_collection)
+                        else:
+                            new_attached = await clone(old_attached, s)
+                            if (
+                                hasattr(item.svc, 'permission_relationships') and
+                                rel in item.svc.permission_relationships.values()
+                            ):
+                                # Do some extra cloning for permissions
+                                # as we need listgroups to be mutable
+                                # Listgroups are M2O relationships normally ignored
+                                for lg_key in (
+                                    set(new_attached.svc.table.relationships.keys()) - {'entity'}
+                                ):
+                                    old_lg = await getattr(old_attached.awaitable_attrs, lg_key)
+                                    if old_lg:
+                                        new_lg = await clone(old_lg, s)
+                                        setattr(new_attached,  'id_' + lg_key, None)
+                                        setattr(new_attached, lg_key, new_lg)
+                            setattr(new_item, key, new_attached)
+            return new_item
+
+        # Merge in update values
+        update['version'] = queried_version + 1
         new_item_values = {k:getattr(old_item, k) for k in fields - update.keys()}
         new_item_values.update(update)
-        new_item_values['version'] = queried_version + 1
-        new_item = await self.write(
-            new_item_values, stmt_only=False, user_info=None, session=session
+
+        # Create item with nested relationships
+        write_kwargs = {
+            "data": new_item_values, "stmt_only": False, "user_info": user_info, "session": session
+        }
+        if hasattr(self, 'permission_relationships'):
+            write_kwargs['skip_empty_permissions'] = True
+
+        new_item = await self.write(**write_kwargs)
+
+        # Determine values to not clone
+        updated_rels = self.table.relationships.keys() & update.keys()
+
+        # Clone the rest
+        new_item = await clone(
+            old_item, session, new_item=new_item, updated_rels=updated_rels
         )
 
-        # covers x-to-many relationships
-        x_to_many = [key for key, rel in self.table.relationships.items() if rel.uselist]
-        await session.refresh(old_item, x_to_many)
-        await session.refresh(new_item, x_to_many)
-        for key in x_to_many:
-            setattr(new_item, key, getattr(old_item, key))
-
+        # autoflush disabled during cloning
+        await session.flush()
         return new_item
 
 
@@ -923,6 +995,13 @@ class CompositeEntityService(UnaryEntityService):
         # Insert all nested objects.
         for key, sub in composite.nested.items():
             rel = rels[key]
+            if rel.target is ListGroup.__table__ and sub.is_empty():
+                # Special permission case
+                # Empty ListGroup => None
+                # So that null permission checks may hold
+                composite.nested[key] = None
+                continue
+
             composite.nested[key] = await (
                 rel
                 .mapper
@@ -1020,7 +1099,8 @@ class CompositeEntityService(UnaryEntityService):
         data: Dict[str, Any],
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
-        futures: List[str] = [],
+        futures: List[str] | None = None,
+        skip_empty_permissions: bool = False,
         **kwargs,
     ) -> Base | CompositeInsert:
         """Parsing: recursive tree builder.
@@ -1029,16 +1109,17 @@ class CompositeEntityService(UnaryEntityService):
             Each service is responsible for building statements for its own associated table.
             Ultimately all statements (except permissions) are built by UnaryEntityService class.
         """
+        futures = futures or []
         # Initialize composite.
         nested, delayed = {}, {}
         # For present table relationships
         #   and all permission_relationships: need to exist, even empty, in order to check them.
-        for key in (
-            (
-                self._inst_relationships.keys() & data.keys()
-            )
-            | set(self.permission_relationships.keys())
-        ):
+        #       -> except when asked not to: useful during release
+        parse_rel_keys = self.table.relationships.keys() & data.keys()
+        if not skip_empty_permissions:
+            parse_rel_keys |= self.permission_relationships.keys()
+
+        for key in parse_rel_keys:
             svc = self._svc_from_rel_name(key)
             sub = data.pop(key, {}) # {} default value -> only happens for empty permissions.
             rel = self.table.relationships[key]

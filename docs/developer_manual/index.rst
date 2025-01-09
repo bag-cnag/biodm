@@ -76,6 +76,7 @@ introduce the toolkit:
     demo
     s3conf
     permissions
+    versioning
     table_schema
     doc_endpoints
     advanced_use

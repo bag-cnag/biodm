@@ -144,7 +144,7 @@ class Api(Starlette):
             APISpec(
                 title=config.API_NAME,
                 version=config.API_VERSION,
-                openapi_version="3.0.0",
+                openapi_version="3.0.2",
                 plugins=[BDMarshmallowPlugin()],
                 info={
                     "description": config.API_DESCRIPTION,
@@ -155,7 +155,7 @@ class Api(Starlette):
             )
         )
         self.apispec.spec.components.security_scheme(security_scheme, {
-            "type": "http",
+            "type": "http", # TODO: [prod] https
             "name": security_scheme.lower(),
             "in": "header",
             "scheme": "bearer",

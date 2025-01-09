@@ -16,6 +16,8 @@ from sqlalchemy.orm import (
 
 from biodm.exceptions import UnauthorizedError, ImplementionError
 from .utils import aobject, classproperty
+from .apispec import update_runtime_schema
+
 
 if TYPE_CHECKING:
     from biodm import Api
@@ -239,7 +241,7 @@ class PermissionLookupTables:
         perm_{field} that holds permissions informations __without touching at Parent table
         definition__.
 
-        The syntax is a little convoluted because most tools don't hanlde properly composite
+        The syntax is a little convoluted because most tools do not handle properly composite
         primary keys. However, the following nicely does the trick.
 
         This below achieves the following:
@@ -435,9 +437,11 @@ class PermissionLookupTables:
                 perm_schema = cls._gen_perm_schema(table, field_fullkey, perm.enabled_verbs)
 
                 # Set extra field onto associated schema.
-                table.ctrl.schema.fields.update({perm_table[0]: fields.Nested(perm_schema)})
-                table.ctrl.schema.load_fields.update({perm_table[0]: fields.Nested(perm_schema)})
-                table.ctrl.schema.dump_fields.update({perm_table[0]: fields.Nested(perm_schema)})
+                update_runtime_schema(
+                    cls=table.ctrl.schema.__class__,
+                    name=perm_table[0],
+                    field=fields.Nested(perm_schema)
+                )
 
                 # Set up look up table for incomming requests.
                 entry = {'table': perm_table[1], 'from': tchain, 'verbs': perm.enabled_verbs}

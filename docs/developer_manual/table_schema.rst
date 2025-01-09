@@ -103,8 +103,14 @@ This technique has two major disadvantages:
 
 
 To bypass those limitations, ``BioDM`` validates incoming data using ``Marshmallow``'s
-``partial=True`` flag. Meaning that ``required`` keywords on fields are ignored and may be skipped
-overall. At validation step we are checking the overall structure and type of fields.
+``partial=True`` flag. Meaning that ``required`` keywords on fields are ignored during this step.
+
+
+.. note::
+
+    While required flags are ignored at this validation step those flags are still relevant for
+    client side validation
+
 
 This yields a (List of) dictionary (of nested Dictionaries) that is sent down to a ``Service``
 for statement building and insertion. The Core will use knowledge of Table relationships to infer

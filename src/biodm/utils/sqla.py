@@ -104,11 +104,12 @@ class CompositeInsert:
     :param delayed: Nested list of items insert statements indexed by attribute name
     :type delayed: Dict[str, Insert | CompositeInsert | List[Insert] | List[CompositeInsert]]
     """
-
     item: UpsertStmtValuesHolder
     nested: Dict[str, UpsertStmtValuesHolder | Self | Tuple[UpsertStmtValuesHolder | Self]]
     delayed: Dict[str, UpsertStmtValuesHolder | Self | Tuple[UpsertStmtValuesHolder | Self]]
 
+    def is_empty(self) -> bool:
+        return not bool(self.item or self.nested or self.delayed)
 
 UpsertStmt = TypeVar('UpsertStmt', CompositeInsert, UpsertStmtValuesHolder)
 

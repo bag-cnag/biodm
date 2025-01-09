@@ -37,12 +37,15 @@ class File(S3File, Base):
     )
 
     @hybrid_property
-    async def key_salt(self) -> str:
+    async def key(self) -> str:
         # Pop session, populated by S3Service just before asking for that attr.
         session: AsyncSession = self.__dict__.pop('session')
-        await session.refresh(self, ['dataset'])
+        await session.refresh(self, ['dataset', 'key_salt', 'filename', 'extension'])
         await session.refresh(self.dataset, ['project'])
-        return f"{self.dataset.project.name}_{self.dataset.name}"
+        return (
+            f"{self.key_salt}_{self.dataset.project.name}_{self.dataset.name}_"
+            f"{self.filename}.{self.extension}"
+        )
 
     # relationships
     dataset: Mapped["Dataset"] = relationship(back_populates="files", foreign_keys=[dataset_id, dataset_version])

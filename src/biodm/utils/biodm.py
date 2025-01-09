@@ -9,7 +9,9 @@ if TYPE_CHECKING:
 def gen_schema(table: Type['Base']):
     """Generate schema skeletton from table definition."""
     for k in table.__table__.columns:
-        print(k.name, table.colinfo(k.name)[1])
+        col, ptype = table.colinfo(k.name)
+        req_flag_hint = not(col.nullable or table.has_default(k.name))
+        print(k.name, ptype, "required: " + str(req_flag_hint))
     print("---")
     for k, v in table.__dict__.items():
         if hasattr(v, 'prop'):

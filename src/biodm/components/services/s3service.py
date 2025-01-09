@@ -7,7 +7,7 @@ from sqlalchemy import Insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from biodm.components.table import Base, S3File
-from biodm.exceptions import FileNotUploadedError, FileTooLargeError
+from biodm.exceptions import FileNotUploadedError, FileTooLargeError, ReleaseVersionError
 from biodm.managers import DatabaseManager, S3Manager
 from biodm.tables import Upload, UploadPart
 from biodm.utils.utils import utcnow, classproperty
@@ -31,27 +31,23 @@ class S3Service(CompositeEntityService):
         """List of fields used to compute the key."""
         return ['filename', 'extension'] + (['version'] if self.table.is_versioned else [])
 
-    async def gen_key(self, item: S3File, session: AsyncSession, refresh=True) -> str:
+    async def gen_key(self, item: S3File, session: AsyncSession) -> str:
         """Generate a unique bucket key from file elements.
 
         :param item: file
         :type item: S3File
         :param session: current sqla session
         :type session: AsyncSession
-        :param refresh: if key fields should be fetched - can save a db request, defaults to True
-        :type refresh: bool, optional
         :return: unique s3 bucket file key
         :rtype: str
         """
-        if refresh:
-            await session.refresh(item, self.key_fields)
+        key = await getattr(item.awaitable_attrs, 'key')
+        assert iscoroutine(key)
 
-        version = "_v" + str(item.version) if self.table.is_versioned else ""
-        key_salt = await getattr(item.awaitable_attrs, 'key_salt')
-        if iscoroutine(key_salt):
-            item.__dict__['session'] = session
-            key_salt = await item.key_salt
-        return f"{key_salt}_{item.filename}{version}.{item.extension}"
+        # Populate session in item before that operation.
+        item.__dict__['session'] = session
+        key = await item.key
+        return key
 
     async def gen_upload_form(self, file: S3File, session: AsyncSession):
         """Populates an Upload for a newly created file. Handling simple post and multipart_upload
@@ -72,7 +68,7 @@ class S3Service(CompositeEntityService):
         await session.flush()
         parts = await getattr(file.upload.awaitable_attrs, 'parts')
 
-        key = await self.gen_key(file, session=session, refresh=False)
+        key = await self.gen_key(file, session=session)
         n_chunks = ceil(file.size / CHUNK_SIZE)
 
         mpu = self.s3.create_multipart_upload(key)
@@ -130,7 +126,7 @@ class S3Service(CompositeEntityService):
         )
         upload = await getattr(file.awaitable_attrs, 'upload')
         complete = self.s3.complete_multipart_upload(
-            object_name=await self.gen_key(file, session=session, refresh=False),
+            object_name=await self.gen_key(file, session=session),
             upload_id=upload.s3_uploadId,
             parts=parts
         )
@@ -175,7 +171,7 @@ class S3Service(CompositeEntityService):
             raise FileNotUploadedError("File exists but has not been uploaded yet.")
 
         url = self.s3.create_presigned_download_url(
-            await self.gen_key(file, session=session, refresh=False)
+            await self.gen_key(file, session=session)
         )
         file.dl_count += 1
         return url
@@ -188,6 +184,9 @@ class S3Service(CompositeEntityService):
         session: AsyncSession,
         user_info: UserInfo | None = None,
     ) -> Base:
+        if 'size' not in update:
+            raise ReleaseVersionError("A new filesize should be provided when releasing a file.")
+
         # Bumps version.
         file = await super().release(
             pk_val=pk_val,

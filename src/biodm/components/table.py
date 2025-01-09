@@ -10,8 +10,9 @@ from marshmallow.orderedset import OrderedSet
 from sqlalchemy import (
     BOOLEAN, Integer, inspect, Column, String, TIMESTAMP, ForeignKey, BigInteger
 )
-from sqlalchemy.ext.asyncio import AsyncAttrs
+from sqlalchemy.ext.asyncio import AsyncAttrs, AsyncSession
 from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
     DeclarativeBase, relationship, Relationship, mapped_column, Mapped, declared_attr
 )
@@ -154,7 +155,6 @@ class S3File:
     ready = Column(BOOLEAN, nullable=False, server_default='0')
     size = Column(BigInteger, nullable=False)
 
-    # upload_form = Column(String(2000)) # , nullable=False+
     upload_id: Mapped[int]         = mapped_column(ForeignKey("UPLOAD.id"),       nullable=True)
 
     @declared_attr
@@ -170,6 +170,19 @@ class S3File:
     )
     validated_at = Column(TIMESTAMP(timezone=True))
 
+    @hybrid_property
+    async def key(self) -> str:
+        # Pop session, populated by S3Service just before asking for that attr.
+        session: AsyncSession = self.__dict__.pop('session')
+        key_fields = ['key_salt', 'filename', 'extension']
+        if self.is_versioned:
+            key_fields += ['version']
+
+        await session.refresh(self, key_fields)
+
+        version = "_v" + str(self.version) if self.svc.table.is_versioned else ""
+        return f"{self.key_salt}_{self.filename}{version}.{self.extension}"
+
 
 class Versioned:
     """Versioned entity parent class.
@@ -178,20 +191,3 @@ class Versioned:
     - Disable /update, enable /release
     """
     version = Column(Integer, server_default='1', nullable=False, primary_key=True)
-
-    # def new_version(self, session):
-    #     # expire parent's reference to us
-    #     session.expire(self.parent, ["child"])
-
-    #     # create new version
-    #     Versioned.new_version(self, session)
-
-    #     # re-add ourselves to the parent.  this causes the
-    #     # parent foreign key to be updated also
-    #     self.parent.child = self
-
-        #     -> Update parent(s).
-        #     -> Adopt children(s)
-
-    # TODO:
-    # - Set next_version/prev_version relationships. 
