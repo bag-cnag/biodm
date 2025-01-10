@@ -326,6 +326,7 @@ class PermissionLookupTables:
 
         # Declare table and setup svc.
         perm_table = type(new_asso_name, (Base,), columns)
+        perm_table.is_permission = True
         setattr(perm_table, 'svc', CompositeEntityService(app=app, table=perm_table))
 
         return rel_name, perm_table

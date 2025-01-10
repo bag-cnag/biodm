@@ -1,12 +1,14 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Self, Tuple, Any, TypeVar, Callable
+from typing import TYPE_CHECKING, Dict, Self, Tuple, Any, TypeVar, Callable, Type
 from sqlalchemy.dialects import postgresql, sqlite
-from sqlalchemy.sql import Insert, Update, Select, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import Insert, Update, Select, select, update, func
 from sqlalchemy.sql._typing import _DMLTableArgument
 
 from biodm import config
 
 if TYPE_CHECKING:
+    from biodm.components import Base
     from biodm.components.services import DatabaseService
 
 
@@ -81,14 +83,21 @@ class UpsertStmtValuesHolder(dict):
         if not svc.table.is_versioned:
             if set_: # upsert
                 stmt = stmt.on_conflict_do_update(index_elements=pk, set_=set_)
-            else: # insert with default values
+                stmt = stmt.returning(svc.table)
+            elif not 'sqlite' in str(config.DATABASE_URL): # insert with default values
                 stmt = stmt.on_conflict_do_nothing(index_elements=pk)
-                if pk_present: # Ensure that on_conflict_do_nothing will return a result.
+                if pk_present:
+                    # Ensure that on_conflict_do_nothing will return a result.
                     # https://stackoverflow.com/a/62205017/6847689
                     # https://github.com/sqlalchemy/sqlalchemy/discussions/10605
                     one = select(stmt.cte())
                     two = select(svc.table).where(svc.gen_cond([self.get(k) for k in pk]))
                     stmt = select(svc.table).from_statement(one.union(two))
+            else:
+                if self:
+                    # This works for sqlite
+                    stmt = stmt.on_conflict_do_update(index_elements=pk, set_=self)
+
         # Else (implicit): on_conflict_do_error -> catched above.
         return stmt
 
@@ -126,3 +135,8 @@ def stmt_to_dict(stmt: Insert | Update) -> Dict[str, Any]:
     """
     # pylint: disable=protected-access
     return {k.name: v.effective_value for k, v in stmt._values.items() if hasattr(k, 'name')}
+
+
+async def get_max_id(table: Type['Base'], session: AsyncSession):
+    max_id = await session.scalar(func.max(table.id))
+    return (max_id or 0) + 1

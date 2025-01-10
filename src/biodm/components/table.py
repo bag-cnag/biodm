@@ -3,7 +3,8 @@
 - S3File entity
 - Versioned
 """
-from typing import TYPE_CHECKING, Any, Tuple, Type, Set, ClassVar, Type
+from copy import deepcopy
+from typing import TYPE_CHECKING, Any, List, Self, Tuple, Type, Set, ClassVar, Type
 from uuid import uuid4
 
 from marshmallow.orderedset import OrderedSet
@@ -14,10 +15,12 @@ from sqlalchemy.ext.asyncio import AsyncAttrs, AsyncSession
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
-    DeclarativeBase, relationship, Relationship, mapped_column, Mapped, declared_attr
+    DeclarativeBase, relationship, Relationship, mapped_column, Mapped, declared_attr,
+    ONETOMANY, MANYTOONE, MANYTOMANY, make_transient
 )
 
 from biodm import config
+from biodm.utils.sqla import get_max_id
 from biodm.utils.utils import utcnow, classproperty
 
 
@@ -34,9 +37,15 @@ class Base(DeclarativeBase, AsyncAttrs):
     :type svc: DatabaseService
     :param ctrl: Enable entity - controller linkage -> Resources tables only
     :type ctrl: ResourceController
+    :param is_permission: Is permission table flag
+    :type is_permission: bool
+    :param last_max_id: Support non duplicate sqlite id population
+    :type last_max_id: int
     """
     svc: ClassVar[Type['DatabaseService']]
     ctrl: ClassVar[Type['ResourceController']]
+    is_permission: bool = False
+    last_max_id: int=0
 
     def __init_subclass__(cls, **kw: Any) -> None:
         """Populates permission dict."""
@@ -145,6 +154,111 @@ class Base(DeclarativeBase, AsyncAttrs):
                 )
             ).target_fullname == 'USER.username'
         )
+
+    @classproperty
+    def has_composite_pk_with_leading_id_sqlite(cls) -> bool:
+        return (
+            'sqlite' in str(config.DATABASE_URL) and
+            hasattr(cls, 'id') and
+            len(list(cls.pk)) > 1
+        )
+
+    async def clone(
+        self,
+        session: AsyncSession,
+        new_item: Self | None = None,
+        updated_rels: List[str] | None = None
+    ):
+        if not new_item: # Will be set for top level call
+            new_item = deepcopy(self)
+            make_transient(new_item)
+
+            # Delete defaultable pk parts and let flush regen
+            for key in self.pk - {'version'}:
+                if self.has_default(key):
+                    delattr(new_item, key)
+
+                # handle sqlite quirks
+                if self.has_composite_pk_with_leading_id_sqlite:
+                    max_id = await get_max_id(self, session=session)
+                    if (max_id > self.__class__.last_max_id):
+                        new_item.id = max_id+1
+                    else:
+                        new_item.id = self.__class__.last_max_id
+                    self.__class__.last_max_id = new_item.id+1
+
+        session.add(new_item)
+
+        with session.no_autoflush:
+            for key, rel in self.relationships.items():
+                if key in (updated_rels or []):
+                    continue # Overwritten by update
+
+                if rel.direction is MANYTOONE and (not self.is_permission or key == 'entity'):
+                    continue # Handled by copying local fks
+
+                old_attached = await getattr(self.awaitable_attrs, key)
+                if not old_attached:
+                    continue # Nothing to clone
+                await getattr(new_item.awaitable_attrs, key)
+
+                if rel.direction is MANYTOONE and self.is_permission and key != 'entity':
+                    # Do some extra cloning for permissions
+                    # as we need ListGroups to be mutable for new versions
+                    new_attached = await old_attached.clone(session=session)
+                    setattr(new_item, 'id_' + key, None)
+                    setattr(new_item, key, new_attached)
+
+                elif rel.direction is MANYTOMANY:
+                    new_collection = rel.collection_class(old_attached)
+                    setattr(new_item, key, new_collection)
+
+                elif rel.direction is ONETOMANY:
+                    if rel.collection_class:
+                        new_collection = rel.collection_class([
+                            await one.clone(session=session)
+                            for one in old_attached
+                        ])
+                        setattr(new_item, key, new_collection)
+
+                        if rel.mapper.entity.svc.table.is_versioned:
+                            # Special versioned case, we might need to realign ids
+                            to_realign = []
+                            skip = []
+                            pk_nover = old_attached[0].pk - {'version'}
+
+                            for i, one in enumerate(old_attached):
+                                if i in skip:
+                                    continue
+
+                                entry = []
+                                for j, one_prime in enumerate(old_attached, i):
+                                    if all([
+                                        getattr(one, k) == getattr(one_prime, k)
+                                        for k in pk_nover
+                                    ]):
+                                        entry.append(j)
+                                        skip.append(j)
+
+                                if len(entry) > 1:
+                                    to_realign.append(entry)
+
+                            if to_realign:
+                                await session.flush() # Generate ids
+                                for entry in to_realign:
+                                    first = new_collection[entry[0]]
+                                    for idx in entry[1::]:
+                                        for k in pk_nover:
+                                            setattr(new_collection[idx], k, getattr(first, k))
+
+                    else:
+                        if rel.mapper.entity.svc.table.is_versioned:
+                            # Should not happen but we'll be notified in case
+                            raise NotImplementedError
+
+                        new_attached = await old_attached.clone(session=session)
+                        setattr(new_item, key, new_attached)
+        return new_item
 
 
 class S3File:

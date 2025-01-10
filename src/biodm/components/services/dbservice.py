@@ -1,7 +1,5 @@
 """Database service: Translates requests data into SQLA statements and execute."""
 from abc import ABCMeta
-from copy import deepcopy
-from os import write
 from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type, Set
 
 from marshmallow.orderedset import OrderedSet
@@ -10,9 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
-    load_only, selectinload, joinedload,
-    ONETOMANY, MANYTOONE, MANYTOMANY,
-    Relationship, make_transient
+    load_only, selectinload, joinedload, ONETOMANY, MANYTOONE, Relationship
 )
 from sqlalchemy.sql import Delete, Select
 from sqlalchemy.sql.selectable import Alias
@@ -28,7 +24,7 @@ from biodm.managers import DatabaseManager
 from biodm.tables import ListGroup, Group
 from biodm.tables.asso import asso_list_group
 from biodm.utils.security import UserInfo, PermissionLookupTables
-from biodm.utils.sqla import CompositeInsert, UpsertStmt, UpsertStmtValuesHolder
+from biodm.utils.sqla import CompositeInsert, UpsertStmt, UpsertStmtValuesHolder, get_max_id
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
 
@@ -57,6 +53,7 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         await self._check_permissions("write", user_info, stmt)
         try:
             item = await session.scalar(stmt.to_stmt(self))
+
             if item:
                 return item
 
@@ -116,15 +113,16 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
             separate request and prepopulate the dicts. This is not the most performant, but sqlite
             support is mostly for testing purposes.
         """
-        async def get_max_id():
-            max_id = await session.scalar(func.max(self.table.id))
-            return (max_id or 0) + 1
+        max_id = await get_max_id(self.table, session=session)
+        if max_id <= self.table.last_max_id:
+            max_id = self.table.last_max_id
 
-        id = None
         for one in to_it(data):
             if 'id' not in one.keys():
-                one['id'] = id or await get_max_id() # Query if necessary.
-                id = one['id'] + 1
+                one['id'] = max_id
+                max_id = one['id'] + 1
+
+        self.table.last_max_id = max_id
 
     @staticmethod
     def _group_path_matching(allowed_groups: Set[str], user_groups: Set[str]):
@@ -509,12 +507,7 @@ class UnaryEntityService(DatabaseService):
         Supports input list and a mixin of new and passed by reference inserted data.
         Does UPSERTS behind the hood, hence this method is also called by UPDATE
         """
-        # SQLite support for composite primary keys, with leading id.
-        if (
-            'sqlite' in str(config.DATABASE_URL) and
-            hasattr(self.table, 'id') and
-            len(list(self.table.pk)) > 1
-        ):
+        if self.table.has_composite_pk_with_leading_id_sqlite:
             await self.populate_ids_sqlite(data)
 
         futures = kwargs.pop('futures', [])
@@ -861,70 +854,12 @@ class UnaryEntityService(DatabaseService):
                 "Cannot release a versioned entity that has already been released."
             )
 
-        async def clone(
-            item: Base,
-            s: AsyncSession,
-            new_item: Base | None = None,
-            updated_rels: List[str] | None = None
-        ):
-            if not new_item: # Will be set for top level call
-                new_item = deepcopy(item)
-                make_transient(new_item)
-
-                # Delete defaultable pk parts and let flush regen
-                for key in item.svc.table.pk - {'version'}:
-                    if item.svc.table.has_default(key):
-                        delattr(new_item, key)
-
-            s.add(new_item)
-
-            with s.no_autoflush:
-                for key, rel in item.svc.table.relationships.items():
-                    if key in (updated_rels or []): # overwritten by update
-                        continue
-                    if rel.direction is MANYTOONE: # handled by copying local fks
-                        continue
-
-                    old_attached = await getattr(item.awaitable_attrs, key)
-                    await getattr(new_item.awaitable_attrs, key)
-
-                    if rel.direction is MANYTOMANY:
-                        new_collection = rel.collection_class(old_attached)
-                        setattr(new_item, key, new_collection)
-
-                    elif rel.direction is ONETOMANY:
-                        if rel.collection_class:
-                            new_collection = rel.collection_class([
-                                await clone(one, s)
-                                for one in old_attached
-                            ])
-                            setattr(new_item, key, new_collection)
-                        else:
-                            new_attached = await clone(old_attached, s)
-                            if (
-                                hasattr(item.svc, 'permission_relationships') and
-                                rel in item.svc.permission_relationships.values()
-                            ):
-                                # Do some extra cloning for permissions
-                                # as we need listgroups to be mutable
-                                # Listgroups are M2O relationships normally ignored
-                                for lg_key in (
-                                    set(new_attached.svc.table.relationships.keys()) - {'entity'}
-                                ):
-                                    old_lg = await getattr(old_attached.awaitable_attrs, lg_key)
-                                    if old_lg:
-                                        new_lg = await clone(old_lg, s)
-                                        setattr(new_attached,  'id_' + lg_key, None)
-                                        setattr(new_attached, lg_key, new_lg)
-                            setattr(new_item, key, new_attached)
-            return new_item
-
         # Merge in update values
         update['version'] = queried_version + 1
         new_item_values = {k:getattr(old_item, k) for k in fields - update.keys()}
         new_item_values.update(update)
 
-        # Create item with nested relationships
+        # Create item with nested relationships from update
         write_kwargs = {
             "data": new_item_values, "stmt_only": False, "user_info": user_info, "session": session
         }
@@ -937,8 +872,8 @@ class UnaryEntityService(DatabaseService):
         updated_rels = self.table.relationships.keys() & update.keys()
 
         # Clone the rest
-        new_item = await clone(
-            old_item, session, new_item=new_item, updated_rels=updated_rels
+        new_item = await old_item.clone(
+            session=session, new_item=new_item, updated_rels=updated_rels
         )
 
         # autoflush disabled during cloning
