@@ -14,8 +14,8 @@ def test_create_versioned_resource(client):
 
     json_response = json.loads(response.text)
 
-    assert json_response['id'] == 1
     assert json_response['version'] == 1
+    assert json_response['name'] == item['name']
 
 
 def test_release_version(client):
@@ -24,22 +24,22 @@ def test_release_version(client):
     response = client.post('/bs', content=json_bytes(item))
 
     assert response.status_code == 201
+    item_res = json.loads(response.text)
 
     update = {"name": "ver_updated"}
-    response = client.post('/bs/1_1/release', content=json_bytes(update))
+    response = client.post(f"/bs/{item_res['id']}_1/release", content=json_bytes(update))
 
     assert response.status_code == 200
     json_response = json.loads(response.text)
 
-    assert json_response['id'] == 1
     assert json_response['version'] == 2
     assert json_response['name'] == update['name']
 
-    response = client.get('/bs?id=1')
+    response = client.get(f"/bs?id={item_res['id']}")
 
     assert response.status_code == 200
     json_response = json.loads(response.text)
-    
+
     assert len(json_response) == 2 
     assert json_response[0]['version'] == 1
     assert json_response[0]['name'] == item['name']
@@ -53,8 +53,9 @@ def test_no_update_version_resource_through_write(client):
 
     response = client.post('/bs', content=json_bytes(item))
     assert response.status_code == 201
+    item_res = json.loads(response.text)
 
-    update = {'id': '1', 'version': '1', 'name': '4321'}
+    update = {'id': item_res['id'], 'version': item_res['version'], 'name': '4321'}
     response = client.post('/bs', content=json_bytes(update))
     assert response.status_code == 409
 

@@ -7,6 +7,7 @@ from inspect import getmembers, ismethod
 from typing import TYPE_CHECKING, List, Tuple, Set, ClassVar, Type, Any, Dict
 
 from marshmallow import fields, Schema
+from starlette.authentication import BaseUser
 from starlette.requests import HTTPConnection
 from starlette.types import ASGIApp, Receive, Scope, Send
 from sqlalchemy import ForeignKeyConstraint, Column, ForeignKey
@@ -25,10 +26,7 @@ if TYPE_CHECKING:
     from biodm.managers import KeycloakManager
 
 
-# TODO: [prio: not urgent]
-# possible improvement, would be to rewrite the following classes using
-# starlette builtins from starlette.middleware.authentication.
-class UserInfo(aobject):
+class UserInfo(aobject, BaseUser):
     """Hold user info for a given request.
 
     If the request contains an authentication header, self.info shall return User Info, else None
@@ -101,6 +99,9 @@ class UserInfo(aobject):
         return self._keycloak_admin
 
 
+# TODO: [prio: not urgent]
+# possible improvement, would be to rewrite the following middleware using
+# starlette builtins from starlette.middleware.authentication.
 class AuthenticationMiddleware:
     """Handle token decoding for incoming requests, populate request object with result."""
     def __init__(self, app: ASGIApp) -> None:
@@ -142,7 +143,11 @@ def login_required(f):
 
 
 def group_required(groups: List[str]):
-    """Decorator for endpoints requiring authenticated user to be part of one of the list of paths."""
+    """Decorator for endpoints requiring authenticated user to be part of one of the list of paths.
+    """
+    if not groups:
+        raise ImplementionError("@group_required applied with empty group list.")
+
     def _group_required(f):
         if f.__name__ == "create":
             @wraps(f)
@@ -154,7 +159,7 @@ def group_required(groups: List[str]):
 
         @wraps(f)
         async def gr_wrapper(controller, request, *args, **kwargs):
-            if request.user.is_authenticated: # TODO: check empty group list edge case 
+            if request.user.is_authenticated and request.user.groups:
                 if any((ug in groups for ug in request.user.groups)):
                     return await f(controller, request, *args, **kwargs)
 

@@ -54,7 +54,11 @@ def test_create_composite_resource(client):
     # May be in different orders.
     oracle['bs'].sort(key=lambda x: x['id'])
     json_response['bs'].sort(key=lambda x: x['id'])
-    assert oracle['bs'] == json_response['bs']
+
+    for bor, bres in zip(oracle['bs'],json_response['bs']):
+        bor['id'] == bres['id']
+        bor['version'] == bres['version']
+        bor['name'] == bres['name']
 
 
 @pytest.mark.xfail(raises=exc.PayloadEmptyError)

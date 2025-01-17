@@ -97,8 +97,6 @@ class ResourceController(EntityController):
         # Inst schema, and set registry entry for apispec.
         schema_cls = schema if schema else self._infer_schema()
         self.__class__.schema = schema_cls(unknown=RAISE)
-        # TODO [prio-low]: Improve dynamic schema instanciation, at serializer generation time
-        # To handle nested cases. Implies storing dynamically generated schemas in a registry on the side.
         register_runtime_schema(schema_cls, self.__class__.schema)
         self._infuse_schema_in_apispec_docstrings()
 

@@ -160,7 +160,7 @@ class Base(DeclarativeBase, AsyncAttrs):
         return (
             'sqlite' in str(config.DATABASE_URL) and
             hasattr(cls, 'id') and
-            cls.pk.__len__ > 1
+            cls.pk.__len__() > 1
         )
 
     @staticmethod

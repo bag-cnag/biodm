@@ -1,9 +1,10 @@
 """Database service: Translates requests data into SQLA statements and execute."""
 from abc import ABCMeta
 from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type, Set
+from uuid import uuid4
 
 from marshmallow.orderedset import OrderedSet
-from sqlalchemy import select, delete, or_, func
+from sqlalchemy import Column, select, delete, or_, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -28,7 +29,8 @@ from biodm.utils.sqla import CompositeInsert, UpsertStmt, UpsertStmtValuesHolder
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
 
-SUPPORTED_NUM_OPERATORS = ("gt", "ge", "lt", "le", "min", "max", "min_v", "max_v")
+NUM_OPERATORS = ("gt", "ge", "lt", "le", "min", "max", "min_v", "max_v")
+AGG_OPERATORS = ("min_v", "max_v")
 
 
 class DatabaseService(ApiService, metaclass=ABCMeta):
@@ -677,19 +679,37 @@ class UnaryEntityService(DatabaseService):
         :return: Select statement with operator condition applied.
         :rtype: Select
         """
-        col, ctype = self.table.colinfo(field)
+        try:
+            col, ctype = self.table.colinfo(field)
+        except KeyError:
+            raise EndpointError(
+                f"Unknown field {field} of table {self.table.__name__}"
+            )
+
+        def op_err(op: str, name: str, ftype: type):
+            raise EndpointError(
+                f"Invalid operator {op} on column {name} of type {ftype} "
+                f"in table {self.table.__name__}"
+            )
+
         match operator.strip(')').split('('):
             case [("gt" | "ge" | "lt" | "le") as op, arg]:
+                if ctype not in (int, float):
+                    op_err(op, col.name, ctype)
+
                 op_fct: Callable = getattr(col, f"__{op}__")
                 return stmt.where(op_fct(ctype(arg)))
 
             case [("min" | "max") as op, arg]:
+                if ctype == str:
+                    op_err(op, col.name, ctype)
+
                 op_fct: Callable = getattr(func, op)
                 sub = select(op_fct(col))
                 return stmt.where(col == sub.scalar_subquery())
 
             case [("min_v" | "max_v") as op, arg]:
-                if col.name is not 'version':
+                if col.name != 'version':
                     raise EndpointError("min_v and max_v are 'version' column exclusive filters.")
 
                 # TODO [prio-low]: This could be probably be improved to apply min, max on group-by
@@ -699,10 +719,11 @@ class UnaryEntityService(DatabaseService):
 
                 assert col in self.pk # invariant
 
+                label = "agg_col" + str(uuid4())[:4] # gen unique label
                 pk_no_col = [k for k in self.table.pk if k != col.name]
                 sub = select(
                     * [getattr(self.table, k) for k in pk_no_col]
-                    + [op_fct(col).label("max_col")]
+                    + [op_fct(col).label(label)]
                 )
                 sub = sub.group_by(*pk_no_col)
                 sub = sub.subquery()
@@ -710,12 +731,12 @@ class UnaryEntityService(DatabaseService):
                 return stmt.join(sub, onclause=unevalled_all([
                     getattr(self.table, k) == getattr(sub.c, k)
                     for k in pk_no_col
-                ] + [getattr(self.table, col.name) == getattr(sub.c, "max_col")]))
+                ] + [getattr(self.table, col.name) == getattr(sub.c, label)]))
 
             case _:
                 raise EndpointError(
-                    f"Expecting either 'field=v1,v2' pairs or integrer"
-                    f" operators 'field.op([v])' op in {SUPPORTED_NUM_OPERATORS}")
+                    f"Expecting either 'field=v1,v2' pairs or "
+                    f" operators 'field.op([v])' op in {NUM_OPERATORS + AGG_OPERATORS}")
 
     def _filter_parse_field_cond(self, stmt: Select, field: str, values: List[str]) -> Select:
         """Applies field condition on a select statement.
@@ -854,7 +875,7 @@ class UnaryEntityService(DatabaseService):
         )
         queried_version: int
 
-        # Slightly tweaked read version where we get max version column instead.
+        # Slightly tweaked read version where we get max agg version column instead.
         stmt = select(self.table)
         for i, col in enumerate(self.pk):
             if col.name != 'version':
@@ -862,8 +883,7 @@ class UnaryEntityService(DatabaseService):
             else:
                 queried_version = pk_val[i]
 
-        sub = select(func.max(stmt.c.version)).scalar_subquery()
-        stmt = stmt.where(self.table.col('version') == sub)
+        stmt = self._filter_parse_num_op(stmt, field="version", operator="max_v()")
 
         # Get item with all columns - covers many-to-one relationships.
         fields = set(self.table.__table__.columns.keys())
