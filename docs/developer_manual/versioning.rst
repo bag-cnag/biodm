@@ -49,3 +49,13 @@ and let SQLAlchemy session flush do the rest of the work.
 That works well in canonical cases such as leading autoincrement ``id``, but be aware of
 that policy as it may not cover all use cases and possibly lead to errors if not careful
 during table building.
+
+Alternatively, to decide of a new primary key generation or relationship cloning behaviour
+have a look at the next section.
+
+
+Custom behaviour
+~~~~~~~~~~~~~~~~
+
+In case default behaviour is not satisfying your use case, you may override ``Base.clone``
+method for any of your tables.

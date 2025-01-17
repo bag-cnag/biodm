@@ -1,10 +1,11 @@
 """Controller class for Tables acting as a Resource."""
 
 from __future__ import annotations
+from copy import copy
 from functools import partial
 from inspect import getmembers, ismethod
 from types import MethodType
-from typing import TYPE_CHECKING, Callable, List, Set, Any, Dict, Type
+from typing import TYPE_CHECKING, Callable, List, Set, Any, Dict, Type, Self
 
 from marshmallow.schema import RAISE
 from marshmallow.class_registry import get_class
@@ -102,8 +103,13 @@ class ResourceController(EntityController):
         self._infuse_schema_in_apispec_docstrings()
 
     @staticmethod
-    def replace_method_docstrings(method: str, doc: str, overloaded: bool = False):
-        """Set a mirror function documented by input and calling parent class method.
+    def replace_method_docstrings(
+        method: str,
+        doc: str,
+        overloaded: bool = False,
+        self: Self = None
+    ):
+        """Set a proxy mirror function documented by input to replace that docstring
 
         :param method: method name
         :type method: str
@@ -111,9 +117,24 @@ class ResourceController(EntityController):
         :type doc: str
         :param overloaded: overloaded flag, defaults to False
         :type overloaded: bool, optional
+        :param self: controller instance, defaults to None
+        :type overloaded: Self
         """
-        async def mirror(self, *args, **kwargs):
-            return await getattr(super(self.__class__, self), method)(*args, **kwargs)
+        mirror: Callable
+
+        if self:
+            copied_method = copy(getattr(self, method))
+
+            async def mirror_self(*args, **kwargs):
+                return await copied_method(*args[1:], **kwargs) # args[0] is self
+
+            mirror = mirror_self
+        else:
+            async def mirror_parent(self, *args, **kwargs):
+                return await getattr(super(self.__class__, self), method)(*args, **kwargs)
+
+            mirror = mirror_parent
+
         mirror.__name__, mirror.__doc__ = method, doc
         mirror.overloaded = overloaded
         return mirror
@@ -131,7 +152,7 @@ class ResourceController(EntityController):
             # Replace with processed docstrings.
             setattr(self, method, MethodType(
                     ResourceController.replace_method_docstrings(
-                        method, process_apispec_docstrings(self, fct.__doc__ or "")
+                        method, process_apispec_docstrings(self, fct.__doc__ or ""), self=self
                     ), self
                 )
             )
@@ -208,7 +229,7 @@ class ResourceController(EntityController):
             sr.Mount(self.prefix, routes=[
                 PublicRoute('/schema',                self.openapi_schema, methods=[HttpMethod.GET]),
                 Route(f'/{self.qp_id}',               self.read,           methods=[HttpMethod.GET]),
-                Route(f'/{self.qp_id}/{{attribute}}', self.read,           methods=[HttpMethod.GET]),
+                Route(f'/{self.qp_id}/{{attribute}}', self.read_nested,    methods=[HttpMethod.GET]),
                 Route(f'/{self.qp_id}',               self.delete,         methods=[HttpMethod.DELETE]),
                 Route(f'/{self.qp_id}',               self.update,         methods=[HttpMethod.PUT]),
             ] + ([
@@ -346,13 +367,10 @@ class ResourceController(EntityController):
             name: id
           - in: query
             name: fields
+            required: false
             description: |
                 a comma separated list of fields to query only a subset of the resource
                 e.g. /datasets/1_1?name,description,contact,files
-          - in: path
-            name: attribute
-            required: false
-            description: nested collection name
         responses:
             200:
                 description: Found matching item
@@ -362,28 +380,72 @@ class ResourceController(EntityController):
             404:
                 description: Not Found
         """
-        # Read nested collection case:
-        # TODO: [prio-medium]
-        #  make it a separate endpoint and document proper schema output.
-        nested_attribute = request.path_params.get('attribute', None)
-        ctrl, many = self, False
-        if nested_attribute:
-            target_rel = self.table.relationships.get(nested_attribute, {})
-            if not target_rel or not getattr(target_rel, 'uselist', False):
-                raise EndpointError(
-                    f"Unknown collection {nested_attribute} of {self.table.__class__.__name__}"
-                )
-            # Serialization and field extraction done by target controller.
-            ctrl: ResourceController = (
-                target_rel
-                .mapper
-                .entity
-                .svc
-                .table
-                .ctrl
-            )
-            many = True
+        fields = self._extract_fields(
+            dict(request.query_params),
+            user_info=request.user
+        )
+        return json_response(
+            data=await self.svc.read(
+                pk_val=self._extract_pk_val(request),
+                fields=fields,
+                nested_attribute=None,
+                user_info=request.user,
+                serializer=partial(self.serialize, many=False, only=fields),
+            ),
+            status_code=200,
+        )
 
+    async def read_nested(self, request: Request) -> Response:
+        """Fetch nested collection of entity matching id in the path.
+
+        :param request: incomming request
+        :type request: Request
+        :return: JSON reprentation of the object
+        :rtype: Response
+
+        ---
+
+        description: Query DB for nested collection of entity with matching id.
+        parameters:
+          - in: path
+            name: id
+          - in: query
+            name: fields
+            required: false
+            description: |
+                a comma separated list of fields to query only a subset of the resource
+                e.g. /datasets/1_1?name,description,contact,files
+          - in: path
+            name: attribute
+            required: true
+            description: nested collection name
+        responses:
+            200:
+                description: Found matching item
+                content:
+                    application/json:
+                        schema: Schema
+            400:
+                description: Invalid collection name
+            404:
+                description: Not Found
+        """
+        nested_attribute = request.path_params.get('attribute')
+        target_rel = self.table.relationships.get(nested_attribute, {})
+        if not target_rel or not getattr(target_rel, 'uselist', False):
+            raise EndpointError(
+                f"Unknown collection {nested_attribute} of {self.table.__class__.__name__}"
+            )
+
+        # Serialization and field extraction done by target controller.
+        ctrl: ResourceController = (
+            target_rel
+            .mapper
+            .entity
+            .svc
+            .table
+            .ctrl
+        )
         fields = ctrl._extract_fields(
             dict(request.query_params),
             user_info=request.user
@@ -394,11 +456,10 @@ class ResourceController(EntityController):
                 fields=fields,
                 nested_attribute=nested_attribute,
                 user_info=request.user,
-                serializer=partial(ctrl.serialize, many=many, only=fields),
+                serializer=partial(ctrl.serialize, many=True, only=fields),
             ),
             status_code=200,
         )
-
 
     async def update(self, request: Request) -> Response:
         """UPDATE. Essentially calling create, as it perorm upserts.
@@ -487,6 +548,7 @@ class ResourceController(EntityController):
             schema: Schema
           - in: query
             name: fields
+            required: false
             description: |
                 a comma separated list of fields to query only a subset of the resource
                 e.g. /datasets/1_1?name,description,contact,files

@@ -20,6 +20,8 @@ if TYPE_CHECKING:
   from biodm.api import Api
 
 
+PUBLIC_TOKEN_FIELDS = ('access_token', 'expires_in', 'refresh_expires_in', 'refresh_token')
+
 
 class RootController(Controller):
     """Bundles Routes located at the root of the app i.e. '/'."""
@@ -48,8 +50,8 @@ class RootController(Controller):
         ---
         description: Liveness check endpoint
         responses:
-          200:
-            description: Ok
+            200:
+                description: Ok
         """
         return PlainTextResponse("live\n")
 
@@ -59,8 +61,8 @@ class RootController(Controller):
         ---
         description: Returns full API schema
         responses:
-          200:
-            description: OpenAPIv3 schema
+            200:
+                description: OpenAPIv3 schema
         """
         return json_response(json.dumps(
             self.app.apispec.get_schema(routes=self.app.routes),
@@ -90,14 +92,14 @@ class RootController(Controller):
             required: False
             description: Redirect page
             schema:
-              type: string
+                type: string
         responses:
-          200:
-            description: Login URL
-            content:
-              text/plain:
-                schema:
-                  type: string
+            200:
+                description: Login URL
+                content:
+                    text/plain:
+                        schema:
+                            type: string
         """
         redirect_uri = request.query_params.get('redirect_uri', self.handshake())
         auth_url = await self.app.kc.auth_url(redirect_uri=redirect_uri)
@@ -116,41 +118,44 @@ class RootController(Controller):
             required: True
             description: Login code, that will be redeemed for token
             schema:
-              type: string
+                type: string
           - in: query
             name: redirect_uri
             required: False
             description: Redirect page, matching login request one
             schema:
-              type: string
+                type: string
         responses:
-          200:
-            description: Keycloak token, containing access_token and refresh_token
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    access_token:
-                      type: string
-                      description: Access token
-                    expires_in:
-                      type: int
-                      description: Access token expiration
-                    refresh_expires_in:
-                      type: int
-                      description: Refresh token expiration
-                    refresh_token:
-                      type: string
-                      description: Refresh token
-          403:
-            description: Unauthorized
+            200:
+                description: Keycloak token, containing access_token and refresh_token
+                content:
+                    application/json:
+                        schema:
+                        type: object
+                        properties:
+                            access_token:
+                                type: string
+                                description: Access token
+                            expires_in:
+                                type: int
+                                description: Access token expiration
+                            refresh_expires_in:
+                                type: int
+                                description: Refresh token expiration
+                            refresh_token:
+                                type: string
+                                description: Refresh token
+            403:
+                description: Unauthorized
         """
         code = request.query_params['code']
         redirect_uri = request.query_params.get('redirect_uri', self.handshake())
         token = await self.app.kc.redeem_code_for_token(code, redirect_uri=redirect_uri)
-        # TODO: [prio-low] complete schema above, or restrict what is returned.
-        return json_response(token, 200)
+        return json_response({
+            k:v
+            for k,v in token.items()
+            if k in PUBLIC_TOKEN_FIELDS
+        }, 200)
 
     @login_required
     async def authenticated(self, request: Request) -> Response:
@@ -159,22 +164,22 @@ class RootController(Controller):
         ---
         description: Route to check token validity.
         responses:
-          200:
-            description: Userinfo - (user_id, groups).
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    username:
-                      type: string
-                      description: User name
-                    groups:
-                      type: array
-                      items:
-                        type: string
-          403:
-            description: Unauthorized.
+            200:
+                description: Userinfo - (user_id, groups).
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                username:
+                                    type: string
+                                    description: User name
+                                groups:
+                                    type: array
+                                    items:
+                                        type: string
+            403:
+                description: Unauthorized.
         """
         return json_response({
             'username': request.user.display_name,
@@ -187,40 +192,44 @@ class RootController(Controller):
         ---
         description: Refresh
         requestBody:
-          required: true
-          content:
-            application/json:
-              description: Refresh token
-              schema: RefreshSchema
-        responses:
-          200:
-            description: Keycloak token, containing access_token and refresh_token
+            required: true
             content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    access_token:
-                      type: string
-                      description: Access token
-                    expires_in:
-                      type: int
-                      description: Access token expiration
-                    refresh_expires_in:
-                      type: int
-                      description: Refresh token expiration
-                    refresh_token:
-                      type: string
-                      description: Refresh token
-          400:
-            description: Missing or Invalid Refresh token
+                application/json:
+                    description: Refresh token
+                    schema: RefreshSchema
+        responses:
+            200:
+                description: Keycloak token, containing access_token and refresh_token
+                content:
+                    application/json:
+                        schema:
+                        type: object
+                        properties:
+                            access_token:
+                                type: string
+                                description: Access token
+                            expires_in:
+                                type: int
+                                description: Access token expiration
+                            refresh_expires_in:
+                                type: int
+                                description: Refresh token expiration
+                            refresh_token:
+                                type: string
+                                description: Refresh token
+            400:
+                description: Missing or Invalid Refresh token
         """
         body = await request.body()
         try:
-          token = self.logout_schema.loads(body)
-          # TODO [prio-low] - make shell method / delete all shell methods ?
-          token = await self.app.kc.openid.a_refresh_token(token.get('refresh_token'))
-          return json_response(token, 200)
+            token = self.logout_schema.loads(body)
+            # TODO [prio-low] - make shell method / delete all shell methods ?
+            token = await self.app.kc.openid.a_refresh_token(token.get('refresh_token'))
+            return json_response({
+                k:v
+                for k,v in token.items()
+                if k in PUBLIC_TOKEN_FIELDS
+            }, 200)
 
         except ValidationError:
             raise DataError("Refresh token missing.")
@@ -234,23 +243,23 @@ class RootController(Controller):
         ---
         description: Logout
         requestBody:
-          required: true
-          content:
-            application/json:
-              description: Refresh token
-              schema: RefreshSchema
+            required: true
+            content:
+                application/json:
+                    description: Refresh token
+                    schema: RefreshSchema
         responses:
-          200:
-            description: Ok
-          400:
-            description: Missing or Invalid Refresh token
+            200:
+                description: Ok
+            400:
+                description: Missing or Invalid Refresh token
         """
         body = await request.body()
         try:
-          token = self.logout_schema.loads(body)
-          # TODO [prio-low] - make shell method / delete all shell methods ?
-          await self.app.kc.openid.a_logout(token.get('refresh_token'))
-          return PlainTextResponse('OK')
+            token = self.logout_schema.loads(body)
+            # TODO [prio-low] - make shell method / delete all shell methods ?
+            await self.app.kc.openid.a_logout(token.get('refresh_token'))
+            return PlainTextResponse('OK')
 
         except ValidationError:
             raise DataError("Refresh token missing.")
@@ -265,11 +274,10 @@ class RootController(Controller):
         ---
         description: Route to sync DB with keycloak entities, reserved to administrators.
         responses:
-          200:
-            description: Ok
-          403:
-            description: Unauthorized.
-
+            200:
+                description: Ok
+            403:
+                description: Unauthorized.
         """
         # await bt.User.svc.import_all()
 

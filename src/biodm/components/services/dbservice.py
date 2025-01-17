@@ -28,7 +28,7 @@ from biodm.utils.sqla import CompositeInsert, UpsertStmt, UpsertStmtValuesHolder
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
 
-SUPPORTED_NUM_OPERATORS = ("gt", "ge", "lt", "le", "min", "max")
+SUPPORTED_NUM_OPERATORS = ("gt", "ge", "lt", "le", "min", "max", "min_v", "max_v")
 
 
 class DatabaseService(ApiService, metaclass=ABCMeta):
@@ -682,10 +682,36 @@ class UnaryEntityService(DatabaseService):
             case [("gt" | "ge" | "lt" | "le") as op, arg]:
                 op_fct: Callable = getattr(col, f"__{op}__")
                 return stmt.where(op_fct(ctype(arg)))
+
             case [("min" | "max") as op, arg]:
                 op_fct: Callable = getattr(func, op)
                 sub = select(op_fct(col))
                 return stmt.where(col == sub.scalar_subquery())
+
+            case [("min_v" | "max_v") as op, arg]:
+                if col.name is not 'version':
+                    raise EndpointError("min_v and max_v are 'version' column exclusive filters.")
+
+                # TODO [prio-low]: This could be probably be improved to apply min, max on group-by
+                #                  all other active filters.
+
+                op_fct: Callable = getattr(func, op[:-2])
+
+                assert col in self.pk # invariant
+
+                pk_no_col = [k for k in self.table.pk if k != col.name]
+                sub = select(
+                    * [getattr(self.table, k) for k in pk_no_col]
+                    + [op_fct(col).label("max_col")]
+                )
+                sub = sub.group_by(*pk_no_col)
+                sub = sub.subquery()
+
+                return stmt.join(sub, onclause=unevalled_all([
+                    getattr(self.table, k) == getattr(sub.c, k)
+                    for k in pk_no_col
+                ] + [getattr(self.table, col.name) == getattr(sub.c, "max_col")]))
+
             case _:
                 raise EndpointError(
                     f"Expecting either 'field=v1,v2' pairs or integrer"
@@ -831,12 +857,13 @@ class UnaryEntityService(DatabaseService):
         # Slightly tweaked read version where we get max version column instead.
         stmt = select(self.table)
         for i, col in enumerate(self.pk):
-            if col.name == 'version':
-                sub = select(func.max(col)).scalar_subquery()
-                stmt = stmt.where(col == sub)
-                queried_version = pk_val[i]
-            else:
+            if col.name != 'version':
                 stmt = stmt.where(col == col.type.python_type(pk_val[i]))
+            else:
+                queried_version = pk_val[i]
+
+        sub = select(func.max(stmt.c.version)).scalar_subquery()
+        stmt = stmt.where(self.table.col('version') == sub)
 
         # Get item with all columns - covers many-to-one relationships.
         fields = set(self.table.__table__.columns.keys())
@@ -957,7 +984,7 @@ class CompositeEntityService(UnaryEntityService):
 
         # Needed so that permissions are taken into account before writing.
         if self.permission_relationships:
-            await session.commit()
+            await session.flush()
 
         # Populate nested objects into main object.
         for key, sub in composite.nested.items():

@@ -130,13 +130,14 @@ class K8sManager(ApiManager):
         resp = None
         name = self.get_name_in_manifest(manifest)
         specs = manifest.get("spec", {})
-        nreplicas = specs.get("replicas", 1)
 
-        resp = self.AppsV1Api.create_namespaced_deployment(
+        self.AppsV1Api.create_namespaced_deployment(
             body=manifest,
             namespace=self.namespace
         )
+        self.wait_deployment(name=name, nreplicas=specs.get("replicas", 1))
 
+    def wait_deployment(self, name: str, nreplicas=1) -> None:
         # Waiting for the instance to be up
         while True:
             resp = self.AppsV1Api.read_namespaced_deployment(
@@ -149,13 +150,24 @@ class K8sManager(ApiManager):
 
         self.log(f"Deployment {name} up.")
 
+    def wait_ingress(self, name: str) -> None:
+        while True:
+            resp = self.app.k8.NetworkingV1Api.read_namespaced_ingress_status(
+                name,
+                namespace=self.app.k8.namespace
+            )
+            if resp.status.load_balancer.ingress:
+                break
+            time.sleep(1)
+        self.log(f"Ingress {name} up.")
+
     @staticmethod
     def get_custom_resource_params(manifest: Dict[str, str]) -> Tuple[str, str, str]:
         group, version = manifest['apiVersion'].split('/')
         plural = str(manifest['kind']).lower() + 's'
         return group, version, plural
 
-    def create_custom_resource(self, manifest: Dict[str, str]) -> None:
+    def create_custom_resource(self, manifest: Dict) -> None:
         """Create a custom resource."""
         name = self.get_name_in_manifest(manifest)
         group, version, plural = self.get_custom_resource_params(manifest)

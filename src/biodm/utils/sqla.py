@@ -84,7 +84,8 @@ class UpsertStmtValuesHolder(dict):
             if set_: # upsert
                 stmt = stmt.on_conflict_do_update(index_elements=pk, set_=set_)
                 stmt = stmt.returning(svc.table)
-            elif not 'sqlite' in str(config.DATABASE_URL): # insert with default values
+            elif not 'sqlite' in str(config.DATABASE_URL):
+                # insert with default values
                 stmt = stmt.on_conflict_do_nothing(index_elements=pk)
                 if pk_present:
                     # Ensure that on_conflict_do_nothing will return a result.
@@ -93,10 +94,9 @@ class UpsertStmtValuesHolder(dict):
                     one = select(stmt.cte())
                     two = select(svc.table).where(svc.gen_cond([self.get(k) for k in pk]))
                     stmt = select(svc.table).from_statement(one.union(two))
-            else:
-                if self:
-                    # This works for sqlite
-                    stmt = stmt.on_conflict_do_update(index_elements=pk, set_=self)
+            elif self:
+                # This works for sqlite
+                stmt = stmt.on_conflict_do_update(index_elements=pk, set_=self)
 
         # Else (implicit): on_conflict_do_error -> catched above.
         return stmt

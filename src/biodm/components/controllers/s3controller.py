@@ -1,7 +1,7 @@
 from typing import List, Type
 
 from marshmallow import Schema, RAISE
-from starlette.routing import Mount, BaseRoute
+import starlette.routing as sr
 from starlette.requests import Request
 from starlette.responses import Response, PlainTextResponse
 
@@ -43,7 +43,7 @@ class S3Controller(ResourceController):
             )
         return S3Service
 
-    def routes(self, **_) -> List[Mount | Route] | List[Mount] | List[BaseRoute]:
+    def routes(self, **_) -> List[sr.Mount | sr.Route] |  List[sr.Mount] | List[sr.Route]:
         """Add an endpoint for successful file uploads and direct download."""
         prefix = f'{self.prefix}/{self.qp_id}/'
         file_routes = [
@@ -108,6 +108,4 @@ class S3Controller(ResourceController):
             pk_val=self._extract_pk_val(request),
             parts=self.parts_etag_schema.loads(await request.body())
         )
-
-        return json_response({"message": "Completed."}, status_code=201)
-        # return json_response("Completed.", status_code=201)
+        return json_response("Completed.", status_code=201)

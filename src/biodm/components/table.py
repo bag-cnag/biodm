@@ -160,16 +160,71 @@ class Base(DeclarativeBase, AsyncAttrs):
         return (
             'sqlite' in str(config.DATABASE_URL) and
             hasattr(cls, 'id') and
-            len(list(cls.pk)) > 1
+            cls.pk.__len__ > 1
         )
+
+    @staticmethod
+    async def _realign_cloned_versioned_collections(
+        src: List[Any],
+        dst: List[Any],
+        session: AsyncSession
+    ):
+        """Realigns cloned items primary keys during cloning of a versioned collection
+
+        :param src: Source list
+        :type src: List[Any]
+        :param dst: Destination list
+        :type dst: List[Any]
+        :param session: session
+        :type session: AsyncSession
+        """
+        to_realign = []
+        skip = []
+        pk_nover = src[0].pk - {'version'}
+
+        for i, one in enumerate(src):
+            if i in skip:
+                continue
+
+            entry = [i]
+            for j, one_prime in enumerate(src[i+1:], i+1):
+                if all([
+                    getattr(one, k) == getattr(one_prime, k)
+                    for k in pk_nover
+                ]):
+                    entry.append(j)
+                    skip.append(j)
+
+            if len(entry) > 1:
+                to_realign.append(entry)
+
+        if to_realign:
+            await session.flush() # Generate ids
+            for entry in to_realign:
+                first = dst[entry[0]]
+                for idx in entry[1::]:
+                    for k in pk_nover:
+                        setattr(dst[idx], k, getattr(first, k))
 
     async def clone(
         self,
         session: AsyncSession,
         new_item: Self | None = None,
         updated_rels: List[str] | None = None
-    ):
-        if not new_item: # Will be set for top level call
+    ) -> Self:
+        """Deep clone an entity with its relationships.
+
+        :param session: session
+        :type session: AsyncSession
+        :param new_item: New instance, if None -> generated with make_transient, defaults to None
+        :type new_item: Self | None, optional
+        :param updated_rels: list of relationship to ignore while cloning, defaults to None
+        :type updated_rels: List[str] | None, optional
+        :raises NotImplementedError: canary, for versioned case of one-to-one
+        :return: cloned item
+        :rtype: Self
+        """
+        if not new_item: # May be set for top level call
             new_item = deepcopy(self)
             make_transient(new_item)
 
@@ -204,7 +259,7 @@ class Base(DeclarativeBase, AsyncAttrs):
 
                 if rel.direction is MANYTOONE and self.is_permission and key != 'entity':
                     # Do some extra cloning for permissions
-                    # as we need ListGroups to be mutable for new versions
+                    # as we need ListGroups to be mutable for new entities
                     new_attached = await old_attached.clone(session=session)
                     setattr(new_item, 'id_' + key, None)
                     setattr(new_item, key, new_attached)
@@ -221,39 +276,15 @@ class Base(DeclarativeBase, AsyncAttrs):
                         ])
                         setattr(new_item, key, new_collection)
 
+                        # Special versioned case, we might need to realign ids
                         if rel.mapper.entity.svc.table.is_versioned:
-                            # Special versioned case, we might need to realign ids
-                            to_realign = []
-                            skip = []
-                            pk_nover = old_attached[0].pk - {'version'}
-
-                            for i, one in enumerate(old_attached):
-                                if i in skip:
-                                    continue
-
-                                entry = []
-                                for j, one_prime in enumerate(old_attached, i):
-                                    if all([
-                                        getattr(one, k) == getattr(one_prime, k)
-                                        for k in pk_nover
-                                    ]):
-                                        entry.append(j)
-                                        skip.append(j)
-
-                                if len(entry) > 1:
-                                    to_realign.append(entry)
-
-                            if to_realign:
-                                await session.flush() # Generate ids
-                                for entry in to_realign:
-                                    first = new_collection[entry[0]]
-                                    for idx in entry[1::]:
-                                        for k in pk_nover:
-                                            setattr(new_collection[idx], k, getattr(first, k))
+                            await self._realign_cloned_versioned_collections(
+                                src=old_attached, dst=new_collection, session=session
+                            )
 
                     else:
                         if rel.mapper.entity.svc.table.is_versioned:
-                            # Should not happen but we'll be notified in case
+                            # [canary]: should not happen but we'll be notified in case.
                             raise NotImplementedError
 
                         new_attached = await old_attached.clone(session=session)

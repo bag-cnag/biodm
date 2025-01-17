@@ -2,8 +2,10 @@ from typing import Any, Callable, Sequence
 
 from sqlalchemy import Insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from kubernetes.client.exceptions import ApiException
 
 from biodm.components import Base, K8sManifest
+from biodm.exceptions import ImplementionError
 from biodm.managers import DatabaseManager, K8sManager
 from biodm.utils.security import UserInfo
 from biodm.utils.utils import classproperty
@@ -33,17 +35,26 @@ class K8Service(CompositeEntityService):
         # Ensure submitting happens in the proper namespace.
         self.k8.change_namespace(self.manifest.namespace)
 
-        f: Callable
-        match manifest.get('kind', manifest.get('Kind')).lower():
-            case 'deployment':
-                f = self.k8.create_deployment
-            case 'ingress':
-                f = self.k8.create_ingress
-            case 'service':
-                f = self.k8.create_service
-            case _:
-                f = self.k8.create_custom_resource
-        f(manifest)
+        if hasattr(self.manifest, 'submit_manifest'):
+            self.manifest.submit_manifest(manifest)
+        else:
+            try:
+                f: Callable
+                match manifest.get('kind', manifest.get('Kind')).lower():
+                    case 'deployment':
+                        f = self.k8.create_deployment
+                    case 'ingress':
+                        f = self.k8.create_ingress
+                    case 'service':
+                        f = self.k8.create_service
+                    case _:
+                        f = self.k8.create_custom_resource
+                f(manifest)
+            except ApiException as e:
+                raise ImplementionError(
+                    "Default manifest submission modes failed. Error: " + str(e) +
+                    "Consider implementing a 'submit_manifest' method on your own."
+                )
 
     @DatabaseManager.in_session
     async def _insert(
