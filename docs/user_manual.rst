@@ -184,7 +184,13 @@ and followed by:
 
   * ``[lt, le, gt, ge]`` are supported with a value.
 
-  * ``[min, max]`` are supported without a value
+  * ``[min, max]`` are supported without a value.
+
+* aggregation operators ``field.op()``
+
+  * ``[min_v, max_v]`` Fetch only min or max version for **versioned resources**.
+
+  * ``[min_a, max_a]`` Fetch only min or max of specified field, **in respect with other filers**.
 
 * special parameters
 
@@ -207,12 +213,17 @@ and followed by:
    *  ``?q={extra_query}`` another way to pass query parameters. Provides a way of using
       undocumented parameters from code generated clients such as deep nesting and operators,
       which are tricky and or messy to extensively document with apispec
- 
+
 .. note::
 
     When querying with ``curl``, don't forget to escape ``&`` symbol or enclose the whole url
     in quotes, else your scripting language may intepret it as several commands.
 
+.. warning::
+
+    ``min_a`` and ``max_a`` will not take into account nested resource filtering.
+    E.g. ``/datasets?id=1&files.extension=csv&submission_date.max_a()`` may return a result
+    whose exact validity is unsupported.
 
 Query a nested collection
 ~~~~~~~~~~~~~~~~~~~~~~~~~

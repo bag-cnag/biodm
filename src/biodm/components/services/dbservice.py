@@ -4,7 +4,7 @@ from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type,
 from uuid import uuid4
 
 from marshmallow.orderedset import OrderedSet
-from sqlalchemy import Column, select, delete, or_, func
+from sqlalchemy import Column, Subquery, select, delete, or_, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -29,8 +29,8 @@ from biodm.utils.sqla import CompositeInsert, UpsertStmt, UpsertStmtValuesHolder
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
 
-NUM_OPERATORS = ("gt", "ge", "lt", "le", "min", "max", "min_v", "max_v")
-AGG_OPERATORS = ("min_v", "max_v")
+NUM_OPERATORS = ("gt", "ge", "lt", "le", "min", "max")
+AGG_OPERATORS = ("min_v", "max_v", "min_a", "max_a")
 
 
 class DatabaseService(ApiService, metaclass=ABCMeta):
@@ -666,7 +666,13 @@ class UnaryEntityService(DatabaseService):
         )
         return getattr(item, attribute)
 
-    def _filter_parse_num_op(self, stmt: Select, field: str, operator: str) -> Select:
+    def _filter_parse_num_op(
+        self,
+        stmt: Select,
+        field: str,
+        operator: str,
+        aggregation: List[str] | None=None
+    ) -> Select:
         """Applies numeric operator on a select statement.
 
         :param stmt: Statement under construction
@@ -679,18 +685,30 @@ class UnaryEntityService(DatabaseService):
         :return: Select statement with operator condition applied.
         :rtype: Select
         """
-        try:
-            col, ctype = self.table.colinfo(field)
-        except KeyError:
-            raise EndpointError(
-                f"Unknown field {field} of table {self.table.__name__}"
-            )
+        col, ctype = self.table.colinfo(field)
 
         def op_err(op: str, name: str, ftype: type):
+            """Raises generic error."""
             raise EndpointError(
                 f"Invalid operator {op} on column {name} of type {ftype} "
                 f"in table {self.table.__name__}"
             )
+
+        def agg_stmt(stmt: Select, op: str, col: Column, aggregate_on: List[str]):
+            """Generates aggregation statement."""
+            label = "agg_col" + str(uuid4())[:4] # gen unique label for this query
+            op_fct: Callable = getattr(func, op[:-2])
+
+            sub = select(
+                * [getattr(self.table, k) for k in aggregate_on]
+                + [op_fct(col).label(label)]
+            )
+            sub = sub.group_by(*aggregate_on).subquery()
+
+            return stmt.join(sub, onclause=unevalled_all([
+                getattr(self.table, k) == getattr(sub.c, k)
+                for k in aggregate_on
+            ] + [getattr(self.table, col.name) == getattr(sub.c, label)]))
 
         match operator.strip(')').split('('):
             case [("gt" | "ge" | "lt" | "le") as op, arg]:
@@ -709,29 +727,18 @@ class UnaryEntityService(DatabaseService):
                 return stmt.where(col == sub.scalar_subquery())
 
             case [("min_v" | "max_v") as op, arg]:
-                if col.name != 'version':
-                    raise EndpointError("min_v and max_v are 'version' column exclusive filters.")
+                if not self.table.is_versioned:
+                    raise EndpointError("min_v and max_v are versioned table exclusive filters.")
 
-                # TODO [prio-low]: This could be probably be improved to apply min, max on group-by
-                #                  all other active filters.
+                return agg_stmt(stmt, op, col, [k for k in self.table.pk if k != 'version'])
 
-                op_fct: Callable = getattr(func, op[:-2])
+            case [("min_a" | "max_a") as op, arg]:
+                if not aggregation:
+                    raise EndpointError(
+                        "min_a and max_a must be used in conjunction with other filters."
+                    )
 
-                assert col in self.pk # invariant
-
-                label = "agg_col" + str(uuid4())[:4] # gen unique label
-                pk_no_col = [k for k in self.table.pk if k != col.name]
-                sub = select(
-                    * [getattr(self.table, k) for k in pk_no_col]
-                    + [op_fct(col).label(label)]
-                )
-                sub = sub.group_by(*pk_no_col)
-                sub = sub.subquery()
-
-                return stmt.join(sub, onclause=unevalled_all([
-                    getattr(self.table, k) == getattr(sub.c, k)
-                    for k in pk_no_col
-                ] + [getattr(self.table, col.name) == getattr(sub.c, label)]))
+                return agg_stmt(stmt, op, col, aggregation)
 
             case _:
                 raise EndpointError(
@@ -798,19 +805,40 @@ class UnaryEntityService(DatabaseService):
         propagate = {"start": offset, "end": limit, "reverse": reverse}
         nested_conditions = {}
 
+        # Track on which fields to aggregate in case.
+        aggregate_conditions = {'fields': [], 'conditions': []}
+
         for dskey, csval in params.items():
             attr, values = dskey.split("."), csval.split(",")
 
-            if len(attr) == 2 and not csval: # Numeric Operators.
-                stmt = self._filter_parse_num_op(stmt, *attr)
+            if attr[0] not in self.table.relationships.keys() + self.table.__table__.columns.keys():
+                raise EndpointError(
+                    f"Unknown field {attr[0]} of table {self.table.__name__}"
+                )
 
-            elif len(attr) == 1: # Field conditions.
+            if len(attr) == 1: # Field conditions.
+                aggregate_conditions['fields'].append(attr[0])
                 stmt = self._filter_parse_field_cond(stmt, attr[0], values)
+
+            elif len(attr) == 2 and not csval: # Operators.
+                field, operator = attr
+                match operator.strip(')').split('('):
+                    case [("min_a" | "max_a") as op, _]:
+                        aggregate_conditions['conditions'].append({'field': field, 'op': op})
+                    case _:
+                        aggregate_conditions['fields'].append(field)
+                        stmt = self._filter_parse_num_op(stmt, field, operator)
 
             else: # Nested filter case, prepare for recursive call below.
                 nested_attr = ".".join(attr[1::])
                 nested_conditions[attr[0]] = nested_conditions.get(attr[0], {})
                 nested_conditions[attr[0]][nested_attr] = csval
+
+        # Handle aggregations after everything else.
+        for cond in aggregate_conditions['conditions']:
+            stmt = self._filter_parse_num_op(
+                stmt, cond['field'], f"{cond['op']}()", aggregate_conditions['fields']
+            )
 
         # Get the fields without conditions normally
         # Importantly, the joins in that method are outer -> Not filtering.
@@ -824,12 +852,11 @@ class UnaryEntityService(DatabaseService):
             nf_stmt = (
                 await nf_svc.filter(nf_fields, nf_conditions, stmt_only=True, user_info=user_info)
             ).subquery()
-
             stmt = stmt.join_from(
                 stmt,
                 nf_stmt,
                 onclause=unevalled_all([
-                    getattr(self.table, local.name) == getattr(nf_stmt.columns, remote.name)
+                    getattr(stmt.columns, local.name) == getattr(nf_stmt.columns, remote.name)
                     for local, remote in self.table.relationships[nf_key].local_remote_pairs
                 ])
             )
@@ -887,11 +914,7 @@ class UnaryEntityService(DatabaseService):
 
         # Get item with all columns - covers many-to-one relationships.
         fields = set(self.table.__table__.columns.keys())
-        self._restrict_select_on_fields(
-            stmt,
-            fields=fields,
-            user_info=None
-        )
+        self._restrict_select_on_fields(stmt, fields=fields, user_info=None)
         old_item = await self._select(stmt, session=session)
 
         assert queried_version # here to suppress linters.
