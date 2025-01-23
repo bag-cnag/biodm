@@ -1,10 +1,12 @@
 from typing import TYPE_CHECKING, Type, Dict, List, Tuple
 
 from apispec.ext.marshmallow import MarshmallowPlugin
+from apispec.ext.marshmallow.common import make_schema_key, get_fields
 from apispec.ext.marshmallow.field_converter import FieldConverterMixin
+from apispec.ext.marshmallow.openapi import OpenAPIConverter
 from marshmallow import Schema, class_registry
 import marshmallow.fields as mf
-from apispec.ext.marshmallow.common import make_schema_key
+from yaml import load as yload, dump as ydump, CLoader as yLoader, CDumper as yDumper
 
 if TYPE_CHECKING:
     from biodm.components.controllers import ResourceController
@@ -49,9 +51,60 @@ def update_runtime_schema(cls: Type[Schema], name: str, field: mf.Field) -> None
                 update(schema_field.inner.schema, name, field)
 
 
+
+class BDOpenApiConverter(OpenAPIConverter):
+    def schema2parameters(
+        self,
+        schema,
+        *,
+        location,
+        name = "body",
+        required = False,
+        description = None
+    ):
+        """Tweak schema2parameters in order to allow for optional query."""
+        if location != 'query':
+            return super().schema2parameters(
+                schema,
+                location=location,
+                name=name,
+                required=required,
+                description=description
+            )
+
+        # From parent function.
+        assert not getattr(
+            schema, "many", False
+        ), "Schemas with many=True are only supported for 'json' location (aka 'in: body')"
+
+        fields = get_fields(schema, exclude_dump_only=True)
+
+        # Addition: Set parent partial=True, when required=False
+        #  which will set ALL fields to not required down the line,
+        #  ultimately allowing for empty query.
+        if not required:
+            for field in fields.values():
+                field.parent.partial = True
+
+        # From parent function.
+        return [
+            self._field2parameter(
+                field_obj,
+                name=field_obj.data_key or field_name,
+                location=location,
+            )
+            for field_name, field_obj in fields.items()
+        ]
+
+
 class BDMarshmallowPlugin(MarshmallowPlugin):
     """Redefines schema_helper in order to fetch schema instances from our custom registry in order
     to take runtime patches into account when outputing OpenAPI schema."""
+
+    def __init__(self, schema_name_resolver = None):
+        super().__init__(schema_name_resolver)
+        self.Converter = BDOpenApiConverter
+
     def schema_helper(self, name, _, schema=None, **kwargs):
         """Definition helper that allows using a marshmallow
         :class:`Schema <marshmallow.Schema>` to provide OpenAPI
@@ -109,6 +162,8 @@ def process_apispec_docstrings(ctrl: 'ResourceController', abs_doc: str):
             name: id
         ->
         List of table primary keys, with their description from marshmallow schema if any.
+    - Errors responses |
+       - all 4xx and 5xx will be populated with ErrorSchema content.
 
     :param ctrl: ResourceController
     :type ctrl: ResourceController
@@ -127,7 +182,7 @@ def process_apispec_docstrings(ctrl: 'ResourceController', abs_doc: str):
         field = ctrl.schema.declared_fields[key]
         desc  = field.metadata.get("description", f"{ctrl.resource} {key}")
         attr.append("description: " + desc)
-        taf = _fcm.field2type_and_format(type(field))
+        taf = _fcm.field2type_and_format(field)
         if 'type' in taf:
             attr.append("schema:")
             attr.append(f"  type: {taf['type']}")
@@ -136,15 +191,30 @@ def process_apispec_docstrings(ctrl: 'ResourceController', abs_doc: str):
     # Split.
     doc = abs_doc.split('---')
     if len(doc) > 1:
+        # TODO [prio-low]: could be more cleanly rewritten using yaml manipulation as below.
         sphinxdoc, apispec = doc
         apispec = apispec.split('\n')
+
         # Search and replace templates.
         apispec = replace_docstrings_pattern(
             apispec=apispec, pattern=('- in: path', 'name: id'), blocks=path_key
         )
+        # Rejoin
+        apispec = "\n".join(apispec)
 
-        # Join.
-        abs_doc = sphinxdoc + "\n---\n" + "\n".join(apispec)
+        # Parse yaml
+        yapispec = yload(apispec, Loader=yLoader)
+
+        # Change error responses content to ErrorSchema when not provided.
+        if 'responses' in yapispec:
+            for key, res in yapispec['responses'].items():
+                if str(key)[:1] in ('4', '5') and 'content' not in res:
+                    res['content'] = {'application/json': {'schema': 'ErrorSchema'}}
+
+        apispec = ydump(yapispec, Dumper=yDumper)
+
+        # Regroup.
+        abs_doc = sphinxdoc + "\n---\n" + apispec
 
     # Use intance schema.
     abs_doc = abs_doc.replace(

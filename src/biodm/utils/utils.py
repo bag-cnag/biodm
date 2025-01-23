@@ -71,7 +71,7 @@ def utcnow() -> dt.datetime:
 def json_response(data: Any, status_code: int) -> Response:
     """Formats a Response object and set application/json header."""
     if isinstance(data, str) and data[0] not in ('{', '['):
-        data = {"msg": data}
+        data = {"message": data}
     if isinstance(data, dict):
         data = json.dumps(data)
 

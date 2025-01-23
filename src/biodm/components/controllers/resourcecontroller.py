@@ -338,6 +338,8 @@ class ResourceController(EntityController):
                         schema: Schema
             204:
                 description: Empty Payload.
+            400:
+                description: Invalid Data.
         """
         body = await self._extract_body(request)
         validated_data = self.validate(body, partial=True)
@@ -526,6 +528,14 @@ class ResourceController(EntityController):
         responses:
             200:
                 description: Deleted.
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                message:
+                                    type: string
+                                    description: Deletion notice
             404:
                 description: Not Found
         """
@@ -543,6 +553,7 @@ class ResourceController(EntityController):
         description: Uses a querystring to filter all resources of that type.
         parameters:
           - in: query
+            required: false
             schema: Schema
           - in: query
             name: fields
@@ -580,8 +591,10 @@ class ResourceController(EntityController):
                 content:
                     application/json:
                         schema:
-                          type: array
-                          items: Schema
+                            type: array
+                            items: Schema
+            400:
+                description: Wrong use of filters.
         """
         params = dict(request.query_params)
 

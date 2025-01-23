@@ -853,10 +853,10 @@ class UnaryEntityService(DatabaseService):
                 await nf_svc.filter(nf_fields, nf_conditions, stmt_only=True, user_info=user_info)
             ).subquery()
             stmt = stmt.join_from(
-                stmt,
+                self.table,
                 nf_stmt,
                 onclause=unevalled_all([
-                    getattr(stmt.columns, local.name) == getattr(nf_stmt.columns, remote.name)
+                    getattr(self.table, local.name) == getattr(nf_stmt.columns, remote.name)
                     for local, remote in self.table.relationships[nf_key].local_remote_pairs
                 ])
             )
@@ -868,7 +868,7 @@ class UnaryEntityService(DatabaseService):
                 raise ImplementionError(
                     "filter arguments: count cannot be used in conjunction with stmt_only !"
                 )
-            stmt = select(func.count()).select_from(stmt)
+            stmt = select(func.count()).select_from(stmt.subquery())
             return await self._select(stmt)
 
         stmt = stmt.offset(offset).limit(limit)

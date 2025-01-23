@@ -52,6 +52,10 @@ class RootController(Controller):
         responses:
             200:
                 description: Ok
+                content:
+                    text/plain:
+                        schema:
+                            type: string
         """
         return PlainTextResponse("live\n")
 
@@ -131,22 +135,25 @@ class RootController(Controller):
                 content:
                     application/json:
                         schema:
-                        type: object
-                        properties:
-                            access_token:
-                                type: string
-                                description: Access token
-                            expires_in:
-                                type: int
-                                description: Access token expiration
-                            refresh_expires_in:
-                                type: int
-                                description: Refresh token expiration
-                            refresh_token:
-                                type: string
-                                description: Refresh token
+                            type: object
+                            properties:
+                                access_token:
+                                    type: string
+                                    description: Access token
+                                expires_in:
+                                    type: int
+                                    description: Access token expiration
+                                refresh_expires_in:
+                                    type: int
+                                    description: Refresh token expiration
+                                refresh_token:
+                                    type: string
+                                    description: Refresh token
             403:
                 description: Unauthorized
+                content:
+                    application/json:
+                        schema: ErrorSchema
         """
         code = request.query_params['code']
         redirect_uri = request.query_params.get('redirect_uri', self.handshake())
@@ -180,6 +187,9 @@ class RootController(Controller):
                                         type: string
             403:
                 description: Unauthorized.
+                content:
+                    application/json:
+                        schema: ErrorSchema
         """
         return json_response({
             'username': request.user.display_name,
@@ -203,22 +213,25 @@ class RootController(Controller):
                 content:
                     application/json:
                         schema:
-                        type: object
-                        properties:
-                            access_token:
-                                type: string
-                                description: Access token
-                            expires_in:
-                                type: int
-                                description: Access token expiration
-                            refresh_expires_in:
-                                type: int
-                                description: Refresh token expiration
-                            refresh_token:
-                                type: string
-                                description: Refresh token
+                            type: object
+                            properties:
+                                access_token:
+                                    type: string
+                                    description: Access token
+                                expires_in:
+                                    type: int
+                                    description: Access token expiration
+                                refresh_expires_in:
+                                    type: int
+                                    description: Refresh token expiration
+                                refresh_token:
+                                    type: string
+                                    description: Refresh token
             400:
                 description: Missing or Invalid Refresh token
+                content:
+                    application/json:
+                        schema: ErrorSchema
         """
         body = await request.body()
         try:
@@ -251,8 +264,15 @@ class RootController(Controller):
         responses:
             200:
                 description: Ok
+                content:
+                    text/plain:
+                        schema:
+                            type: string
             400:
                 description: Missing or Invalid Refresh token
+                content:
+                    application/json:
+                        schema: ErrorSchema
         """
         body = await request.body()
         try:
@@ -276,8 +296,15 @@ class RootController(Controller):
         responses:
             200:
                 description: Ok
+                content:
+                    text/plain:
+                        schema:
+                            type: string
             403:
                 description: Unauthorized.
+                content:
+                    application/json:
+                        schema: ErrorSchema
         """
         # await bt.User.svc.import_all()
 
