@@ -1,10 +1,11 @@
 """Database service: Translates requests data into SQLA statements and execute."""
 from abc import ABCMeta
+from datetime import datetime
 from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type, Set
 from uuid import uuid4
 
 from marshmallow.orderedset import OrderedSet
-from sqlalchemy import Column, Subquery, select, delete, or_, func
+from sqlalchemy import Column, select, delete, or_, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -29,8 +30,21 @@ from biodm.utils.sqla import CompositeInsert, UpsertStmt, UpsertStmtValuesHolder
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
 
-NUM_OPERATORS = ("gt", "ge", "lt", "le", "min", "max")
-AGG_OPERATORS = ("min_v", "max_v", "min_a", "max_a")
+NUM_OPERATORS = ("gt", "ge", "lt", "le")
+AGG_OPERATORS = ("min", "max", "min_v", "max_v", "min_a", "max_a")
+
+
+from dataclasses import dataclass
+
+
+@dataclass
+class Operator:
+    op: str
+
+
+@dataclass
+class ValuedOperator(Operator):
+    value: Any
 
 
 class DatabaseService(ApiService, metaclass=ABCMeta):
@@ -670,7 +684,7 @@ class UnaryEntityService(DatabaseService):
         self,
         stmt: Select,
         field: str,
-        operator: str,
+        operator: Operator,
         aggregation: List[str] | None=None
     ) -> Select:
         """Applies numeric operator on a select statement.
@@ -680,19 +694,12 @@ class UnaryEntityService(DatabaseService):
         :param field: Field name to apply the operator on
         :type field: str
         :param operator: operator
-        :type operator: str
+        :type operator: Operator
         :raises EndpointError: Wrong operator
         :return: Select statement with operator condition applied.
         :rtype: Select
         """
-        col, ctype = self.table.colinfo(field)
-
-        def op_err(op: str, name: str, ftype: type):
-            """Raises generic error."""
-            raise EndpointError(
-                f"Invalid operator {op} on column {name} of type {ftype} "
-                f"in table {self.table.__name__}"
-            )
+        col = self.table.col(field)
 
         def agg_stmt(stmt: Select, op: str, col: Column, aggregate_on: List[str]):
             """Generates aggregation statement."""
@@ -710,42 +717,32 @@ class UnaryEntityService(DatabaseService):
                 for k in aggregate_on
             ] + [getattr(self.table, col.name) == getattr(sub.c, label)]))
 
-        match operator.strip(')').split('('):
-            case [("gt" | "ge" | "lt" | "le") as op, arg]:
-                if ctype not in (int, float):
-                    op_err(op, col.name, ctype)
+        if operator.op in NUM_OPERATORS:
+            assert isinstance(operator, ValuedOperator)
 
-                op_fct: Callable = getattr(col, f"__{op}__")
-                return stmt.where(op_fct(ctype(arg)))
+            op_fct: Callable = getattr(col, f"__{operator.op}__")
+            return stmt.where(op_fct(operator.value))
 
-            case [("min" | "max") as op, arg]:
-                if ctype == str:
-                    op_err(op, col.name, ctype)
+        elif operator.op in ("min", "max"):
+            op_fct: Callable = getattr(func, operator.op)
+            sub = select(op_fct(col))
+            return stmt.where(col == sub.scalar_subquery())
 
-                op_fct: Callable = getattr(func, op)
-                sub = select(op_fct(col))
-                return stmt.where(col == sub.scalar_subquery())
+        elif operator.op in ("min_v", "max_v"):
+            if not self.table.is_versioned:
+                raise EndpointError("min_v and max_v are versioned table exclusive filters.")
 
-            case [("min_v" | "max_v") as op, arg]:
-                if not self.table.is_versioned:
-                    raise EndpointError("min_v and max_v are versioned table exclusive filters.")
+            return agg_stmt(stmt, operator.op, col, [k for k in self.table.pk if k != 'version'])
 
-                return agg_stmt(stmt, op, col, [k for k in self.table.pk if k != 'version'])
-
-            case [("min_a" | "max_a") as op, arg]:
-                if not aggregation:
-                    raise EndpointError(
-                        "min_a and max_a must be used in conjunction with other filters."
-                    )
-
-                return agg_stmt(stmt, op, col, aggregation)
-
-            case _:
+        elif operator.op in ("min_a", "max_a"):
+            if not aggregation:
                 raise EndpointError(
-                    f"Expecting either 'field=v1,v2' pairs or "
-                    f" operators 'field.op([v])' op in {NUM_OPERATORS + AGG_OPERATORS}")
+                    "min_a and max_a must be used in conjunction with other filters."
+                )
 
-    def _filter_parse_field_cond(self, stmt: Select, field: str, values: List[str]) -> Select:
+            return agg_stmt(stmt, operator.op, col, aggregation)
+
+    def _filter_parse_field_cond(self, stmt: Select, field: str, values: Sequence[str]) -> Select:
         """Applies field condition on a select statement.
 
         :param stmt: Statement under construction
@@ -759,24 +756,21 @@ class UnaryEntityService(DatabaseService):
         :rtype: Select
         """
         col, ctype = self.table.colinfo(field)
-        wildcards, values = partition(values, cond=lambda x: "*" in x)
-        if wildcards and ctype is not str:
-            raise EndpointError(
-                "Using wildcard symbol '*' in /search is only allowed for text fields."
-            )
+        if ctype is str:
+            wildcards, values = partition(values, cond=lambda x: "*" in x)
 
-        # Wildcards.
-        stmt = stmt.where(
-            unevalled_or([
-                col.like(str(w).replace("*", "%"))
-                for w in wildcards
-            ])
-        ) if wildcards else stmt
+            # Wildcards.
+            stmt = stmt.where(
+                unevalled_or([
+                    col.like(str(w).replace("*", "%"))
+                    for w in wildcards
+                ])
+            ) if wildcards else stmt
 
         # Field equality conditions.
         stmt = stmt.where(
             unevalled_or([
-                col == ctype(v)
+                col == v# ctype(v) -> Already casted
                 for v in values
             ])
         ) if values else stmt
@@ -808,37 +802,34 @@ class UnaryEntityService(DatabaseService):
         # Track on which fields to aggregate in case.
         aggregate_conditions = {'fields': [], 'conditions': []}
 
-        for dskey, csval in params.items():
-            attr, values = dskey.split("."), csval.split(",")
+        for dskey, values in params.items():
+            attr = dskey.split(".")
 
+            # A bit redondant since fields get checked against schema in _extract_query_params.
             if attr[0] not in self.table.relationships.keys() + self.table.__table__.columns.keys():
-                raise EndpointError(
-                    f"Unknown field {attr[0]} of table {self.table.__name__}"
-                )
+                raise EndpointError(f"Unknown field {attr[0]} of table {self.table.__name__}")
 
             if len(attr) == 1: # Field conditions.
                 aggregate_conditions['fields'].append(attr[0])
-                stmt = self._filter_parse_field_cond(stmt, attr[0], values)
+                stmt = self._filter_parse_field_cond(stmt, attr[0], to_it(values))
 
-            elif len(attr) == 2 and not csval: # Operators.
-                field, operator = attr
-                match operator.strip(')').split('('):
-                    case [("min_a" | "max_a") as op, _]:
-                        aggregate_conditions['conditions'].append({'field': field, 'op': op})
-                    case _:
-                        aggregate_conditions['fields'].append(field)
-                        stmt = self._filter_parse_num_op(stmt, field, operator)
+            elif len(attr) == 2 and isinstance(values, Operator): # Operators.
+                if values.op in ("min_a", "max_a"):
+                    aggregate_conditions['conditions'].append(
+                        {'field': attr[0], 'operator': values}
+                    )
+                else:
+                    aggregate_conditions['fields'].append(attr[0])
+                    stmt = self._filter_parse_num_op(stmt, attr[0], values)
 
             else: # Nested filter case, prepare for recursive call below.
                 nested_attr = ".".join(attr[1::])
                 nested_conditions[attr[0]] = nested_conditions.get(attr[0], {})
-                nested_conditions[attr[0]][nested_attr] = csval
+                nested_conditions[attr[0]][nested_attr] = values
 
         # Handle aggregations after everything else.
         for cond in aggregate_conditions['conditions']:
-            stmt = self._filter_parse_num_op(
-                stmt, cond['field'], f"{cond['op']}()", aggregate_conditions['fields']
-            )
+            stmt = self._filter_parse_num_op(stmt, **cond, aggregation=aggregate_conditions['fields'])
 
         # Get the fields without conditions normally
         # Importantly, the joins in that method are outer -> Not filtering.
@@ -910,7 +901,7 @@ class UnaryEntityService(DatabaseService):
             else:
                 queried_version = pk_val[i]
 
-        stmt = self._filter_parse_num_op(stmt, field="version", operator="max_v()")
+        stmt = self._filter_parse_num_op(stmt, field="version", operator=Operator(op="max_v"))
 
         # Get item with all columns - covers many-to-one relationships.
         fields = set(self.table.__table__.columns.keys())

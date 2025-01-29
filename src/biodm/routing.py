@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Sequence, Callable, Awaitable, Coroutine, Any 
+from typing import Sequence, Callable, Awaitable, Coroutine, Any
 import starlette.routing as sr
 
 from starlette.requests import Request
@@ -9,10 +9,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from biodm import config
 from biodm.exceptions import UnauthorizedError
-
-
-if TYPE_CHECKING:
-    from biodm.utils.security import UserInfo
 
 
 class RequireAuthMiddleware(BaseHTTPMiddleware):

@@ -1,6 +1,6 @@
 from typing import List, Type
 
-from marshmallow import Schema, RAISE
+from marshmallow import Schema, RAISE, ValidationError
 import starlette.routing as sr
 from starlette.requests import Request
 from starlette.responses import Response, PlainTextResponse
@@ -9,7 +9,7 @@ from biodm.components import S3File
 from biodm.components.services import S3Service
 from biodm.components.table import Base
 from biodm.schemas import PartsEtagSchema
-from biodm.exceptions import ImplementionError
+from biodm.exceptions import DataError, ImplementionError
 from biodm.utils.security import UserInfo
 from biodm.utils.utils import json_response
 from biodm.routing import Route
@@ -68,6 +68,12 @@ class S3Controller(ResourceController):
                     application/json:
                         schema:
                             type: string
+            404:
+                description: Not found.
+            409:
+                description: Download a file which has not been uploaded.
+            500:
+                description: S3 Bucket issue.
         """
         return PlainTextResponse(
             await self.svc.download(
@@ -103,9 +109,20 @@ class S3Controller(ResourceController):
         responses:
             201:
                 description: Completion confirmation 'Completed.'
+            400:
+                description: Wrongly formatted completion notice.
+            4O4:
+                description: Not found.
+            500:
+                description: S3 Bucket issue.
         """
-        await self.svc.complete_multipart(
-            pk_val=self._extract_pk_val(request),
-            parts=self.parts_etag_schema.loads(await request.body())
-        )
-        return json_response("Completed.", status_code=201)
+        flag = True
+        try:
+            parts = self.parts_etag_schema.loads(await request.body())
+            await self.svc.complete_multipart(
+                pk_val=self._extract_pk_val(request),
+                parts=parts,
+            )
+            return json_response("Completed.", status_code=201)
+        except ValidationError as ve:
+            raise DataError(str(ve.messages))

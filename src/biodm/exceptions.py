@@ -9,6 +9,8 @@ class RequestError(RuntimeError):
     # origin: Exception
     # def __init__
 
+class ManagerError(RequestError):
+    """Holds errors raised by managers, converted in 5XX errors."""
 
 class DBError(RuntimeError):
     """Raised when DB related errors are catched."""
@@ -75,6 +77,10 @@ class DataError(RequestError):
 
 class EndpointError(RequestError):
     """Raised when an endpoint is reached with wrong attributes, parameters and so on."""
+
+
+class QueryError(RequestError):
+    """Raised when an endpoint is reached with wrong query parameters."""
 
 
 ## Routing

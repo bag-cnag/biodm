@@ -2,11 +2,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from boto3 import client
-from botocore import response
 from botocore.exceptions import ClientError
 from starlette.datastructures import Secret
 
-from biodm.exceptions import FailedCreate, FailedRead, FileUploadCompleteError
+from biodm.exceptions import ManagerError
 from biodm.component import ApiManager
 
 if TYPE_CHECKING:
@@ -66,7 +65,7 @@ class S3Manager(ApiManager):
             )
 
         except ClientError as e:
-            raise FailedRead(str(e))
+            raise ManagerError(str(e))
 
     def create_multipart_upload(self, object_name: str) -> Dict[str, str]:
         """Create multipart upload
@@ -86,7 +85,7 @@ class S3Manager(ApiManager):
             )
 
         except ClientError as e:
-            raise FailedCreate(str(e))
+            raise ManagerError(str(e))
 
     def create_upload_part(self, object_name, upload_id, part_number):
         try:
@@ -102,7 +101,7 @@ class S3Manager(ApiManager):
                 )
 
         except ClientError as e:
-            raise FailedCreate(str(e))
+            raise ManagerError(str(e))
 
     def complete_multipart_upload(
         self,
@@ -131,7 +130,7 @@ class S3Manager(ApiManager):
             )
 
         except ClientError as e:
-            raise FileUploadCompleteError(str(e.response['Error']))
+            raise ManagerError(str(e.response['Error']))
 
     def abort_multipart_upload(self, object_name: str, upload_id: str) -> Dict[str, str]:
         """Multipart upload termination notice
@@ -152,4 +151,4 @@ class S3Manager(ApiManager):
             )
 
         except ClientError as e:
-            raise FailedCreate(str(e))
+            raise ManagerError(str(e))

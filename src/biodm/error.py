@@ -8,6 +8,7 @@ from .exceptions import (
     FailedUpdate,
     FileUploadCompleteError,
     PayloadJSONDecodingError,
+    QueryError,
     RequestError,
     FailedDelete,
     FailedRead,
@@ -19,7 +20,8 @@ from .exceptions import (
     FileNotUploadedError,
     FileTooLargeError,
     DataError,
-    ReleaseVersionError
+    ReleaseVersionError,
+    ManagerError
 )
 
 
@@ -52,9 +54,9 @@ async def onerror(_, exc):
         )
 
         match exc:
-            case FileTooLargeError() | FileUploadCompleteError():
+            case FileTooLargeError():
                 status = 400
-            case DataError() | EndpointError() | PayloadJSONDecodingError():
+            case DataError() | EndpointError() | QueryError() | PayloadJSONDecodingError():
                 status = 400
             case FailedDelete() | FailedRead() | FailedUpdate():
                 status = 404
@@ -69,6 +71,8 @@ async def onerror(_, exc):
                 status = 409
             case PayloadEmptyError():
                 status = 204
+            case ManagerError():
+                status = 500
             case TokenDecodingError():
                 status = 503
             case UnauthorizedError():

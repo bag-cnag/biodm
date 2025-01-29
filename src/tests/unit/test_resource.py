@@ -217,7 +217,7 @@ def test_filter_wrong_op(client):
     client.get('/as?x.lt=2')
 
 
-@pytest.mark.xfail(raises=exc.EndpointError)
+@pytest.mark.xfail(raises=exc.QueryError)
 def test_filter_wrong_wildcard(client):
     item = {'x': 1, 'y': 2, 'bs': [{'name': 'bip'}, {'name': 'bap'},]}
 
