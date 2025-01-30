@@ -1,6 +1,6 @@
 """Database service: Translates requests data into SQLA statements and execute."""
 from abc import ABCMeta
-from datetime import datetime
+from dataclasses import dataclass
 from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type, Set
 from uuid import uuid4
 
@@ -34,16 +34,16 @@ NUM_OPERATORS = ("gt", "ge", "lt", "le")
 AGG_OPERATORS = ("min", "max", "min_v", "max_v", "min_a", "max_a")
 
 
-from dataclasses import dataclass
-
-
+# TODO: [prio-low]: improve those classes to enforce lists above.
 @dataclass
 class Operator:
+    """Contains operators parsed from query parameters."""
     op: str
 
 
 @dataclass
 class ValuedOperator(Operator):
+    """Operator special case, taking a value."""
     value: Any
 
 

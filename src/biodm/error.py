@@ -54,9 +54,10 @@ async def onerror(_, exc):
         )
 
         match exc:
-            case FileTooLargeError():
-                status = 400
-            case DataError() | EndpointError() | QueryError() | PayloadJSONDecodingError():
+            case (
+                FileTooLargeError() | FileUploadCompleteError() | DataError() | EndpointError() |
+                QueryError() | PayloadJSONDecodingError()
+            ):
                 status = 400
             case FailedDelete() | FailedRead() | FailedUpdate():
                 status = 404

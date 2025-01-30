@@ -24,7 +24,7 @@ from biodm.components.services import (
     KCGroupService,
     KCUserService
 )
-from biodm.components.services.dbservice import Operator, ValuedOperator, NUM_OPERATORS, AGG_OPERATORS
+from biodm.components.services.dbservice import Operator, ValuedOperator
 from biodm.exceptions import (
     DataError,
     EndpointError,

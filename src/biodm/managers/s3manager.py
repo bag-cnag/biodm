@@ -5,7 +5,7 @@ from boto3 import client
 from botocore.exceptions import ClientError
 from starlette.datastructures import Secret
 
-from biodm.exceptions import ManagerError
+from biodm.exceptions import FileUploadCompleteError, ManagerError
 from biodm.component import ApiManager
 
 if TYPE_CHECKING:
@@ -130,7 +130,13 @@ class S3Manager(ApiManager):
             )
 
         except ClientError as e:
-            raise ManagerError(str(e.response['Error']))
+            if e.response['Error']['Code'] == 'EntityTooSmall':
+                raise FileUploadCompleteError(
+                    "Completion notice received for a partially uploaded file - "
+                    "bucket responded with 'EntityTooSmall'"
+                )
+            else:
+                raise ManagerError(str(e.response['Error']))
 
     def abort_multipart_upload(self, object_name: str, upload_id: str) -> Dict[str, str]:
         """Multipart upload termination notice
