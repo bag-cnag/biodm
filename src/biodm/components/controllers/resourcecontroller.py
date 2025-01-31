@@ -35,7 +35,7 @@ from biodm.exceptions import (
     PartialIndex,
 )
 from biodm.utils.security import UserInfo
-from biodm.utils.utils import json_response
+from biodm.utils.utils import json_response, csplit_esc
 from biodm.utils.apispec import register_runtime_schema, process_apispec_docstrings
 from biodm.components import Base
 from biodm.routing import Route, PublicRoute
@@ -321,7 +321,7 @@ class ResourceController(EntityController):
             fields = self.svc.takeout_unallowed_nested(fields, user_info=user_info)
         return fields
 
-    def _extract_query_params(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_query_params(self, queryparams: QueryParams) -> Dict[str, Any]:
         """Extracts query parameters, casting them to the proper type.
            Uses a custom deserialization to treat comma separated values.
 
@@ -344,10 +344,24 @@ class ResourceController(EntityController):
                     "numerical or date field."
                 )
 
+        # TODO: [prio-low] below trick is a little dirty: think about refactoring.
+        # Turn mutliple value passing into comma separated values
+        params = {}
+        multi = queryparams.multi_items()
+
         # Reincorporate extra query
-        extra_query = params.pop('q', None)
+        extra_query = queryparams.get('q', {})
         if extra_query:
-            params.update(QueryParams(extra_query))
+            multi.extend(QueryParams(extra_query).multi_items())
+
+        for k,v in multi:
+            if k == "q":
+                continue
+
+            prev = params.get(k, "")
+            if prev:
+                prev = prev + ","
+            params[k] = prev + v
 
         # Check parameter validity.
         for dskey, csval in params.items():
@@ -403,7 +417,7 @@ class ResourceController(EntityController):
                         )
                 continue
 
-            values = csval.split(',')
+            values = csplit_esc(csval)
 
             # Deserialize value(s)
             if len(values) == 1:
@@ -704,9 +718,8 @@ class ResourceController(EntityController):
             400:
                 description: Wrong use of filters.
         """
-        params = dict(request.query_params)
+        params = self._extract_query_params(request.query_params)
         fields = self._extract_fields(params, user_info=request.user)
-        params = self._extract_query_params(params)
         count = bool(params.pop('count', 0))
         result = await self.svc.filter(
             fields=fields,

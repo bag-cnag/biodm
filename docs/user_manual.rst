@@ -177,20 +177,25 @@ and followed by:
 * ``field=value`` pairs, separated by ``&``
 
   * Use ``field=val1,val2,val3`` to ``OR`` between multiple values
+
+    * Use ``\`` before a comma to escape it
+
+    * ``field=val1&field=val2&field=val3`` syntax is also supported
+
   * Use ``nested.field=val`` to select on a nested attribute field
   * Use ``*`` in a string attribute for wildcards
 
 * numeric operators ``field.op([value])``
 
-  * ``[lt, le, gt, ge]`` are supported with a value.
-
-  * ``[min, max]`` are supported without a value.
+  * ``[lt, le, gt, ge]`` are supported.
 
 * aggregation operators ``field.op()``
 
-  * ``[min_v, max_v]`` Fetch only min or max version for **versioned resources**.
+  * ``[min, max]`` Absolute min max.
 
-  * ``[min_a, max_a]`` Fetch only min or max of specified field, **in respect with other filers**.
+  * ``[min_v, max_v]`` min or max version for **versioned resources**.
+
+  * ``[min_a, max_a]`` min or max of specified field, **in respect with other filers**.
 
 * special parameters
 
@@ -217,7 +222,8 @@ and followed by:
 .. note::
 
     When querying with ``curl``, don't forget to escape ``&`` symbol or enclose the whole url
-    in quotes, else your scripting language may intepret it as several commands.
+    in double quotes, else your scripting language may intepret it as several commands.
+    If you query a string with escaped commas, then enclosing in quotes is essential.
 
 .. warning::
 

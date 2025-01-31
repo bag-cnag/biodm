@@ -161,3 +161,24 @@ def check_hash(s: str) -> bool:
     :rtype: bool
     """
     return bool(_hash_regexp.match(s))
+
+
+_split_regexp = re.compile(r'(?<!\\),')
+
+
+def csplit_esc(s: str) -> List[str]:
+    """Regex based split on ',', that can be escaped using antislash symbol.
+
+    Inspired by:  https://stackoverflow.com/a/46724848/6847689
+
+    :param s: input
+    :type s: str
+    :return: splitted input
+    :rtype: List[str]
+    """
+    return list(
+        map(
+            lambda x: x.replace('\\', ''),
+            re.split(_split_regexp, s)
+        )
+    )
