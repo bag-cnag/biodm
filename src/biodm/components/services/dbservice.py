@@ -5,7 +5,7 @@ from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type,
 from uuid import uuid4
 
 from marshmallow.orderedset import OrderedSet
-from sqlalchemy import Column, select, delete, or_, func
+from sqlalchemy import Column, select, delete, or_, func, literal
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -321,9 +321,9 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
                     .join(Group)
                     .where(
                         or_(*[ # Group path matching.
-                            Group.path.like(upper_level + '%')
-                            for upper_level in user_info.groups
-                        ]),
+                            literal(ugroup).contains(Group.path)
+                            for ugroup in user_info.groups
+                        ])
                     )
                 )
                 perm_stmt = perm_stmt.union(protected)

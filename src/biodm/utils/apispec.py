@@ -62,7 +62,8 @@ class BDOpenApiConverter(OpenAPIConverter):
         required = False,
         description = None
     ):
-        """Tweak schema2parameters in order to allow for optional query."""
+        """Tweak schema2parameters in order to accurately describe
+            optional comma separated vlaues query parameters."""
         if location != 'query':
             return super().schema2parameters(
                 schema,
@@ -72,24 +73,36 @@ class BDOpenApiConverter(OpenAPIConverter):
                 description=description
             )
 
-        # From parent function.
+        # Copied from parent function.
         assert not getattr(
             schema, "many", False
         ), "Schemas with many=True are only supported for 'json' location (aka 'in: body')"
 
         fields = get_fields(schema, exclude_dump_only=True)
 
-        # Addition: Set parent partial=True, when required=False
-        #  which will set ALL fields to not required down the line,
-        #  ultimately allowing for empty query.
-        if not required:
-            for field in fields.values():
-                field.parent.partial = True
+        # Mutate query parameters on the fly.
+        def patcher(**kwargs):
+            param = self._field2parameter(**kwargs)
 
-        # From parent function.
+            # Handle query parameters to allow for comma separated values.
+            # https://stackoverflow.com/a/50572449
+            schema = param.get('schema', {})
+            if schema.get("type") != "boolean" and len(schema.get("enum", [])) != 2:
+                new_schema = {
+                    'type': 'array',
+                    'items': schema,
+                    'explode': 'false'
+                }
+                param['schema'] = new_schema
+
+            # Propagate required=false to allow for empty query
+            if not required:
+                param['required'] = "false"
+            return param
+
         return [
-            self._field2parameter(
-                field_obj,
+            patcher(
+                field=field_obj,
                 name=field_obj.data_key or field_name,
                 location=location,
             )

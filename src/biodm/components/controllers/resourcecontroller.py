@@ -662,6 +662,10 @@ class ResourceController(EntityController):
           - in: query
             name: fields
             required: false
+            schema:
+                type: array
+                items:
+                    type: string
             description: |
                 a comma separated list of fields to query only a subset of the resource
                 e.g. /datasets/1_1?name,description,contact,files
@@ -670,25 +674,25 @@ class ResourceController(EntityController):
             required: false
             description: page start
             schema:
-              type: integer
+                type: integer
           - in: query
             name: end
             required: false
             description: page end
             schema:
-              type: integer
+                type: integer
           - in: query
             name: q
             required: false
             description: supplementary query
             schema:
-              type: string
+                type: string
           - in: query
             name: count
             required: false
             description: Flag to include X-Total-Count header, comes with an extra query overhead
             schema:
-              type: boolean
+                type: boolean
         responses:
             201:
                 description: Filtered list.
