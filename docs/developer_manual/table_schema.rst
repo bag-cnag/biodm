@@ -121,6 +121,25 @@ This ultimately allows for more flexibily on input such as sending a mixin of cr
 resources via ``POST`` and limit the total number of requests to achieve the same result.
 
 
+Custom Schema Component
+~~~~~~~~~~~~~~~~~~~~~~~
+
+``BioDM`` provides a custom ``Schema`` component that may be used by importing
+``from biodm.components.schema import Schema``.
+
+The use of this component is **optional** but provides some performance improvements.
+
+
+1. Removes `None` or equivalent (`{}`, `[]`,...) values from output JSON
+
+2. Turn SQLALchemy objects to ``transient`` state effectively disabling further lazy loading
+of nested attributes.
+
+
+The latter in particular needs to be taken into account for the nested configuration
+discussed down below.
+
+
 Nested flags policy
 ~~~~~~~~~~~~~~~~~~~
 
@@ -179,6 +198,8 @@ follow RESTful principles.
 
     Although you may allow more depth at places depending on your use case, always make sure
     that the resulting tree do not have cycles.
+
+    Alternatively using the custom schema component will naturally occur in a 2 level pruned tree.
 
 
 .. note::
