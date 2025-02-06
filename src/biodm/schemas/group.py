@@ -1,6 +1,7 @@
-from marshmallow import Schema
+# from marshmallow import Schema
 from marshmallow.fields import String, List, Nested
 
+from biodm.components import Schema
 from .user import UserSchema
 
 class GroupSchema(Schema):
@@ -9,4 +10,4 @@ class GroupSchema(Schema):
 
     users = List(Nested(lambda: UserSchema(load_only=['groups'])))
     children = List(Nested(lambda: GroupSchema(load_only=['users', 'children', 'parent'])))
-    parent = Nested('GroupSchema', dump_only=True)
+    parent = Nested(lambda: GroupSchema(load_only=['users', 'children', 'parent']), dump_only=True)

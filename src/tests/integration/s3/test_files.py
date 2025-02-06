@@ -107,7 +107,7 @@ def test_file_readiness(srv_endpoint):
     json_file = json.loads(response.text)
 
     assert json_file['ready'] == True
-    assert json_file['upload'] == None
+    assert 'upload' not in json_file
 
 
 @pytest.mark.dependency(name="test_file_upload")

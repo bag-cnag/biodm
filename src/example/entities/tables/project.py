@@ -21,7 +21,7 @@ class Project(Base):
     # updated_at = Column(TIMESTAMP(timezone=True), server_default=text('now()'))
 
     # relationshipsNoneNone
-    datasets: Mapped[List["Dataset"]] = relationship(back_populates="project")
+    datasets: Mapped[List["Dataset"]] = relationship(back_populates="project", lazy="joined")
     # visualizations: Mapped[List["Visualization"]] = relationship(back_populates="project")
     # analyses: Mapped[List["Analysis"]] = relationship(back_populates="project")
 

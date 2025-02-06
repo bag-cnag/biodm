@@ -21,7 +21,7 @@ class Visualization(Base):
     # id_k8sinstance:  Mapped[int] = mapped_column(ForeignKey("K8SINSTANCE.id"))
 
     # Relationships
-    user:    Mapped["User"]       = relationship(foreign_keys=[user_username])
+    user:    Mapped["User"]       = relationship(foreign_keys=[user_username], lazy="joined")
     # project: Mapped["Project"]    = relationship(back_populates="visualizations", lazy="select")
-    file:    Mapped["File"]       = relationship(foreign_keys=[file_id])
+    file:    Mapped["File"]       = relationship(foreign_keys=[file_id], lazy="joined")
     # k8sinstance: Mapped["K8sInstance"] = relationship(foreign_keys=[id_k8sinstance], lazy="select")

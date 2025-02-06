@@ -16,4 +16,5 @@ class ListGroup(Base):
 
     groups: Mapped[List["Group"]] = relationship(
         secondary=asso_list_group,
+        lazy="joined"
     )

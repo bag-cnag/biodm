@@ -1,6 +1,9 @@
-from marshmallow import Schema, validate
+# from marshmallow import Schema, validate
 from marshmallow.fields import String, List, Nested, Integer, Bool
 from biodm.schemas import UploadSchema
+
+from biodm.components import Schema
+
 
 class FileSchema(Schema):
     id = Integer()

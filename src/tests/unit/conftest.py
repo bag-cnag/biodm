@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from starlette.testclient import TestClient
 
 from biodm.api import Api
-from biodm.components import Base, Versioned
+from biodm.components import Base, Versioned, Schema
 from biodm.components.controllers import ResourceController
 
 # SQLAlchemy
@@ -41,8 +41,8 @@ class A(Base):
     y = sa.Column(sa.Integer, nullable=True)
     id_c: Mapped[Optional[int]] = mapped_column(sa.Integer, sa.ForeignKey("C.id"), nullable=True)
 
-    bs:    Mapped[List["B"]]  = relationship(secondary=asso_a_b, uselist=True, lazy="select")
-    c:     Mapped["C"] = relationship(foreign_keys=[id_c], backref="ca", lazy="select")
+    bs:    Mapped[List["B"]]  = relationship(secondary=asso_a_b, uselist=True, lazy="joined")
+    c:     Mapped["C"] = relationship(foreign_keys=[id_c], backref="ca", lazy="joined")
 
 
 class B(Versioned, Base):
@@ -60,11 +60,11 @@ class D(Versioned, Base):
 
     info = sa.Column(sa.String, nullable=False)
 
-    cs:    Mapped[List["C"]]  = relationship(secondary=asso_c_d, uselist=True, lazy="select")
+    cs:    Mapped[List["C"]]  = relationship(secondary=asso_c_d, uselist=True, lazy="joined")
 
 
 # Schemas
-class ASchema(ma.Schema):
+class ASchema(Schema):
     id = ma.fields.Integer()
     x = ma.fields.Integer()
     y = ma.fields.Integer()
@@ -74,21 +74,21 @@ class ASchema(ma.Schema):
     c = ma.fields.Nested("CSchema")
 
 
-class BSchema(ma.Schema):
+class BSchema(Schema):
     id = ma.fields.Integer()
     version = ma.fields.Integer()
 
     name = ma.fields.String()
 
 
-class CSchema(ma.Schema):
+class CSchema(Schema):
     id = ma.fields.Integer()
     data = ma.fields.String()
 
     ca = ma.fields.Nested("ASchema")
 
 
-class DSchema(ma.Schema):
+class DSchema(Schema):
     id = ma.fields.Integer()
     version = ma.fields.Integer()
 

@@ -22,6 +22,7 @@ class Group(Base):
     users: Mapped[List["User"]] = relationship(
         secondary=asso_user_group,
         back_populates="groups",
+        lazy="joined"
         # init=False,
     )
 
@@ -80,6 +81,7 @@ Group.parent = relationship(
     foreign_keys=[Group_alias.path],
     uselist=False,
     viewonly=True,
+    # lazy="joined"
 )
 
 
@@ -89,4 +91,5 @@ Group.children = relationship(
     foreign_keys=[Group_alias.parent_path],
     uselist=True,
     viewonly=True,
+    lazy="joined"
 )

@@ -16,5 +16,6 @@ class UploadPart(Base):
     upload:      Mapped["Upload"] = relationship(
                                         back_populates="parts",
                                         foreign_keys=[upload_id],
-                                        single_parent=True
+                                        single_parent=True,
+                                        lazy="joined",
                                     )

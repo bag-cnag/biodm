@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Type
 
 from sqlalchemy.orm.relationships import _RelationshipDeclared
 
+
 if TYPE_CHECKING:
     from biodm.components import Base
 

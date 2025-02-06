@@ -6,7 +6,7 @@ from enum import StrEnum
 from io import BytesIO
 from typing import Any, Iterable, List, Dict, TYPE_CHECKING, Optional
 
-from marshmallow.schema import Schema
+# from marshmallow.schema import Schema
 from marshmallow.exceptions import ValidationError
 from sqlalchemy.exc import MissingGreenlet
 from starlette.requests import Request
@@ -14,6 +14,7 @@ from starlette.responses import Response
 import starlette.routing as sr
 
 from biodm import config
+from biodm.components import Schema
 from biodm.component import ApiComponent
 from biodm.exceptions import (
     DataError, PayloadJSONDecodingError, AsyncDBError, SchemaError

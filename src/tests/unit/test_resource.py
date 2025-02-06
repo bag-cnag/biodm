@@ -1,4 +1,5 @@
 from copy import deepcopy
+import time
 import pytest
 import json
 
@@ -39,7 +40,6 @@ def test_create_composite_resource(client):
     oracle['id'] = 1
     oracle['id_c'] = 1
     oracle['c']['id'] = 1
-    oracle['c']['ca'] = {}
     for i, x in enumerate(oracle['bs']):
         x['id'] = i+1
         x['version'] = 1
@@ -273,7 +273,6 @@ def test_read_nested_collection(client):
 
     create = client.post('/as', content=json_bytes(item))
     assert create.status_code == 201
-
     response = client.get('/as/1/bs')
     assert response.status_code == 200
 

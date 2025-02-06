@@ -142,7 +142,7 @@ def test_update_nested_list_after_release_of_parent_resource(client):
         content=json_bytes(update_nested)
     )
     oracle_nested = [update_nested['cs'][0]]
-    oracle_nested[0].update({'id': 3, 'ca': {}})
+    oracle_nested[0].update({'id': 3})
 
     assert update_response.status_code == 201
     release_json = json.loads(update_response.text)

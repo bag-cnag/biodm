@@ -1,5 +1,7 @@
-from marshmallow import Schema
+# from marshmallow import Schema
 from marshmallow.fields import String
+
+from biodm.components import Schema
 
 
 class RefreshSchema(Schema):

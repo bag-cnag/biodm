@@ -116,10 +116,12 @@ class DatabaseManager(ApiManager):
                 )
                 # Call and serialize result if requested.
                 db_result = await db_exec(*args, session=session, **kwargs)
-                result = await session.run_sync(
-                    lambda _, data: serializer(data), db_result
-                ) if serializer else db_result
-            return result
+                if serializer:
+                    # Serialization is going to make instances transient => commit beforehand.
+                    await session.commit()
+                    # Run sync as running in async may cause greenlet_spawn errors.
+                    return await session.run_sync(lambda _, data: serializer(data), db_result)
+                return db_result
 
         wrapper.__annotations__ = db_exec.__annotations__
         wrapper.__name__ = db_exec.__name__

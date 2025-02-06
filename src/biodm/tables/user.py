@@ -24,5 +24,6 @@ class User(Base):
 
     groups: Mapped[List["Group"]] = relationship(
         secondary=asso_user_group,
-        back_populates="users"
+        back_populates="users",
+        lazy="joined"
     )

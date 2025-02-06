@@ -46,10 +46,10 @@ class Dataset(Versioned, Base):
 
     # # relationships
     # policy - cascade="save-update, merge" ?
-    contact: Mapped["User"]       = relationship(foreign_keys=[contact_username])
-    tags:    Mapped[Set["Tag"]]   = relationship(secondary=asso_dataset_tag, uselist=True)
-    project: Mapped["Project"]    = relationship(back_populates="datasets")
-    files:   Mapped[List["File"]] = relationship(back_populates="dataset")
+    contact: Mapped["User"]       = relationship(foreign_keys=[contact_username], lazy="joined")
+    tags:    Mapped[Set["Tag"]]   = relationship(secondary=asso_dataset_tag, uselist=True, lazy="joined")
+    project: Mapped["Project"]    = relationship(back_populates="datasets", lazy="joined")
+    files:   Mapped[List["File"]] = relationship(back_populates="dataset", lazy="joined")
 
     # # permission_lv2: Mapped["Permission_lv2"] = relationship()
 

@@ -304,7 +304,7 @@ class S3File:
 
     @declared_attr
     def upload(cls) -> Mapped["Upload"]:
-        return relationship(backref="file", foreign_keys=[cls.upload_id])
+        return relationship(backref="file", foreign_keys=[cls.upload_id], lazy="joined")
 
     dl_count = Column(Integer, nullable=False, server_default='0')
 

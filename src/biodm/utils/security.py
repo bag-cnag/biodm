@@ -6,7 +6,7 @@ from functools import wraps
 from inspect import getmembers, ismethod
 from typing import TYPE_CHECKING, List, Tuple, Set, ClassVar, Type, Any, Dict
 
-from marshmallow import fields, Schema
+from marshmallow import fields# Schema
 from starlette.authentication import BaseUser
 from starlette.requests import HTTPConnection
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -258,7 +258,8 @@ class PermissionLookupTables:
             entity = relationship(
                 Table,
                 foreign_keys=[pk_1_Table, ..., pk_n_Table],
-                backref=backref(f'perm_{field}', uselist=False)
+                backref=backref(f'perm_{field}', uselist=False),
+                lazy="joined"
             )
 
         :param app: Api object, used to declare service.
@@ -290,7 +291,8 @@ class PermissionLookupTables:
                 rel_name,
                 uselist=False,
                 # all\{refresh-expire} + delete-orphan: important.
-                cascade="save-update, merge, delete, expunge, delete-orphan"
+                cascade="save-update, merge, delete, expunge, delete-orphan",
+                lazy="joined"
             ),
             foreign_keys="[" + ",".join(
                 [
@@ -324,7 +326,8 @@ class PermissionLookupTables:
                         "ListGroup",
                         cascade="save-update, merge, delete, delete-orphan",
                         foreign_keys=[c],
-                        single_parent=True
+                        single_parent=True,
+                        lazy="joined"
                     )
                 }
             )
@@ -365,7 +368,7 @@ class PermissionLookupTables:
 
         # back reference - probably unwanted.
         # schema_columns['entity'] = fields.Nested(table.ctrl.schema)
-
+        from biodm.components import Schema
         return type(
             f"AssoPerm{table.__name__.capitalize()}{fkey.capitalize()}Schema",
             (Schema,),

@@ -10,11 +10,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
-    load_only, selectinload, joinedload, ONETOMANY, MANYTOONE, Relationship
+    load_only, selectinload, joinedload, ONETOMANY, MANYTOONE, Relationship, Load
 )
 from sqlalchemy.sql import Delete, Select
-from sqlalchemy.sql.selectable import Alias
-
 from biodm import config
 from biodm.component import ApiService
 from biodm.components import Base
@@ -378,23 +376,22 @@ class UnaryEntityService(DatabaseService):
         else:
             return rel.mapper.entity.svc
 
-    def check_allowed_nested(self, fields: List[str], user_info: UserInfo) -> None:
+    def check_allowed_nested(self, nested_fields: List[str], user_info: UserInfo) -> None:
         """Checks whether all user requested fields are allowed by static permissions.
 
-        :param fields: list of fields
+        :param nested_fields: list of relationship fields
         :type fields: List[str]
         :param user_info: user info
         :type user_info: UserInfo
         :raises UnauthorizedError: protected nested field required without sufficient authorization
         """
-        nested, _ = partition(fields, lambda x: x in self.table.relationships)
-        for name in nested:
-            target_svc = self._svc_from_rel_name(name)
+        for field in nested_fields:
+            target_svc = self._svc_from_rel_name(field)
             if target_svc._login_required("read") and not user_info.is_authenticated:
                 raise UnauthorizedError()
 
             if not self._group_required("read", user_info.groups):
-                raise UnauthorizedError(f"Insufficient group privileges to retrieve {name}.")
+                raise UnauthorizedError(f"Insufficient group privileges to retrieve {field}.")
 
     def takeout_unallowed_nested(self, fields: List[str], user_info: UserInfo) -> List[str]:
         """Take out fields not allowed by static permissions.
@@ -406,6 +403,9 @@ class UnaryEntityService(DatabaseService):
         :return: List of fields with unallowed ones taken out.
         :rtype: List[str]
         """
+        if not user_info:
+            return fields
+
         nested, fields = partition(fields, lambda x: x in self.table.relationships)
 
         def ncheck(name):
@@ -568,6 +568,7 @@ class UnaryEntityService(DatabaseService):
         :return: statement restricted on field list
         :rtype: Select
         """
+        # fields = self.takeout_unallowed_nested(fields, user_info=user_info)
         nested, fields = partition(fields, lambda x: x in self.table.relationships)
         # Exclude hybrid properties.
         _, fields = partition(
@@ -579,49 +580,48 @@ class UnaryEntityService(DatabaseService):
         )
         stmt = self._apply_read_permissions(user_info, stmt)
 
-        # Fields
+        nested_fields = {}
+
+        if fields:
+            # Process fields argument, to distinguish between this level and lower levels:
+            nfields, fields = partition(fields, lambda x: len(x.split('.')) > 1)
+            for nf in nfields:
+                spl = nf.split('.')
+                nested_fields[spl[0]] = nested_fields.get(spl[0], [])
+                nested_fields[spl[0]].extend(spl[1::])
+
+        # Fields at self.table
         stmt = stmt.options(
-            load_only(
-                *[
-                    getattr(self.table, f)
-                    for f in fields
-                ]
-            ),
+            Load(self.table).load_only(*[getattr(self.table, f) for f in fields])
         ) if fields else stmt
 
-        for n in nested:
-            relationship = self.table.relationships[n]
-            target = self.table if isinstance(relationship.target, Alias) else relationship.mapper.entity
+        for n in set(nested) | nested_fields.keys():
+            rel = self.table.relationships[n]
+            target = rel.mapper.entity
 
-            if relationship.direction in (MANYTOONE, ONETOMANY):
-                if target == self.table:
-                    stmt = stmt.options(
-                        joinedload(
-                            getattr(self.table, n)
-                            # TODO: possible optimization, see if there is a way to infer innerjoin.
-                            # innerjoin=relationship.direction is ONETOMANY -> Wrong
-                        )
-                    )
-                else:
-                    rel_stmt = select(target)
-                    rel_stmt = (
-                        target
-                        .svc
-                        ._apply_read_permissions(user_info, rel_stmt)
-                    )
+            # Get relationship fields
+            stmt = stmt.options(joinedload(getattr(self.table, n)))
+            stmt = stmt.options(
+                Load(target).load_only(*[getattr(target, f) for f in nested_fields.get(n)])
+            ) if nested_fields.get(n) else stmt
 
-                    stmt = stmt.join_from(
-                        self.table,
-                        rel_stmt.subquery(),
-                        isouter=True
-                    )
-            else:
-                # TODO: check permissions ?
-                # Possible edge cases in o2o relationships ??
-                stmt = stmt.options(
-                    selectinload(
-                        getattr(self.table, n)
-                    )
+            # Filter based on permissions.
+            if rel.direction in (MANYTOONE, ONETOMANY): # TODO: Handle else ? -> MANYTOMANY
+                rel_stmt = select(target)
+                rel_stmt = (
+                    target
+                    .svc
+                    ._apply_read_permissions(user_info, rel_stmt)
+                ).subquery()
+
+                stmt = stmt.join_from(
+                    self.table,
+                    rel_stmt,
+                    onclause=unevalled_all([
+                        getattr(self.table, local.name) == getattr(rel_stmt.columns, remote.name)
+                        for local, remote in rel.local_remote_pairs
+                    ]),
+                    isouter=True
                 )
         return stmt
 
@@ -770,10 +770,63 @@ class UnaryEntityService(DatabaseService):
         # Field equality conditions.
         stmt = stmt.where(
             unevalled_or([
-                col == v# ctype(v) -> Already casted
+                col == v# ctype(v) -> Already casted by Controller
                 for v in values
             ])
         ) if values else stmt
+
+        return stmt
+
+    def _filter_apply_parameters(
+        self,
+        stmt: Select,
+        params: Dict[str, Any],
+        nested_params: Dict[str, Any]
+    ) -> Select:
+        """Apply query parameters on statement.
+
+        :param stmt: Statement under construction
+        :type stmt: Select
+        :param params: Parsed query parameters
+        :type params: Dict[str, Any]
+        :param nested_params: Nested query parameters for children resources filtering.
+        :type nested_conditions: Dict[str, Any]
+        :raises EndpointError: _description_
+        :return: Statement with all conditions applied
+        :rtype: Select
+        """
+        # Track on which fields to aggregate in case.
+        aggregate_conditions = {'fields': [], 'conditions': []}
+
+        for dskey, values in params.items():
+            attr = dskey.split(".")
+
+            # A bit redondant since fields get checked against schema by Controller.
+            if attr[0] not in self.table.relationships.keys() + self.table.__table__.columns.keys():
+                raise EndpointError(f"Unknown field {attr[0]} of table {self.table.__name__}")
+
+            if len(attr) == 1: # Field conditions.
+                aggregate_conditions['fields'].append(attr[0])
+                stmt = self._filter_parse_field_cond(stmt, attr[0], to_it(values))
+
+            elif len(attr) == 2 and isinstance(values, Operator): # Operators.
+                if values.op in ("min_a", "max_a"):
+                    aggregate_conditions['conditions'].append(
+                        {'field': attr[0], 'operator': values}
+                    )
+                else:
+                    aggregate_conditions['fields'].append(attr[0])
+                    stmt = self._filter_parse_num_op(stmt, attr[0], values)
+
+            else: # Nested filter case, prepare for recursive call.
+                nested_params[attr[0]] = nested_params.get(attr[0], {})
+                nested_params[attr[0]][".".join(attr[1::])] = values
+
+        # Handle aggregations after everything else.
+        for cond in aggregate_conditions['conditions']:
+            stmt = self._filter_parse_num_op(
+                stmt, **cond, aggregation=aggregate_conditions['fields']
+            )
 
         return stmt
 
@@ -797,52 +850,33 @@ class UnaryEntityService(DatabaseService):
 
         # For lower level(s) propagation.
         propagate = {"start": offset, "end": limit, "reverse": reverse}
-        nested_conditions = {}
+        nested_params = {}
 
-        # Track on which fields to aggregate in case.
-        aggregate_conditions = {'fields': [], 'conditions': []}
-
-        for dskey, values in params.items():
-            attr = dskey.split(".")
-
-            # A bit redondant since fields get checked against schema in _extract_query_params.
-            if attr[0] not in self.table.relationships.keys() + self.table.__table__.columns.keys():
-                raise EndpointError(f"Unknown field {attr[0]} of table {self.table.__name__}")
-
-            if len(attr) == 1: # Field conditions.
-                aggregate_conditions['fields'].append(attr[0])
-                stmt = self._filter_parse_field_cond(stmt, attr[0], to_it(values))
-
-            elif len(attr) == 2 and isinstance(values, Operator): # Operators.
-                if values.op in ("min_a", "max_a"):
-                    aggregate_conditions['conditions'].append(
-                        {'field': attr[0], 'operator': values}
-                    )
-                else:
-                    aggregate_conditions['fields'].append(attr[0])
-                    stmt = self._filter_parse_num_op(stmt, attr[0], values)
-
-            else: # Nested filter case, prepare for recursive call below.
-                nested_attr = ".".join(attr[1::])
-                nested_conditions[attr[0]] = nested_conditions.get(attr[0], {})
-                nested_conditions[attr[0]][nested_attr] = values
-
-        # Handle aggregations after everything else.
-        for cond in aggregate_conditions['conditions']:
-            stmt = self._filter_parse_num_op(stmt, **cond, aggregation=aggregate_conditions['fields'])
+        # Apply parameters
+        stmt = self._filter_apply_parameters(
+            stmt, params=params, nested_params=nested_params
+        )
 
         # Get the fields without conditions normally
         # Importantly, the joins in that method are outer -> Not filtering.
-        stmt = self._restrict_select_on_fields(stmt, fields - nested_conditions.keys(), user_info)
+        stmt = self._restrict_select_on_fields(stmt, fields, user_info)
+
 
         # Prepare recursive call for nested filters, and do an (inner) left join -> Filtering.
-        for nf_key, nf_conditions in nested_conditions.items():
+        # fields fetched below are only relevant for condtions.
+        for nf_key, nf_conditions in nested_params.items():
             nf_svc = self._svc_from_rel_name(nf_key)
             nf_fields = nf_svc.table.pk | set(nf_conditions.keys())
             nf_conditions.update(propagate) # Take in special parameters.
             nf_stmt = (
-                await nf_svc.filter(nf_fields, nf_conditions, stmt_only=True, user_info=user_info)
+                await nf_svc.filter(
+                    nf_fields,
+                    nf_conditions,
+                    stmt_only=True,
+                    user_info=user_info
+                )
             ).subquery()
+
             stmt = stmt.join_from(
                 self.table,
                 nf_stmt,
@@ -1016,10 +1050,6 @@ class CompositeEntityService(UnaryEntityService):
         # Insert main object.
         item = await self._insert(composite.item, **kwargs)
 
-        # Needed so that permissions are taken into account before writing.
-        if self.permission_relationships:
-            await session.flush()
-
         # Populate nested objects into main object.
         for key, sub in composite.nested.items():
             await getattr(item.awaitable_attrs, key)
@@ -1065,6 +1095,16 @@ class CompositeEntityService(UnaryEntityService):
                     raise NotImplementedError
             else:
                 setattr(item, key, await svc._insert(delay, **kwargs))
+
+        # Write to DB and fetch most up to date relationships.
+        # -> That is necessary for entities containing permissions
+        # -> For others this is an opionionated choice that after a write all
+        #    items should return their most up to date data.
+
+        # => This operation effectively does one I/O operation per inserted item
+        #    so it impacts performance.
+        await session.flush()
+        await session.refresh(item, rels.keys())
         return item
 
     # pylint: disable=arguments-differ

@@ -1,5 +1,3 @@
-from marshmallow import Schema
-
 from biodm.utils.security import admin_required, login_required
 from .resourcecontroller import ResourceController
 

@@ -219,16 +219,19 @@ def test_read_dataset_no_read_perm(srv_endpoint):
         f'{srv_endpoint}/datasets',
         headers=headers1
     )
-    json_response1 = json.loads(response1.text)
+    assert response1.status_code == 200
+
     response2 = requests.get(
         f'{srv_endpoint}/datasets',
         headers=headers2
     )
-    json_response2 = json.loads(response2.text)
-
-
-    assert response1.status_code == 200
     assert response2.status_code == 200
+
+
+    json_response2 = json.loads(response2.text)
+    json_response1 = json.loads(response1.text)
+
+
     assert len(json_response1) == 1
     assert str(json_response1[0]['name']) == str(dataset1['name'])
     assert str(json_response1[0]['project_id']) == str(dataset1['project_id'])

@@ -1,5 +1,7 @@
-from marshmallow import Schema
+# from marshmallow import Schema
 from marshmallow.fields import String, Number
+
+from biodm.components import Schema
 
 
 class ErrorSchema(Schema):

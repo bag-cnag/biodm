@@ -125,9 +125,11 @@ class S3Service(CompositeEntityService):
             session=session
         )
         upload = await getattr(file.awaitable_attrs, 'upload')
+        upload_id = await getattr(upload.awaitable_attrs, 's3_uploadId')
+
         complete = self.s3.complete_multipart_upload(
             object_name=await self.gen_key(file, session=session),
-            upload_id=upload.s3_uploadId,
+            upload_id=upload_id,
             parts=parts
         )
         if (

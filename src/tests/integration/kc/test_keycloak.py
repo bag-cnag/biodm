@@ -195,7 +195,7 @@ def test_create_groups_with_parent(srv_endpoint, utils, admin_header):
     assert len(json_parent) == 1
     json_parent = json_parent[0]
 
-    assert json_parent['parent'] is None
+    assert 'parent' not in json_parent
     assert len(json_parent['children']) == 2
     assert json_parent['children'][0]['path'] == child1['path']
     assert json_parent['children'][1]['path'] == child2['path']

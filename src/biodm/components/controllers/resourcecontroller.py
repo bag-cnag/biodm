@@ -284,7 +284,7 @@ class ResourceController(EntityController):
         :rtype: bytes
         """
         body = await request.body()
-        if body in (b'{}', b'[]', b'[{}]'):
+        if not body or body in (b'{}', b'[]', b'[{}]'):
             raise PayloadEmptyError("No input data.")
         return body
 
@@ -307,18 +307,41 @@ class ResourceController(EntityController):
         fields = query_params.pop('fields', None)
         fields = fields.split(',') if fields else None
 
-        if fields: # User input case, check and raise.
-            fields = set(fields) | self.table.pk
+        if fields: # User input case, check validity.
+            fields = set(fields)
+            nested = []
             for field in fields:
-                if field not in self.schema.dump_fields.keys():
-                    raise DataError(f"Requested field {field} does not exists.")
-            self.svc.check_allowed_nested(fields, user_info=user_info)
+                chain = field.split('.')
+                if len(chain) > 2:
+                    raise QueryError("Requested fields can be set only on two levels.")
+                if chain[0] not in self.schema.dump_fields:
+                    raise QueryError(
+                        f"Requested field {field} does not exists at {self.prefix}."
+                    )
+                if len(chain) > 1:
+                    nschema = self.schema.dump_fields[chain[0]]
+                    match nschema:
+                        case List():
+                            nschema = nschema.inner.schema
+                        case Nested():
+                            nschema = nschema.schema
+                    if chain[1] not in nschema.dump_fields:
+                        raise QueryError(
+                            f"Requested field {field} does not exist "
+                            f"for child resource at {self.prefix}."
+                        )
+                if chain[0] in self.table.relationships:
+                    nested.append(chain[0])
 
-        else: # Default case, gracefully populate allowed fields.
-            fields = [
-                k for k,v in self.schema.dump_fields.items()
-            ]
-            fields = self.svc.takeout_unallowed_nested(fields, user_info=user_info)
+            self.svc.check_allowed_nested(nested, user_info=user_info)
+
+        else: # Default case, pass down all allowed dump_fields
+            fields = self.svc.takeout_unallowed_nested(
+                self.schema.dump_fields.keys(),
+                user_info=user_info
+            )
+
+        fields = fields | self.table.pk # fetch pk in any case.
         return fields
 
     def _extract_query_params(self, queryparams: QueryParams) -> Dict[str, Any]:
@@ -555,7 +578,7 @@ class ResourceController(EntityController):
                 f"Unknown collection {nested_attribute} of {self.table.__class__.__name__}"
             )
 
-        # Serialization and field extraction done by target controller.
+        # Serialization and field extraction done by target controller.
         ctrl: ResourceController = (
             target_rel
             .mapper
@@ -720,12 +743,17 @@ class ResourceController(EntityController):
         """
         params = self._extract_query_params(request.query_params)
         fields = self._extract_fields(params, user_info=request.user)
+
+        ser_fields = []
+        for f in fields:
+            ser_fields.append(f.split('.')[0])
+
         count = bool(params.pop('count', 0))
         result = await self.svc.filter(
             fields=fields,
             params=params,
             user_info=request.user,
-            serializer=partial(self.serialize, many=True, only=fields),
+            serializer=partial(self.serialize, many=True, only=ser_fields),
         )
 
         # Prepare response object.
