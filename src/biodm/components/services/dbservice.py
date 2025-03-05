@@ -1,6 +1,5 @@
 """Database service: Translates requests data into SQLA statements and execute."""
 from abc import ABCMeta
-from dataclasses import dataclass
 from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type, Set
 from uuid import uuid4
 
@@ -10,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
-    load_only, selectinload, joinedload, ONETOMANY, MANYTOONE, Relationship, Load
+    selectinload, joinedload, ONETOMANY, MANYTOONE, Relationship, Load
 )
 from sqlalchemy.sql import Delete, Select
 from biodm import config
@@ -24,25 +23,14 @@ from biodm.managers import DatabaseManager
 from biodm.tables import ListGroup, Group
 from biodm.tables.asso import asso_list_group
 from biodm.utils.security import UserInfo, PermissionLookupTables
-from biodm.utils.sqla import CompositeInsert, UpsertStmt, UpsertStmtValuesHolder, get_max_id
+from biodm.utils.sqla import (
+    CompositeInsert, UpsertStmt, UpsertStmtValuesHolder, get_max_id, Operator, ValuedOperator
+)
 from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
 
 NUM_OPERATORS = ("gt", "ge", "lt", "le")
 AGG_OPERATORS = ("min", "max", "min_v", "max_v", "min_a", "max_a")
-
-
-# TODO: [prio-low]: improve those classes to enforce lists above.
-@dataclass
-class Operator:
-    """Contains operators parsed from query parameters."""
-    op: str
-
-
-@dataclass
-class ValuedOperator(Operator):
-    """Operator special case, taking a value."""
-    value: Any
 
 
 class DatabaseService(ApiService, metaclass=ABCMeta):
@@ -600,10 +588,13 @@ class UnaryEntityService(DatabaseService):
             target = rel.mapper.entity
 
             # Get relationship fields
-            stmt = stmt.options(joinedload(getattr(self.table, n)))
-            stmt = stmt.options(
-                Load(target).load_only(*[getattr(target, f) for f in nested_fields.get(n)])
-            ) if nested_fields.get(n) else stmt
+            if nested_fields.get(n):
+                stmt = stmt.options(
+                    joinedload(getattr(self.table, n))
+                    .load_only(*[getattr(target, f) for f in nested_fields.get(n)])
+                )
+            else:
+                stmt = stmt.options(joinedload(getattr(self.table, n)))
 
             # Filter based on permissions.
             if rel.direction in (MANYTOONE, ONETOMANY): # TODO: Handle else ? -> MANYTOMANY
@@ -830,6 +821,26 @@ class UnaryEntityService(DatabaseService):
 
         return stmt
 
+    @overload
+    async def filter(
+        self,
+        fields: List[str],
+        params: Dict[str, str],
+        stmt_only: Literal[True],
+        user_info: UserInfo | None = None,
+        **kwargs
+    ) -> Select: ...
+
+    @overload
+    async def filter(
+        self,
+        fields: List[str],
+        params: Dict[str, str],
+        stmt_only: Literal[False],
+        user_info: UserInfo | None = None,
+        **kwargs
+    ) -> Sequence[Base]: ...
+
     async def filter(
         self,
         fields: List[str],
@@ -838,7 +849,7 @@ class UnaryEntityService(DatabaseService):
         stmt_only: bool = False,
         user_info: UserInfo | None = None,
         **kwargs
-    ) -> List[Base]:
+    ) -> Select | Sequence[Base]:
         """READ rows filted on query parameters."""
         # Get special parameters
         offset = int(params.pop('start', 0))
@@ -894,8 +905,9 @@ class UnaryEntityService(DatabaseService):
                     "filter arguments: count cannot be used in conjunction with stmt_only !"
                 )
             stmt = select(func.count()).select_from(stmt.subquery())
-            return await self._select(stmt)
+            return await super()._select(stmt)
 
+        # Apply limit/offset
         stmt = stmt.offset(offset).limit(limit)
         # stmt = stmt.slice(offset-1, limit-1) # TODO [prio-low] investigate
         return stmt if stmt_only else await self._select_many(stmt, **kwargs)
@@ -1105,6 +1117,9 @@ class CompositeEntityService(UnaryEntityService):
         #    so it impacts performance.
         await session.flush()
         await session.refresh(item, rels.keys())
+        # if 'Dataset' in str(self):
+        #     x = await (await (getattr(item.awaitable_attrs, 'is_latest')))
+        #     pass
         return item
 
     # pylint: disable=arguments-differ

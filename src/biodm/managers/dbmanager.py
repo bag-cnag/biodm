@@ -114,13 +114,17 @@ class DatabaseManager(ApiManager):
                     session if session
                     else await stack.enter_async_context(self.app.db.session())
                 )
-                # Call and serialize result if requested.
+                # Call.
                 db_result = await db_exec(*args, session=session, **kwargs)
+
+                # Serialize result if requested.
                 if serializer:
                     # Serialization is going to make instances transient => commit beforehand.
                     await session.commit()
                     # Run sync as running in async may cause greenlet_spawn errors.
                     return await session.run_sync(lambda _, data: serializer(data), db_result)
+
+                # Else.
                 return db_result
 
         wrapper.__annotations__ = db_exec.__annotations__

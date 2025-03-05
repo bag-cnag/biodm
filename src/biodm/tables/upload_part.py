@@ -12,10 +12,11 @@ class UploadPart(Base):
     upload_id:   Mapped[int]      = mapped_column(ForeignKey("UPLOAD.id"), primary_key=True)
     part_number: Mapped[int]      = mapped_column(server_default='0', primary_key=True)
     form:        Mapped[str]      = mapped_column(nullable=False)
+    etag:        Mapped[str]      = mapped_column(nullable=True)
 
     upload:      Mapped["Upload"] = relationship(
                                         back_populates="parts",
                                         foreign_keys=[upload_id],
                                         single_parent=True,
-                                        lazy="joined",
+                                        lazy=False,
                                     )

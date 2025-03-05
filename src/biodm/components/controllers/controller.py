@@ -6,7 +6,7 @@ from enum import StrEnum
 from io import BytesIO
 from typing import Any, Iterable, List, Dict, TYPE_CHECKING, Optional
 
-# from marshmallow.schema import Schema
+from marshmallow.schema import Schema
 from marshmallow.exceptions import ValidationError
 from sqlalchemy.exc import MissingGreenlet
 from starlette.requests import Request
@@ -14,12 +14,11 @@ from starlette.responses import Response
 import starlette.routing as sr
 
 from biodm import config
-from biodm.components import Schema
 from biodm.component import ApiComponent
 from biodm.exceptions import (
     DataError, PayloadJSONDecodingError, AsyncDBError, SchemaError
 )
-from biodm.utils.utils import json_response
+from biodm.utils.utils import json_response, remove_empty
 
 if TYPE_CHECKING:
     from biodm.component import Base
@@ -149,10 +148,13 @@ class EntityController(Controller):
                     if key in only
                 }
 
+            # SQLA result -> python dict
             serialized = cls.schema.dump(data, many=many)
-
-            # Restore to normal afterwards.
+            # Cleanup python dict
+            serialized = remove_empty(serialized)
+            # Restore Schema to normal
             cls.schema.dump_fields = dump_fields
+            # python dict -> str
             return json.dumps(serialized, indent=config.INDENT)
 
         except MissingGreenlet as e:

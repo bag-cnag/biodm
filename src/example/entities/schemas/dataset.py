@@ -1,7 +1,6 @@
-# from marshmallow import Schema #, validate, pre_load, ValidationError
+from marshmallow import Schema #, validate, pre_load, ValidationError
 from marshmallow.fields import String, Date, List, Nested, Integer, UUID
 
-from biodm.components import Schema
 from biodm.schemas import UserSchema
 from .project import ProjectSchema
 

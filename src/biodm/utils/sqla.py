@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Self, Tuple, Any, TypeVar, Callable, Type
+from typing import TYPE_CHECKING, Dict, Self, Sequence, Tuple, Any, TypeVar, Callable, Type, Set
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Insert, Update, Select, select, update, func
@@ -140,3 +140,16 @@ def stmt_to_dict(stmt: Insert | Update) -> Dict[str, Any]:
 async def get_max_id(table: Type['Base'], session: AsyncSession):
     max_id = await session.scalar(func.max(table.id))
     return (max_id or 0) + 1
+
+
+# TODO: [prio-low]: improve those classes to enforce lists.
+@dataclass
+class Operator:
+    """Contains operators parsed from query parameters."""
+    op: str
+
+
+@dataclass
+class ValuedOperator(Operator):
+    """Operator special case, taking a value."""
+    value: Any

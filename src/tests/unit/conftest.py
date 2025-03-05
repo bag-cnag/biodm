@@ -2,13 +2,14 @@ import pytest
 
 from typing import List, Optional
 import marshmallow as ma
+from marshmallow import Schema
 import sqlalchemy as sa
 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from starlette.testclient import TestClient
 
 from biodm.api import Api
-from biodm.components import Base, Versioned, Schema
+from biodm.components import Base, Versioned #, Schema
 from biodm.components.controllers import ResourceController
 
 # SQLAlchemy

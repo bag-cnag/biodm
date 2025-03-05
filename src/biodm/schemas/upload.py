@@ -1,7 +1,6 @@
-# from marshmallow import Schema
+from marshmallow import Schema
 from marshmallow.fields import String, List, Nested, Integer
 
-from biodm.components import Schema
 from biodm.utils.utils import check_hash
 
 
@@ -12,6 +11,7 @@ class PartsEtagSchema(Schema):
 class UploadPartSchema(Schema):
     upload_id = Integer()
     part_number = Integer()
+    etag = String()
     form = String()
 
 class UploadSchema(Schema):

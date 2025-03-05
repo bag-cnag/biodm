@@ -138,6 +138,17 @@ class S3Manager(ApiManager):
             else:
                 raise ManagerError(str(e.response['Error']))
 
+    def list_multipart_parts(self, object_name: str, upload_id: str) -> Dict[str, str]:
+        try:
+            return self.s3_client.list_parts(
+                Bucket=self.bucket_name,
+                Key=object_name,
+                UploadId=upload_id,
+            )
+
+        except ClientError as e:
+            raise ManagerError(str(e.response['Error']))
+
     def abort_multipart_upload(self, object_name: str, upload_id: str) -> Dict[str, str]:
         """Multipart upload termination notice
 

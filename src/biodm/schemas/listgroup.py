@@ -1,7 +1,6 @@
-# from marshmallow import Schema
+from marshmallow import Schema
 from marshmallow.fields import List, Nested, Integer
 
-from biodm.components import Schema
 from .group import GroupSchema
 
 class ListGroupSchema(Schema):

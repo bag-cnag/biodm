@@ -41,7 +41,7 @@ class Utils:
             action = form['action']
             other_fields = {
                 i['name']: i.get('value', '')
-                for i in form.findAll('input', {'type': 'hidden'})
+                for i in form.find_all('input', {'type': 'hidden'})
             }
 
             response = session.post(action, data={

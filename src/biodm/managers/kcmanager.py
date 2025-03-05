@@ -5,7 +5,9 @@ from jwcrypto import jwk
 from keycloak.keycloak_admin import KeycloakAdmin
 from keycloak.openid_connection import KeycloakOpenIDConnection
 from keycloak.keycloak_openid import KeycloakOpenID
-from keycloak.exceptions import KeycloakError, KeycloakDeleteError, KeycloakGetError
+from keycloak.exceptions import (
+    KeycloakError, KeycloakDeleteError, KeycloakGetError, KeycloakAuthenticationError
+)
 from starlette.datastructures import Secret
 
 from biodm.component import ApiManager
@@ -230,8 +232,11 @@ class KeycloakManager(ApiManager):
 
     async def get_group_by_path(self, path: str, user_info: UserInfo):
         try:
-            return await user_info.keycloak_admin.a_get_group_by_path(path)
-        except KeycloakGetError:
+            response = await user_info.keycloak_admin.a_get_group_by_path(path)
+            if 'error' in response:
+                return None
+            return response
+        except (KeycloakGetError, KeycloakAuthenticationError):
             return None
 
     async def get_user_by_username(self, username: str, user_info: UserInfo):
@@ -240,5 +245,5 @@ class KeycloakManager(ApiManager):
             if len(users) > 0:
                 return users[0]
         except KeycloakGetError:
-            pass
-        return None
+            return None
+

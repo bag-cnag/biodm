@@ -3,7 +3,7 @@ from math import ceil
 from pathlib import Path
 from typing import List, Any, Sequence, Dict
 
-from sqlalchemy import Insert
+from sqlalchemy import Insert, Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from biodm.components.table import Base, S3File
@@ -111,6 +111,31 @@ class S3Service(CompositeEntityService):
             await self.gen_upload_form(file, session=session)
         return files
 
+    async def _check_partial_upload(self, file: S3File, session: AsyncSession):
+        """Query the bucket to check what parts have been uploaded. Populates etags."""
+        if not await getattr(file.awaitable_attrs, 'ready'):
+            completed_parts = self.s3.list_multipart_parts(
+                await self.gen_key(file, session=session),
+                file.upload.s3_uploadId
+            )
+            for completed in completed_parts['Parts']:
+                for upart in file.upload.parts:
+                    if upart.part_number == completed['PartNumber']:
+                        upart.etag = completed['ETag'].strip('"')
+
+    @DatabaseManager.in_session
+    async def _select(self, stmt: Select, session: AsyncSession) -> Base:
+        file: S3File = await super()._select(stmt, session=session)
+        await self._check_partial_upload(file, session=session)
+        return file
+
+    @DatabaseManager.in_session
+    async def _select_many(self, stmt: Select, session: AsyncSession) -> Base:
+        files: S3File = await super()._select_many(stmt, session=session)
+        for file in files:
+            await self._check_partial_upload(file, session=session)
+        return files
+
     @DatabaseManager.in_session
     async def complete_multipart(
         self,
@@ -119,11 +144,12 @@ class S3Service(CompositeEntityService):
         session: AsyncSession
     ):
         # parts should take the form of [{'PartNumber': part_number, 'ETag': etag}, ...]
-        file = await self.read(
-            pk_val,
-            fields=['ready', 'upload'] + self.key_fields,
-            session=session
-        )
+        # Optim: Read that calls super()._select instead of our custom select
+        stmt = select(self.table)
+        stmt = stmt.where(self.gen_cond(pk_val))
+        stmt = self._restrict_select_on_fields(stmt, ['ready', 'upload'] + self.key_fields, None)
+        file = await super()._select(stmt, session=session)
+
         upload = await getattr(file.awaitable_attrs, 'upload')
         upload_id = await getattr(upload.awaitable_attrs, 's3_uploadId')
 
@@ -168,7 +194,6 @@ class S3Service(CompositeEntityService):
         assert isinstance(file, S3File) # mypy.
 
         await self._check_permissions("download", user_info, file.__dict__, session=session)
-
         if not file.ready:
             raise FileNotUploadedError("File exists but has not been uploaded yet.")
 

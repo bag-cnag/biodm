@@ -100,6 +100,10 @@ class KCGroupService(KCService):
     ) -> None:
         """READ group from keycloak, CREATE if missing, UPDATE if exists.
 
+        For regular users with no read permissions on groups, this method will result in a
+        dictionary with no 'id' field, which is required when keycloak is enabled.
+        Ultimately leading the insert statement
+
         :param data: Group data
         :type data: Dict[str, Any]
         :param user_info: requesting user info
@@ -113,15 +117,20 @@ class KCGroupService(KCService):
             return
 
         parent_id = None
+        failed_parent = False
         if not path.parent.parts == ('/',):
             parent = await self.kc.get_group_by_path(str(path.parent), user_info=user_info)
-            if not parent:
-                raise DataError("Input path does not match any parent group.")
-            parent_id = parent['id']
+            if parent:
+                parent_id = parent['id']
+            else:
+                failed_parent = True
 
         cr_id = await self.kc.create_group(path.name, parent_id, user_info=user_info)
         if cr_id:
             data['id'] = cr_id
+            if failed_parent:
+                # Had right to see/create group but not parent, it means parent only failed.
+                raise DataError("Input path does not match any parent group.")
 
     async def write(
         self,

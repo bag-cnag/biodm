@@ -8,7 +8,6 @@ from time import sleep
 from typing import Callable, List, Optional, Dict, Any, Type
 
 from apispec import APISpec
-# from apispec.ext.marshmallow import MarshmallowPlugin
 from starlette_apispec import APISpecSchemaGenerator
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -26,7 +25,6 @@ from biodm.managers import DatabaseManager, KeycloakManager, S3Manager, K8sManag
 from biodm.components.controllers import Controller
 from biodm.components.services import UnaryEntityService, CompositeEntityService
 from biodm.error import onerror
-from biodm.exceptions import RequestError
 from biodm.utils.security import AuthenticationMiddleware, PermissionLookupTables
 from biodm.utils.utils import to_it
 from biodm.utils.apispec import BDMarshmallowPlugin

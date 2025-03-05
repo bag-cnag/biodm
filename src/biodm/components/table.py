@@ -9,18 +9,19 @@ from uuid import uuid4
 
 from marshmallow.orderedset import OrderedSet
 from sqlalchemy import (
-    BOOLEAN, Integer, inspect, Column, String, TIMESTAMP, ForeignKey, BigInteger
+    BOOLEAN, Integer, func, inspect, Column, String, TIMESTAMP, ForeignKey, BigInteger, select
 )
+from sqlalchemy import and_
 from sqlalchemy.ext.asyncio import AsyncAttrs, AsyncSession
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
     DeclarativeBase, relationship, Relationship, mapped_column, Mapped, declared_attr,
-    ONETOMANY, MANYTOONE, MANYTOMANY, make_transient
+    ONETOMANY, MANYTOONE, MANYTOMANY, make_transient, column_property, aliased
 )
 
 from biodm import config
-from biodm.utils.sqla import get_max_id
+from biodm.utils.sqla import get_max_id, Operator
 from biodm.utils.utils import utcnow, classproperty
 
 
@@ -336,3 +337,25 @@ class Versioned:
     - Disable /update, enable /release
     """
     version = Column(Integer, server_default='1', nullable=False, primary_key=True)
+
+
+def add_versioned_table_methods(tables: List[Type['Base']]) -> None:
+    """Called after tables initialization to have access to aliased
+        which is not the case during initialization."""
+    for table in tables:
+        if issubclass(table, Versioned):
+            # is_latest - flag
+            alias = aliased(table)
+            agg = [k for k in table.pk if k != 'version']
+
+            inspect(table).add_property(
+                "is_latest",
+                column_property(
+                    table.version == (
+                        select(func.max(alias.version))
+                        .where(*[getattr(alias, k) == getattr(table, k) for k in agg])
+                        .group_by(*[getattr(table, k) for k in agg])
+                    ).scalar_subquery()
+                )
+            )
+            # TODO: prev/next versions ?

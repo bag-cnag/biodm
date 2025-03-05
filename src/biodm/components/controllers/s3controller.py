@@ -1,11 +1,11 @@
 from typing import List, Type
 
-from marshmallow import RAISE, ValidationError
+from marshmallow import RAISE, ValidationError, Schema
 import starlette.routing as sr
 from starlette.requests import Request
 from starlette.responses import Response, PlainTextResponse
 
-from biodm.components import S3File, Schema
+from biodm.components import S3File
 from biodm.components.services import S3Service
 from biodm.components.table import Base
 from biodm.schemas import PartsEtagSchema

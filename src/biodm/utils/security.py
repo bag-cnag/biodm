@@ -6,7 +6,7 @@ from functools import wraps
 from inspect import getmembers, ismethod
 from typing import TYPE_CHECKING, List, Tuple, Set, ClassVar, Type, Any, Dict
 
-from marshmallow import fields# Schema
+from marshmallow import fields, Schema
 from starlette.authentication import BaseUser
 from starlette.requests import HTTPConnection
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -368,7 +368,7 @@ class PermissionLookupTables:
 
         # back reference - probably unwanted.
         # schema_columns['entity'] = fields.Nested(table.ctrl.schema)
-        from biodm.components import Schema
+
         return type(
             f"AssoPerm{table.__name__.capitalize()}{fkey.capitalize()}Schema",
             (Schema,),

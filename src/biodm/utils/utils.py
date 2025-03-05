@@ -6,8 +6,7 @@ import operator
 from os import path, utime
 import re
 from typing import (
-    Any, List, Callable, Tuple, TypeVar, Dict, Iterator, Self, Generic,
-    MutableSet, Iterable, Sequence
+    Any, List, Callable, Tuple, TypeVar, Dict, Iterator, Self, Generic, Sequence
 )
 
 from starlette.responses import Response
@@ -182,3 +181,21 @@ def csplit_esc(s: str) -> List[str]:
             re.split(_split_regexp, s)
         )
     )
+
+
+EMPTY_VALUES = (None, [], {}, '', '[]', '{}',)
+
+
+def remove_empty(d: Dict):
+    """Removes key/value pairs from a dict for all 'empty' values."""
+    match d:
+        case dict():
+            return {
+                k: v
+                for k, v in ((k, remove_empty(v)) for k, v in d.items())
+                if v not in EMPTY_VALUES
+            }
+        case list():
+            return [v for v in (remove_empty(v) for v in d) if v not in EMPTY_VALUES]
+        case _:
+            return d

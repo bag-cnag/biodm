@@ -125,19 +125,17 @@ Custom Schema Component
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 ``BioDM`` provides a custom ``Schema`` component that may be used by importing
-``from biodm.components.schema import Schema``.
+``from biodm.utils.biodm import Schema``.
 
-The use of this component is **optional** but provides some performance improvements.
-
-
-1. Removes `None` or equivalent (`{}`, `[]`,...) values from output JSON
-
-2. Turn SQLALchemy objects to ``transient`` state effectively disabling further lazy loading
-of nested attributes.
+The use of this component is **discouraged** but may provides some performance improvements by
+turning SQLALchemy objects to ``transient`` state effectively disabling further lazy loading
+of nested attributes upon serializing.
 
 
-The latter in particular needs to be taken into account for the nested configuration
-discussed down below.
+This can be an alternative to circular dumping policies described
+below. However this approach can be quite risky and result in missing data down the line.
+
+This component remains provided as it may be of interest for testing purposes.
 
 
 Nested flags policy

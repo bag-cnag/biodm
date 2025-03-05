@@ -11,4 +11,8 @@ if TYPE_CHECKING:
 class Upload(Base):
     id: Mapped[int]                   = mapped_column(primary_key=True)
     s3_uploadId: Mapped[str]          = mapped_column(nullable=True)
-    parts: Mapped[List["UploadPart"]] = relationship(back_populates="upload", lazy="joined")
+    parts: Mapped[List["UploadPart"]] = relationship(
+        back_populates="upload",
+        lazy=False,
+        cascade="save-update, merge, delete, expunge, delete-orphan",
+    )

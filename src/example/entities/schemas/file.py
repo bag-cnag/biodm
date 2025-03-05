@@ -1,8 +1,8 @@
-# from marshmallow import Schema, validate
+from marshmallow import Schema #, validate
 from marshmallow.fields import String, List, Nested, Integer, Bool
-from biodm.schemas import UploadSchema
 
-from biodm.components import Schema
+
+from biodm.schemas import UploadSchema
 
 
 class FileSchema(Schema):
@@ -17,5 +17,5 @@ class FileSchema(Schema):
     dataset_version = Integer()
 
     # submitter_username = String()
-    upload = Nested("UploadSchema", dump_only=True)
+    upload = Nested(UploadSchema, dump_only=True)
     # dataset = Nested('DatasetSchema') # , load_only=True
