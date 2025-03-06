@@ -207,6 +207,13 @@ class Base(DeclarativeBase, AsyncAttrs):
                     for k in pk_nover:
                         setattr(dst[idx], k, getattr(first, k))
 
+    def __deepcopy__(self, memo):
+        """set deepcopy method to copy only the fields as copying relationships causes errors."""
+        return self.__class__(**{
+            f: deepcopy(getattr(self, f), memo)
+            for f in self.__table__.columns.keys()
+        })
+
     async def clone(
         self,
         session: AsyncSession,

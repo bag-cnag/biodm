@@ -6,7 +6,7 @@ from enum import StrEnum
 from io import BytesIO
 from typing import Any, Iterable, List, Dict, TYPE_CHECKING, Optional
 
-from marshmallow.schema import Schema
+from marshmallow.schema import Schema, RAISE
 from marshmallow.exceptions import ValidationError
 from sqlalchemy.exc import MissingGreenlet
 from starlette.requests import Request
@@ -114,7 +114,10 @@ class EntityController(Controller):
                     raise ValidationError("Wrong input JSON.")
 
             json_data = json.loads(data) # Accepts **kwargs in case support needed.
-            return cls.schema.load(json_data, many=many, partial=partial)
+            # Concurrency support: new schema using instance load_fields as reference
+            schema = cls.schema.__class__(many=many, partial=partial, unknown=RAISE)
+            schema.load_fields = cls.schema.load_fields
+            return schema.load(json_data)
 
         except ValidationError as ve:
             raise DataError(str(ve.messages))
@@ -139,21 +142,18 @@ class EntityController(Controller):
         :type only: Iterable[str]
         """
         try:
-            dump_fields = cls.schema.dump_fields
-            if only:
-                # Plug in restristed fields.
-                cls.schema.dump_fields = {
-                    key: val
-                    for key, val in dump_fields.items()
-                    if key in only
-                }
+            # Concurrency support: new schema using instance dump_fields as reference
+            schema = cls.schema.__class__(many=many)
+            schema.dump_fields = {
+                key: val
+                for key, val in cls.schema.dump_fields.items()
+                if not only or key in only
+            }
 
             # SQLA result -> python dict
-            serialized = cls.schema.dump(data, many=many)
+            serialized = schema.dump(data)
             # Cleanup python dict
             serialized = remove_empty(serialized)
-            # Restore Schema to normal
-            cls.schema.dump_fields = dump_fields
             # python dict -> str
             return json.dumps(serialized, indent=config.INDENT)
 

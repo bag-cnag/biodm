@@ -103,7 +103,10 @@ class ResourceController(EntityController):
         self.svc: UnaryEntityService = self._infer_svc()(app=self.app, table=self.table)
         # Inst schema, and set registry entry for apispec.
         schema_cls = schema if schema else self._infer_schema()
-        self.__class__.schema = schema_cls(unknown=RAISE)
+        self.__class__.schema = schema_cls()
+        # This schema instance will contain dynamic modifications and serve as a reference
+        # for actual (de-)serialization operations.
+        # Moreover it is used for OpenAPI schema outputs.
         register_runtime_schema(schema_cls, self.__class__.schema)
         self._infuse_schema_in_apispec_docstrings()
 
@@ -478,9 +481,9 @@ class ResourceController(EntityController):
                     application/json:
                         schema: Schema
             204:
-                description: Empty Payload.
+                description: Empty Payload
             400:
-                description: Invalid Data.
+                description: Invalid Data
         """
         body = await self._extract_body(request)
         validated_data = self.validate(body, partial=True)
@@ -518,6 +521,8 @@ class ResourceController(EntityController):
                 content:
                     application/json:
                         schema: Schema
+            400:
+                description: Invalid Query
             404:
                 description: Not Found
         """

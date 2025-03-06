@@ -51,7 +51,6 @@ def update_runtime_schema(cls: Type[Schema], name: str, field: mf.Field) -> None
                 update(schema_field.inner.schema, name, field)
 
 
-
 class BDOpenApiConverter(OpenAPIConverter):
     def schema2parameters(
         self,

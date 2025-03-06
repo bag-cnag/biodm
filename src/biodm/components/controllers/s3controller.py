@@ -30,9 +30,6 @@ class S3Controller(ResourceController):
     ) -> None:
         # if not hasattr(app, 's3'):
         #     raise ImplementionError("S3 features demanded, but no configuration has been given.")
-
-        # An extra schema to validate complete_multipart input.
-        self.parts_etag_schema = PartsEtagSchema(many=True, partial=False, unknown=RAISE)
         super().__init__(app, entity, table, schema)
 
     def _infer_svc(self) -> Type[S3Service]:
@@ -116,9 +113,10 @@ class S3Controller(ResourceController):
             500:
                 description: S3 Bucket issue.
         """
-        flag = True
         try:
-            parts = self.parts_etag_schema.loads(await request.body())
+            parts = PartsEtagSchema(
+                many=True, partial=False, unknown=RAISE
+            ).loads(await request.body())
             await self.svc.complete_multipart(
                 pk_val=self._extract_pk_val(request),
                 parts=parts,

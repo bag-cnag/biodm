@@ -125,12 +125,14 @@ class S3Service(CompositeEntityService):
 
     @DatabaseManager.in_session
     async def _select(self, stmt: Select, session: AsyncSession) -> Base:
+        stmt.add_columns(self.table.__table__.columns['ready'])
         file: S3File = await super()._select(stmt, session=session)
         await self._check_partial_upload(file, session=session)
         return file
 
     @DatabaseManager.in_session
     async def _select_many(self, stmt: Select, session: AsyncSession) -> Base:
+        stmt.add_columns(self.table.__table__.columns['ready'])
         files: S3File = await super()._select_many(stmt, session=session)
         for file in files:
             await self._check_partial_upload(file, session=session)
