@@ -16,7 +16,6 @@ we will go over the following minimal example.
 
     import biodm as bd
     from biodm import config
-    from biodm.components import Schema
     from biodm.components.controllers import ResourceController, S3Controller
 
 
@@ -35,7 +34,7 @@ we will go over the following minimal example.
         dataset: sao.Mapped["Dataset"] = sao.relationship(back_populates="files", single_parent=True, foreign_keys=[dataset_id])
 
     # Schemas
-    class DatasetSchema(Schema):
+    class DatasetSchema(ma.Schema):
         id             = mf.Integer()
         version        = mf.Integer()
         name           = mf.String(required=True)
@@ -44,7 +43,7 @@ we will go over the following minimal example.
         owner          = mf.Nested("UserSchema")
         files          = mf.List(mf.Nested("FileSchema"))
 
-    class FileSchema(Schema):
+    class FileSchema(ma.Schema):
         id             = mf.Integer()
         filename       = mf.String(required=True)
         extension      = mf.String(required=True)

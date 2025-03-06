@@ -27,7 +27,6 @@ class RootController(Controller):
     """Bundles Routes located at the root of the app i.e. '/'."""
     def __init__(self, app: 'Api') -> None:
         super().__init__(app)
-        self.logout_schema = RefreshSchema(many=False, unknown=RAISE)
 
     def routes(self, **_):
         return [
@@ -235,7 +234,7 @@ class RootController(Controller):
         """
         body = await request.body()
         try:
-            token = self.logout_schema.loads(body)
+            token = RefreshSchema(many=False, unknown=RAISE).loads(body)
             # TODO [prio-low] - make shell method / delete all shell methods ?
             token = await self.app.kc.openid.a_refresh_token(token.get('refresh_token'))
             return json_response({
@@ -276,7 +275,7 @@ class RootController(Controller):
         """
         body = await request.body()
         try:
-            token = self.logout_schema.loads(body)
+            token = RefreshSchema(many=False, unknown=RAISE).loads(body)
             # TODO [prio-low] - make shell method / delete all shell methods ?
             await self.app.kc.openid.a_logout(token.get('refresh_token'))
             return PlainTextResponse('OK')

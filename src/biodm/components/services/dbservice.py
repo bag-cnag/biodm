@@ -1117,9 +1117,6 @@ class CompositeEntityService(UnaryEntityService):
         #    so it impacts performance.
         await session.flush()
         await session.refresh(item, rels.keys())
-        # if 'Dataset' in str(self):
-        #     x = await (await (getattr(item.awaitable_attrs, 'is_latest')))
-        #     pass
         return item
 
     # pylint: disable=arguments-differ

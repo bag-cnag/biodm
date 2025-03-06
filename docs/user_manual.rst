@@ -308,6 +308,26 @@ Following is an example using ``python``:
     concurrency library (such as ``concurrent.futures`` or ``multiprocessing`` in ``python``) in
     order to speed up that process, as parts can be uploaded in any order.
 
+Resume upload
+~~~~~~~~~~~~~
+
+In case the upload is interrupted, the server will keep track of uploaded chunks and set an ``etag``
+value on each upload part. Meaning you may upload missing chunks.
+
+Furthermore, you still shall send full completion notice, by aggregating new received etags, with
+the ones received from server.
+
+
+.. warning::
+
+    Partially uploaded files information is only guaranteed to be returned by the server when
+    directly fetching files resources (E.g. `/files`). It is so, from how nested resources are
+    loaded via sqlalchemy API. Moreover, the server has to query the bucket for each file that is
+    marked partial which is a costly operation.
+    A global gurantee may be supported in a future version, if
+    possible, but is not envisoned any time soon.
+
+
 * Download
 
 Calling ``GET /my_file_resources`` will only return associated metadata (and the upload form(s)
