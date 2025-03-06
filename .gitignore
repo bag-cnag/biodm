@@ -12,6 +12,7 @@ __pycache__/
 
 # Build artifacts
 build/
+_build/
 dist/
 *.egg-info/
 docs/biodm/
