@@ -1,0 +1,7 @@
+biodm.basics.k8scontroller module
+=================================
+
+.. automodule:: biodm.basics.k8scontroller
+   :members:
+   :undoc-members:
+   :show-inheritance:
