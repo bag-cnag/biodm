@@ -1,6 +1,6 @@
 # BioDM: A fast and RESTful Data Management framework
 
-<p align="center"><img src="logo.png" alt="logo" width="200"/></p>
+<p align="center"><img src="https://github.com/bag-cnag/biodm/blob/main/logo.png?raw=true" alt="logo" width="200"/></p>
 
 ---
 
