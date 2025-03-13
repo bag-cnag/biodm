@@ -346,22 +346,23 @@ class Versioned:
     version = Column(Integer, server_default='1', nullable=False, primary_key=True)
 
 
-def add_versioned_table_methods(tables: List[Type['Base']]) -> None:
+def add_versioned_table_methods() -> None:
     """Called after tables initialization to have access to aliased
         which is not the case during initialization."""
-    for table in tables:
-        if issubclass(table, Versioned):
+    for table in list(Base._sa_registry.mappers):
+        decl_class = table.entity
+        if issubclass(decl_class, Versioned):
             # is_latest - flag
-            alias = aliased(table)
-            agg = [k for k in table.pk if k != 'version']
+            alias = aliased(decl_class)
+            agg = [k for k in decl_class.pk if k != 'version']
 
-            inspect(table).add_property(
+            inspect(decl_class).add_property(
                 "is_latest",
                 column_property(
-                    table.version == (
+                    decl_class.version == (
                         select(func.max(alias.version))
-                        .where(*[getattr(alias, k) == getattr(table, k) for k in agg])
-                        .group_by(*[getattr(table, k) for k in agg])
+                        .where(*[getattr(alias, k) == getattr(decl_class, k) for k in agg])
+                        .group_by(*[getattr(alias, k) for k in agg])
                     ).scalar_subquery()
                 )
             )

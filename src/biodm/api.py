@@ -20,6 +20,7 @@ from sqlalchemy.exc import IntegrityError
 
 from biodm import Scope, config
 from biodm.basics import CORE_CONTROLLERS, K8sController
+from biodm.components.table import add_versioned_table_methods
 from biodm.components.k8smanifest import K8sManifest
 from biodm.managers import DatabaseManager, KeycloakManager, S3Manager, K8sManager
 from biodm.components.controllers import Controller
@@ -258,5 +259,6 @@ class Api(Starlette):
         - Reinitialize DB in DEBUG mode.
         """
         PermissionLookupTables.setup_permissions(self)
+        add_versioned_table_methods()
         if Scope.DEBUG in self.scope:
             await self.db.init_db()

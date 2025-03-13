@@ -4,9 +4,10 @@ import json
 from abc import abstractmethod
 from enum import StrEnum
 from io import BytesIO
-from typing import Any, Iterable, List, Dict, TYPE_CHECKING, Optional
+from typing import Any, Iterable, List, Dict, TYPE_CHECKING, Optional, Type
 
 from marshmallow.schema import Schema, RAISE
+from marshmallow.fields import Field
 from marshmallow.exceptions import ValidationError
 from sqlalchemy.exc import MissingGreenlet
 from starlette.requests import Request
@@ -16,7 +17,7 @@ import starlette.routing as sr
 from biodm import config
 from biodm.component import ApiComponent
 from biodm.exceptions import (
-    DataError, PayloadJSONDecodingError, AsyncDBError, SchemaError
+    DataError, PayloadJSONDecodingError, AsyncDBError, SchemaError, EndpointError
 )
 from biodm.utils.utils import json_response, remove_empty
 
@@ -88,6 +89,14 @@ class EntityController(Controller):
     """
     schema: Schema
 
+    @staticmethod
+    def _deserialize_with_error(field: Field, value: str, exc: Type[Exception]=EndpointError):
+        """Deserializes one value using one field raising exception in case of failure."""
+        try:
+            return field.deserialize(value)
+        except ValidationError as ve:
+            raise exc(json.dumps(ve.messages))
+
     @classmethod
     def validate(
         cls,
@@ -120,7 +129,7 @@ class EntityController(Controller):
             return schema.load(json_data)
 
         except ValidationError as ve:
-            raise DataError(str(ve.messages))
+            raise DataError(json.dumps(ve.messages))
 
         except json.JSONDecodeError as e:
             raise PayloadJSONDecodingError(cls.__name__) from e

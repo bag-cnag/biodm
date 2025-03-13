@@ -7,11 +7,9 @@ from inspect import getmembers, ismethod
 from types import MethodType
 from typing import TYPE_CHECKING, Callable, List, Set, Any, Dict, Type, Self
 
-from marshmallow import ValidationError
 from marshmallow.fields import Field, List, Nested, Date, DateTime, Number
-from marshmallow.schema import RAISE
 from marshmallow.class_registry import get_class
-from marshmallow.exceptions import RegistryError
+from marshmallow.exceptions import RegistryError, ValidationError
 from starlette.datastructures import QueryParams
 import starlette.routing as sr
 from starlette.requests import Request
@@ -255,9 +253,11 @@ class ResourceController(EntityController):
         :rtype: List[Any]
         """
         pk_val = [
-            self.table.col(k).type.python_type(
+            self._deserialize_with_error(
+                self.schema.load_fields[k],
                 request.path_params.get(k)
-            ) for k in self.table.pk
+            )
+            for k in self.table.pk
         ]
 
         if not pk_val:
@@ -357,12 +357,6 @@ class ResourceController(EntityController):
         :return: requested fields
         :rtype: Set[str]
         """
-        def deserialize_with_error(field: Field, value: str):
-            try:
-                return field.deserialize(value)
-            except ValidationError as ve:
-                raise QueryError(str(ve.messages))
-
         def check_is_numeric(field: Field, op: str, dskey: str):
             if not isinstance(field, (Number, Date, DateTime)):
                 raise QueryError(
@@ -428,7 +422,7 @@ class ResourceController(EntityController):
                     case [("gt" | "ge" | "lt" | "le") as op, arg]:
                         check_is_numeric(field, op, dskey)
                         params[dskey] = ValuedOperator(
-                            op=op, value=deserialize_with_error(field, arg)
+                            op=op, value=self._deserialize_with_error(field, arg, QueryError)
                         )
 
                     case [("min" | "max" | "min_a" | "max_a" | "min_v" | "max_v") as op, arg]:
@@ -447,10 +441,10 @@ class ResourceController(EntityController):
 
             # Deserialize value(s)
             if len(values) == 1:
-                params[dskey] = deserialize_with_error(field, values[0])
+                params[dskey] = self._deserialize_with_error(field, values[0], QueryError)
             else:
                 params[dskey] = [
-                    deserialize_with_error(field, value)
+                    self._deserialize_with_error(field, value, QueryError)
                     for value in values
                 ]
         return params

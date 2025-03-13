@@ -78,6 +78,7 @@ class ASchema(Schema):
 class BSchema(Schema):
     id = ma.fields.Integer()
     version = ma.fields.Integer()
+    is_latest = ma.fields.Boolean(dump_only=True)
 
     name = ma.fields.String()
 
@@ -92,6 +93,7 @@ class CSchema(Schema):
 class DSchema(Schema):
     id = ma.fields.Integer()
     version = ma.fields.Integer()
+    is_latest = ma.fields.Boolean(dump_only=True)
 
     info = ma.fields.String()
 

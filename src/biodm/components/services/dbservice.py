@@ -63,7 +63,7 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
             raise DataError(f"{self.table.__name__} missing the following: {missing}.")
 
         except SQLAlchemyError as se:
-            raise FailedCreate(str(se))
+            raise FailedCreate(str(se.orig))
 
     @DatabaseManager.in_session
     async def _insert_list(
@@ -879,23 +879,23 @@ class UnaryEntityService(DatabaseService):
             nf_svc = self._svc_from_rel_name(nf_key)
             nf_fields = nf_svc.table.pk | set(nf_conditions.keys())
             nf_conditions.update(propagate) # Take in special parameters.
+            rel = self.table.relationships[nf_key]
             nf_stmt = (
-                await nf_svc.filter(
-                    nf_fields,
-                    nf_conditions,
-                    stmt_only=True,
-                    user_info=user_info
-                )
+                await nf_svc.filter(nf_fields, nf_conditions, stmt_only=True, user_info=user_info)
             ).subquery()
 
-            stmt = stmt.join_from(
-                self.table,
-                nf_stmt,
-                onclause=unevalled_all([
-                    getattr(self.table, local.name) == getattr(nf_stmt.columns, remote.name)
-                    for local, remote in self.table.relationships[nf_key].local_remote_pairs
-                ])
-            )
+            if rel.secondary is not None:
+                stmt = stmt.join(rel.secondary)
+                stmt = stmt.join_from(rel.secondary, nf_stmt)
+            else:
+                stmt = stmt.join_from(
+                    self.table,
+                    nf_stmt,
+                    onclause=unevalled_all([
+                        getattr(self.table, local.name) == getattr(nf_stmt.columns, remote.name)
+                        for local, remote in self.table.relationships[nf_key].local_remote_pairs
+                    ])
+                )
 
         # if exclude:
         #     stmt = select(self.table.not_in(stmt))
@@ -909,6 +909,11 @@ class UnaryEntityService(DatabaseService):
 
         # Apply limit/offset
         stmt = stmt.offset(offset).limit(limit)
+        # Oder by pk
+        stmt = stmt.order_by(*[
+            getattr(self.table.__table__.columns, k)
+            for k in self.table.pk
+        ])
         # stmt = stmt.slice(offset-1, limit-1) # TODO [prio-low] investigate
         return stmt if stmt_only else await self._select_many(stmt, **kwargs)
 
