@@ -117,12 +117,6 @@ class KeycloakManager(ApiManager):
             ]
         return payload
 
-    def _group_data_to_payload(self, data: Dict[str, Any]):
-        return {
-            field: data.get(field, "")
-            for field in ("name", "name_parent")
-        }
-
     async def create_user(self, data: Dict[str, Any], groups: List[str], user_info: UserInfo) -> str:
         payload = self._user_data_to_payload(data)
         payload.update({
@@ -136,11 +130,6 @@ class KeycloakManager(ApiManager):
             return await user_info.keycloak_admin.a_create_user(payload) # , exist_ok=True
         except KeycloakError:
             return None
-        # except KeycloakError as e:
-        #     raise FailedCreate(
-        #         "Could not create Keycloak Group with data: "
-        #         f"{payload} -- msg: {e.error_message}"
-        #     ) from e
 
     async def update_user(self, user_id: str, data: Dict[str, Any], user_info: UserInfo):
         """Update user."""
@@ -148,11 +137,6 @@ class KeycloakManager(ApiManager):
             return await user_info.keycloak_admin.a_update_user(user_id=user_id, payload=data)
         except KeycloakError:
             return None
-        # except KeycloakError as e:
-        #     raise FailedUpdate(
-        #         "Could not update Keycloak "
-        #         f"User(id={user_id}) with data: {data} -- msg: {e.error_message}."
-        #     ) from e
 
     async def delete_user(self, user_id: str, user_info: UserInfo) -> None:
         """Delete user with this id."""
@@ -173,12 +157,6 @@ class KeycloakManager(ApiManager):
             )
         except KeycloakError:
             return None
-        #       skip_exists=True
-        # except KeycloakError as e:
-        #     raise FailedCreate(
-        #         "Could not create Keycloak Group with data: "
-        #         f"name={name}, parent={parent} -- msg: {e.error_message}"
-        #     ) from e
 
     async def update_group(self, group_id: str, data: Dict[str, Any], user_info: UserInfo):
         """Update group."""
@@ -186,11 +164,6 @@ class KeycloakManager(ApiManager):
             return await user_info.keycloak_admin.a_update_group(group_id=group_id, payload=data)
         except KeycloakError:
             return None
-        # except KeycloakError as e:
-        #     raise FailedUpdate(
-        #         "Could not update Keycloak "
-        #         f"Group(id={group_id}) with data: {data} -- msg: {e.error_message}."
-        #     ) from e
 
     async def delete_group(self, user_id: str, user_info: UserInfo):
         """Delete group with this id."""
@@ -208,17 +181,15 @@ class KeycloakManager(ApiManager):
             return await user_info.keycloak_admin.a_group_user_add(user_id, group_id)
         except KeycloakError:
             return None
-        # except KeycloakError as e:
-        #     raise FailedCreate(
-        #         "Keycloak failed adding "
-        #         f"User(id={user_id}) to Group(id={group_id}): {e.error_message}"
-        #     ) from e
 
     async def get_user_groups(self, user_id: str, user_info: UserInfo):
         return await user_info.keycloak_admin.a_get_user_groups(user_id)
 
     async def get_group(self, id: str, user_info: UserInfo):
         return await user_info.keycloak_admin.a_get_group(id)
+
+    async def get_groups(self, user_info: UserInfo):
+        return await user_info.keycloak_admin.a_get_groups(full_hierarchy=True)
 
     async def get_group_by_name(self, name: str, user_info: UserInfo):
         try:
@@ -238,6 +209,12 @@ class KeycloakManager(ApiManager):
             return response
         except (KeycloakGetError, KeycloakAuthenticationError):
             return None
+
+    async def get_users(self, user_info: UserInfo):
+        try:
+            return await user_info.keycloak_admin.a_get_users()
+        except KeycloakGetError:
+            return []
 
     async def get_user_by_username(self, username: str, user_info: UserInfo):
         try:

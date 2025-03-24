@@ -305,8 +305,6 @@ class RootController(Controller):
                     application/json:
                         schema: ErrorSchema
         """
-        # await bt.User.svc.import_all()
-
-        await bt.Group.svc.import_all(user_info=request.user)
-        # TODO: implement.
+        await bt.Group.svc.sync_all(user_info=request.user)
+        await bt.User.svc.sync_all(user_info=request.user)
         return PlainTextResponse('OK')

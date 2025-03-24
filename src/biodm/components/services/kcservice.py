@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from biodm.components import Base
-from biodm.exceptions import DataError
+from biodm.exceptions import DataError, UnauthorizedError
 from biodm.managers import KeycloakManager, DatabaseManager
 from biodm.tables import Group, User
 from biodm.utils.security import UserInfo
@@ -21,24 +21,22 @@ class KCService(CompositeEntityService):
         """Return KCManager instance."""
         return cls.app.kc
 
-    # @DatabaseManager.in_session
-    # async def _insert(
-    #     self,
-    #     stmt: UpsertStmtValuesHolder,
-    #     user_info: UserInfo | None,
-    #     session: AsyncSession
-    # ) -> Base:
-    #     """INSERT one object into the DB, check token write permissions before commit."""
-    #     await self._check_permissions("write", user_info, stmt)
-    #     try:
-    #         item = await session.scalar(stmt.to_stmt(self))
-    #         if item:
-    #             return item
-
-    #         missing = self.table.required - stmt.keys()
-    #         raise DataError(f"{self.table.__name__} missing the following: {missing}.")
-    #     except:
-    # TODO: [prio-high] catch missing = 'id' case, that indicates resource couldn't be created on keycloak -> unsuficiently priviledge token.
+    @DatabaseManager.in_session
+    async def _insert(
+        self,
+        stmt: UpsertStmtValuesHolder,
+        user_info: UserInfo | None,
+        session: AsyncSession
+    ) -> Base:
+        """INSERT one object into the DB, check token write permissions before commit."""
+        try:
+            return await super()._insert(stmt, user_info=user_info, session=session)
+        except DataError as de:
+            if "missing the following: {'id'}." in de.detail:
+                raise UnauthorizedError(
+                    "Missing keykloak privileges to create an entity "
+                    "that does not exist locally"
+                )
 
     @abstractmethod
     async def _update(self, remote_id: str, data: Dict[str, Any], user_info: UserInfo):
@@ -46,7 +44,7 @@ class KCService(CompositeEntityService):
         raise NotImplementedError
 
     @abstractmethod
-    async def import_all(self) -> None:
+    async def sync_all(self, user_info: UserInfo) -> None:
         """Import all entities of that type from keycloak."""
         raise NotImplementedError
 
@@ -87,8 +85,34 @@ class KCGroupService(KCService):
         """Compute keycloak path from api path."""
         return Path("/" + path.replace("__", "/"))
 
-    async def import_all(self, user_info: UserInfo) -> None:
-        raise NotImplementedError
+    @staticmethod
+    def dbpath(path) -> str:
+        """Compute api path from keycloak path"""
+        return path[1:].replace('/', '__')
+
+    async def sync_all(self, user_info: UserInfo) -> None:
+        def parse_one(one):
+            entry = { # extract
+                "id": one['id'],
+                "path": self.dbpath(one['path']),
+            }
+            children = []
+
+            for sub in to_it(one['subGroups']): # recurse
+                children.append(parse_one(sub))
+
+            if children:
+                entry["children"] = children
+
+            return entry
+
+        groups = await self.kc.get_groups(user_info=user_info)
+
+        data = []
+        for one in to_it(groups):
+            data.append(parse_one(one))
+
+        return await super().write(data, stmt_only=False, user_info=user_info)
 
     async def _update(self, remote_id: str, data: Dict[str, Any], user_info: UserInfo):
         return await self.kc.update_group(group_id=remote_id, data=data, user_info=user_info)
@@ -164,9 +188,33 @@ class KCGroupService(KCService):
 
 
 class KCUserService(KCService):
-    async def import_all(self) -> None:
-        """Import all entities of that type from keycloak."""
-        raise NotImplementedError
+    async def sync_all(self, user_info: UserInfo) -> None:
+        """Import all entities of that type from keycloak.
+        Assumes that the equivalent method of KCGroupService has been called prior.
+        """
+        users = await self.kc.get_users(user_info=user_info)
+
+        data = []
+        for one in to_it(users):
+            groups = await self.kc.get_user_groups(one['id'], user_info=user_info)
+
+            user = {
+                "id": one["id"],
+                "username": one["username"]
+            }
+            for prop in ("firstName", "lastName", "email"):
+                if hasattr(one, prop):
+                    user[prop] = one[prop]
+
+            groups_prop = []
+            for group in groups:
+                groups_prop.append({"path": KCGroupService.dbpath(group['path'])})
+
+            if groups_prop:
+                user["groups"] = groups_prop
+
+            data.append(user)
+        await super().write(data, stmt_only=False, user_info=user_info)
 
     async def _update(self, remote_id: str, data: Dict[str, Any], user_info: UserInfo):
         return await self.kc.update_user(user_id=remote_id, data=data, user_info=user_info)

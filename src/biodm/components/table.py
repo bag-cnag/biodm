@@ -11,7 +11,6 @@ from marshmallow.orderedset import OrderedSet
 from sqlalchemy import (
     BOOLEAN, Integer, func, inspect, Column, String, TIMESTAMP, ForeignKey, BigInteger, select
 )
-from sqlalchemy import and_
 from sqlalchemy.ext.asyncio import AsyncAttrs, AsyncSession
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -21,7 +20,7 @@ from sqlalchemy.orm import (
 )
 
 from biodm import config
-from biodm.utils.sqla import get_max_id, Operator
+from biodm.utils.sqla import get_max_id
 from biodm.utils.utils import utcnow, classproperty
 
 
@@ -349,9 +348,9 @@ class Versioned:
 def add_versioned_table_methods() -> None:
     """Called after tables initialization to have access to aliased
         which is not the case during initialization."""
-    for table in list(Base._sa_registry.mappers):
+    for table in set(Base._sa_registry.mappers):
         decl_class = table.entity
-        if issubclass(decl_class, Versioned):
+        if issubclass(decl_class, Versioned) and not hasattr(decl_class, 'is_latest'):
             # is_latest - flag
             alias = aliased(decl_class)
             agg = [k for k in decl_class.pk if k != 'version']
