@@ -21,6 +21,7 @@ from biodm.exceptions import (
 )
 from biodm.utils.utils import json_response, remove_empty
 
+
 if TYPE_CHECKING:
     from biodm.component import Base
 
@@ -152,13 +153,7 @@ class EntityController(Controller):
         """
         try:
             # Concurrency support: new schema using instance dump_fields as reference
-            schema = cls.schema.__class__(many=many)
-            schema.dump_fields = {
-                key: val
-                for key, val in cls.schema.dump_fields.items()
-                if not only or key in only
-            }
-
+            schema = cls.schema.__class__(many=many, only=only)
             # SQLA result -> python dict
             serialized = schema.dump(data)
             # Cleanup python dict

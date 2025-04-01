@@ -1,5 +1,5 @@
 """BioDM framework."""
-__version__ = '0.9.0'
+__version__ = '0.9.1'
 __version_info__ = ([int(num) for num in __version__.split('.')])
 
 

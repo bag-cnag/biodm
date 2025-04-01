@@ -4,7 +4,7 @@ from typing import Callable, List, Sequence, Any, Dict, overload, Literal, Type,
 from uuid import uuid4
 
 from marshmallow.orderedset import OrderedSet
-from sqlalchemy import Column, select, delete, or_, func, literal
+from sqlalchemy import Column, select, or_, func, literal
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -16,7 +16,7 @@ from biodm import config
 from biodm.component import ApiService
 from biodm.components import Base
 from biodm.exceptions import (
-    DataError, EndpointError, FailedCreate, FailedRead, FailedDelete,
+    DataError, EndpointError, FailedCreate, FailedRead,
     ImplementionError, ReleaseVersionError, UpdateVersionedError, UnauthorizedError
 )
 from biodm.managers import DatabaseManager
@@ -96,13 +96,6 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
             .unique()
         ).all()
         return items
-
-    @DatabaseManager.in_session
-    async def _delete(self, stmt: Delete, session: AsyncSession) -> None:
-        """DELETE one row."""
-        result = await session.execute(stmt)
-        if result.rowcount == 0:
-            raise FailedDelete("Query deleted no rows.")
 
     @DatabaseManager.in_session
     async def populate_ids_sqlite(
@@ -928,8 +921,9 @@ class UnaryEntityService(DatabaseService):
         await self._check_permissions(
             "write", user_info, dict(zip(self.pk, pk_val)), session=session
         )
-        stmt = delete(self.table).where(self.gen_cond(pk_val))
-        await self._delete(stmt, session=session)
+        fields = self.table.pk
+        item = await self.read(pk_val=pk_val, fields=fields, session=session)
+        await session.delete(item)
 
     @DatabaseManager.in_session
     async def release(

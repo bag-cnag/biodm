@@ -743,16 +743,12 @@ class ResourceController(EntityController):
         params = self._extract_query_params(request.query_params)
         fields = self._extract_fields(params, user_info=request.user)
 
-        ser_fields = []
-        for f in fields:
-            ser_fields.append(f.split('.')[0])
-
         count = bool(params.pop('count', 0))
         result = await self.svc.filter(
             fields=fields,
             params=params,
             user_info=request.user,
-            serializer=partial(self.serialize, many=True, only=ser_fields),
+            serializer=partial(self.serialize, many=True, only=fields),
         )
 
         # Prepare response object.

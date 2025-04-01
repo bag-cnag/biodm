@@ -35,6 +35,7 @@ def update_runtime_schema(cls: Type[Schema], name: str, field: mf.Field) -> None
         inst.fields.update({name: field})
         inst.load_fields.update({name: field})
         inst.dump_fields.update({name: field})
+        inst.__class__._declared_fields.update({name: field})
 
     update(_runtime_schema_registry[cls], name, field)
     for schema_instance in _runtime_schema_registry.values():
