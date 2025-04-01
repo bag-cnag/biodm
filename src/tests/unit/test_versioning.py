@@ -169,3 +169,17 @@ def test_release_twice(client):
         f"/ds/{res_item['id']}_{res_item['version']}/release",
         content=json_bytes(release_item)
     )
+
+def test_create_versioned_resource(client):
+    """"""
+    item = {"name": "ver_test_latest"}
+    response = client.post('/bs', content=json_bytes(item))
+
+    assert response.status_code == 201
+
+    json_response = json.loads(response.text)
+
+    assert json_response['version'] == 1
+    assert json_response['name'] == item['name']
+    assert json_response['is_latest'] == True
+    # TODO: expand on this test (release once, query both, try out is_latest).

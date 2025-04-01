@@ -35,6 +35,7 @@ def update_runtime_schema(cls: Type[Schema], name: str, field: mf.Field) -> None
         inst.fields.update({name: field})
         inst.load_fields.update({name: field})
         inst.dump_fields.update({name: field})
+        inst.__class__._declared_fields.update({name: field})
 
     update(_runtime_schema_registry[cls], name, field)
     for schema_instance in _runtime_schema_registry.values():
@@ -52,6 +53,12 @@ def update_runtime_schema(cls: Type[Schema], name: str, field: mf.Field) -> None
 
 
 class BDOpenApiConverter(OpenAPIConverter):
+    def schema2jsonschema(self, schema):
+        """Sets additionalProperties to false."""
+        jsonschema = super().schema2jsonschema(schema)
+        jsonschema["additionalProperties"] = False
+        return jsonschema
+
     def schema2parameters(
         self,
         schema,
@@ -147,7 +154,7 @@ class BDMarshmallowPlugin(MarshmallowPlugin):
 def replace_docstrings_pattern(
     apispec: List[str],
     pattern=Tuple[str],
-    blocks=List[List[str]]
+    blocks=List[List[str]],
 ) -> List[str]:
     """Takes a 2 line pattern and replace it by lines in block, matching indentation."""
     # pylint: disable=consider-using-enumerate

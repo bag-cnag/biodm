@@ -1,3 +1,4 @@
+import json
 from typing import List, Type
 
 from marshmallow import RAISE, ValidationError, Schema
@@ -123,4 +124,4 @@ class S3Controller(ResourceController):
             )
             return json_response("Completed.", status_code=201)
         except ValidationError as ve:
-            raise DataError(str(ve.messages))
+            raise DataError(json.dumps(ve.messages))
