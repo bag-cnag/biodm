@@ -154,7 +154,7 @@ class Api(Starlette):
             )
         )
         self.apispec.spec.components.security_scheme(security_scheme, {
-            "type": "http", # TODO: [prod] https
+            "type": config.SERVER_SCHEME.split('://')[0],
             "name": security_scheme.lower(),
             "in": "header",
             "scheme": "bearer",
