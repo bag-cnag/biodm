@@ -5,7 +5,7 @@ from inspect import getfullargspec
 import logging
 import logging.config
 from time import sleep
-from typing import Callable, List, Optional, Dict, Any, Type
+from typing import Callable, List, Literal, Optional, Dict, Any, Type
 
 from apispec import APISpec
 from starlette_apispec import APISpecSchemaGenerator
@@ -105,11 +105,15 @@ class Api(Starlette):
         self,
         controllers: Optional[List[Type[Controller]]],
         *args,
+        scheme: Literal['http'] | Literal['https'] = 'http',
         manifests: Optional[List[Type[K8sManifest]]] = None,
         debug: bool=False,
         test: bool=False,
         **kwargs,
     ) -> None:
+        # Scheme
+        self.scheme = scheme
+
         # Set runtime flag.
         self.scope = Scope.PROD
         self.scope |= Scope.DEBUG if debug else self.scope
@@ -154,7 +158,7 @@ class Api(Starlette):
             )
         )
         self.apispec.spec.components.security_scheme(security_scheme, {
-            "type": "http", # TODO: [prod] https
+            "type": "http",
             "name": security_scheme.lower(),
             "in": "header",
             "scheme": "bearer",
@@ -192,7 +196,7 @@ class Api(Starlette):
     @property
     def server_endpoint(self) -> str:
         """Server address, useful to compute callbacks."""
-        return f"{config.SERVER_SCHEME}{config.SERVER_HOST}:{config.SERVER_PORT}/"
+        return f"{self.scheme}://{config.SERVER_HOST}:{config.SERVER_PORT}/"
 
     def _parse_config(self, prefix: str) -> Dict[str, Any]:
         """Returns config elements starting by prefix.
