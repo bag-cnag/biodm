@@ -72,15 +72,14 @@ class RootController(Controller):
             indent=config.INDENT
         ), status_code=200)
 
-    @staticmethod
-    def handshake() -> str:
+    def handshake(self) -> str:
         """Login handshake function.
 
         :return: Syn_Ack url
         :rtype: str
         """
         return (
-            f"{config.SERVER_SCHEME}{config.SERVER_HOST}:"
+            f"{self.app.scheme}://{config.SERVER_HOST}:"
             f"{config.SERVER_PORT}/syn_ack"
         )
 
