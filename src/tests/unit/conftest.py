@@ -9,7 +9,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from starlette.testclient import TestClient
 
 from biodm.api import Api
-from biodm.components import Base, Versioned #, Schema
+from biodm.components import Base, Versioned, StrictVersioned #, Schema
 from biodm.components.controllers import ResourceController
 
 # SQLAlchemy
@@ -46,7 +46,7 @@ class A(Base):
     c:     Mapped["C"] = relationship(foreign_keys=[id_c], backref="ca", lazy="joined")
 
 
-class B(Versioned, Base):
+class B(StrictVersioned, Base):
     id = sa.Column(sa.Integer, primary_key=True)
     name = sa.Column(sa.String, nullable=False)
 

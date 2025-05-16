@@ -87,7 +87,19 @@ class S3Manager(ApiManager):
         except ClientError as e:
             raise ManagerError(str(e))
 
-    def create_upload_part(self, object_name, upload_id, part_number):
+    def create_upload_part(self, object_name: str, upload_id: str, part_number: int) -> str:
+        """Create one upload part for a multipart upload
+
+        :param object_name: object key
+        :type object_name: str
+        :param upload_id: multipart upload id
+        :type upload_id: str
+        :param part_number: part number
+        :type part_number: int
+        :raises ManagerError: on error
+        :return: A presigned url for this part
+        :rtype: str
+        """
         try:
             return self.s3_client.generate_presigned_url(
                     'upload_part',
@@ -138,12 +150,25 @@ class S3Manager(ApiManager):
             else:
                 raise ManagerError(str(e.response['Error']))
 
-    def list_multipart_parts(self, object_name: str, upload_id: str) -> Dict[str, str]:
+    def list_multipart_parts(self, object_name: str, upload_id: str, part_marker: int=0) -> Dict[str, Any]:
+        """List parts of a multipart upload
+
+        :param object_name: object key
+        :type object_name: str
+        :param upload_id: multipart upload id
+        :type upload_id: str
+        :param part_marker: PartNumberMarker - start of the parts number to return, defaults to 0
+        :type part_marker: int, optional
+        :raises ManagerError: on errors
+        :return: call result, a dictionary containing a 'Parts' key
+        :rtype: Dict[str, Any]
+        """
         try:
             return self.s3_client.list_parts(
                 Bucket=self.bucket_name,
                 Key=object_name,
                 UploadId=upload_id,
+                PartNumberMarker=part_marker
             )
 
         except ClientError as e:

@@ -50,6 +50,7 @@ class Utils:
                 parts_etags.append({'PartNumber': part['part_number'], 'ETag': etag})
         return parts_etags
 
+
 @pytest.fixture
 def utils():
     return Utils

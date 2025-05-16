@@ -2,7 +2,7 @@ import pytest
 import json
 
 from biodm import exceptions as exc
-from biodm.utils.utils import json_bytes
+from biodm.utils.utils import json_bytes, json_response
 
 
 def test_create_versioned_resource(client):
@@ -48,7 +48,7 @@ def test_release_version(client):
 
 
 @pytest.mark.xfail(raises=exc.UpdateVersionedError)
-def test_no_update_version_resource_through_write(client):
+def test_no_update_strictversioned_resource_through_write(client):
     item = {'name': '1234'}
 
     response = client.post('/bs', content=json_bytes(item))
@@ -58,6 +58,21 @@ def test_no_update_version_resource_through_write(client):
     update = {'id': item_res['id'], 'version': item_res['version'], 'name': '4321'}
     response = client.post('/bs', content=json_bytes(update))
     assert response.status_code == 409
+
+
+def test_update_version_resource_through_write(client):
+    item = {'info': '1234'}
+
+    response = client.post('/ds', content=json_bytes(item))
+    assert response.status_code == 201
+    item_res = json.loads(response.text)
+
+    update = {'id': item_res['id'], 'version': item_res['version'], 'info': '4321'}
+    response = client.post('/ds', content=json_bytes(update))
+    json_response = json.loads(response.text)
+
+    assert response.status_code == 201
+    assert json_response['info'] == update['info']
 
 
 def test_update_nested_resource_through_versioned_resource(client):
