@@ -34,6 +34,8 @@ if __name__ == "__main__":
         host=config.SERVER_HOST,
         port=config.SERVER_PORT,
         loop=loop,
+        proxy_headers=True,
+        forwarded_allow_ips='*',
         log_level="debug", # or "info"
         access_log=False
     )

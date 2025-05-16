@@ -81,3 +81,4 @@ introduce the toolkit:
     doc_endpoints
     advanced_use
     k8manifests
+    production

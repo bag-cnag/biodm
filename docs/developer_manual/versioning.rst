@@ -1,13 +1,14 @@
 Versioning
 ==========
 
-``BioDM`` allows to decorate some tables with a ``Versioned`` superclass populating an extra
+``BioDM`` allows to decorate some tables with a ``Versioned`` mixin class populating an extra
 ``version`` field in the ``primary_key``.
 
-Subsequently entities stored in this table are made read-only.
+A versioned entity gets an extra ``/release`` endpoint allowing to bump the version number,
+which is not editable via classical updates like all primary key fields.
 
-Any Update shall go through release special method which creates a new row
-while incrementing the version counter by one and applying possible updates.
+Other fields remain editable, to make versioned entities `read-only` you may use another mixin:
+``StrictVersioned`` which shall raise errors upon updating associated entities.
 
 Deep clones
 -----------

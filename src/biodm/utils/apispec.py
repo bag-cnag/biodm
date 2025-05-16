@@ -97,13 +97,13 @@ class BDOpenApiConverter(OpenAPIConverter):
                 new_schema = {
                     'type': 'array',
                     'items': schema,
-                    'explode': 'false'
+                    'explode': False
                 }
                 param['schema'] = new_schema
 
             # Propagate required=false to allow for empty query
             if not required:
-                param['required'] = "false"
+                param['required'] = False
             return param
 
         return [

@@ -11,7 +11,7 @@ from biodm.components.controllers import Controller, HttpMethod
 from biodm.utils.security import group_required, login_required
 from biodm.utils.utils import json_response
 from biodm.routing import Route, PublicRoute
-from biodm.exceptions import DataError
+from biodm.exceptions import DataError, UnauthorizedError
 from biodm.schemas import RefreshSchema
 
 from biodm import tables as bt
@@ -72,15 +72,14 @@ class RootController(Controller):
             indent=config.INDENT
         ), status_code=200)
 
-    @staticmethod
-    def handshake() -> str:
+    def handshake(self) -> str:
         """Login handshake function.
 
         :return: Syn_Ack url
         :rtype: str
         """
         return (
-            f"{config.SERVER_SCHEME}{config.SERVER_HOST}:"
+            f"{self.app.scheme}://{config.SERVER_HOST}:"
             f"{config.SERVER_PORT}/syn_ack"
         )
 
@@ -226,7 +225,7 @@ class RootController(Controller):
                                 refresh_token:
                                     type: string
                                     description: Refresh token
-            400:
+            511:
                 description: Missing or Invalid Refresh token
                 content:
                     application/json:
@@ -244,10 +243,10 @@ class RootController(Controller):
             }, 200)
 
         except ValidationError:
-            raise DataError("Refresh token missing.")
+            raise UnauthorizedError("Refresh token missing.")
 
         except KeycloakError:
-            raise DataError("Invalid refresh token.")
+            raise UnauthorizedError("Invalid refresh token.")
 
     async def logout(self, request: Request) -> Response:
         """Sends token session termination message to keycloak.

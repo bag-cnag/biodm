@@ -446,9 +446,9 @@ class UnaryEntityService(DatabaseService):
                 data['submitter_username'] = user_info.display_name
 
             elif all(k in pending_keys for k in self.table.pk): # pk present: UPDATE.
-                if (data.keys() - self.table.pk) and self.table.is_versioned:
+                if (data.keys() - self.table.pk) and self.table.is_strict_versioned:
                     raise UpdateVersionedError(
-                        "Attempt at updating versioned resources detected"
+                        "Attempt at updating stricly versioned resources detected"
                     )
 
             else:

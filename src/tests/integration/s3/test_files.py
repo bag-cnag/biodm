@@ -210,7 +210,7 @@ def test_download_large_file(srv_endpoint, tmp_path):
 
 
 @pytest.mark.dependency(name="test_upload_large_file")
-def test_create_updload_and_complete_undersized_file(srv_endpoint, utils):
+def test_create_upload_and_complete_undersized_file(srv_endpoint, utils):
     big_file = {
         "filename": big_file_path.name.split('.')[0] + "_us2",
         "extension": big_file_path.name.split('.')[1],

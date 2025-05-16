@@ -123,6 +123,10 @@ class Base(DeclarativeBase, AsyncAttrs):
         return issubclass(cls, Versioned)
 
     @classproperty
+    def is_strict_versioned(cls) -> bool:
+        return issubclass(cls, StrictVersioned)
+
+    @classproperty
     def required(cls) -> Set[str]:
         """Gets all required fields to create a new entry in this table.
 
@@ -337,12 +341,20 @@ class S3File:
 
 
 class Versioned:
-    """Versioned entity parent class.
+    """Versioned entity mixin class.
 
     - Populates version as primary_key column
-    - Disable /update, enable /release
+    - Enable /release
     """
     version = Column(Integer, server_default='1', nullable=False, primary_key=True)
+
+
+class StrictVersioned(Versioned):
+    """StrictVersioned entity mixin class.
+
+    - Disable update via other means than release
+    """
+    pass
 
 
 def add_versioned_table_methods() -> None:

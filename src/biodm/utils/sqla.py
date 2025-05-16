@@ -80,7 +80,7 @@ class UpsertStmtValuesHolder(dict):
         stmt = stmt.values(**self)
         stmt = stmt.returning(svc.table)
 
-        if not svc.table.is_versioned:
+        if not svc.table.is_strict_versioned:
             if set_: # upsert
                 stmt = stmt.on_conflict_do_update(index_elements=pk, set_=set_)
                 stmt = stmt.returning(svc.table)

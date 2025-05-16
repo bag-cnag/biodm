@@ -5,9 +5,12 @@ from typing import List, Any, Sequence, Dict
 
 from sqlalchemy import Insert, Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from biodm.components.table import Base, S3File
-from biodm.exceptions import FileNotUploadedError, FileTooLargeError, ReleaseVersionError
+from biodm.exceptions import (
+    FileNotUploadedError, FileTooLargeError, ReleaseVersionError, ManagerError
+)
 from biodm.managers import DatabaseManager, S3Manager
 from biodm.tables import Upload, UploadPart
 from biodm.utils.utils import utcnow, classproperty
@@ -114,18 +117,59 @@ class S3Service(CompositeEntityService):
     async def _check_partial_upload(self, file: S3File, session: AsyncSession):
         """Query the bucket to check what parts have been uploaded. Populates etags."""
         if not await getattr(file.awaitable_attrs, 'ready'):
-            completed_parts = self.s3.list_multipart_parts(
-                await self.gen_key(file, session=session),
-                file.upload.s3_uploadId
-            )
-            for completed in completed_parts['Parts']:
+            key = await self.gen_key(file, session=session)
+
+            # Query bucket
+            try:
+                query = self.s3.list_multipart_parts(key, file.upload.s3_uploadId)
+                completed_parts = query.get('Parts', None)
+                if completed_parts is None:
+                    raise Exception
+
+                # Handle files > 1000 chunks:
+                # -> https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_parts.html
+                while query.get('IsTruncated', False):
+                    query = self.s3.list_multipart_parts(
+                        key, file.upload.s3_uploadId, part_marker=query.get('NextPartNumberMarker')
+                    )
+                    completed_parts = completed_parts.extend(query.get('Parts', []))
+
                 for upart in file.upload.parts:
-                    if upart.part_number == completed['PartNumber']:
-                        upart.etag = completed['ETag'].strip('"')
+                    completed_part = next(( # Search and remove this part number from completed parts.
+                        completed_parts.pop(i)
+                        for i, p in enumerate(completed_parts)
+                        if p.get('PartNumber', None) == upart.part_number
+                    ), None)
+
+                    if upart.etag: # Part already visited
+                        continue
+                    elif completed_part: # Not visited, but now completed: visit (store etag).
+                        upart.etag = completed_part['ETag'].strip('"')
+                    else: # Else, regenerate a pre-signed url for that part
+                        upart.form = str(
+                            self.s3.create_upload_part(
+                                object_name=key,
+                                upload_id=file.upload.s3_uploadId,
+                                part_number=upart.part_number
+                            )
+                        )
+
+            except: # Generate a new form.
+                try:
+                    self.s3.abort_multipart_upload(
+                        object_name=key,
+                        upload_id=file.upload.s3_uploadId
+                    )
+                except ManagerError as _:
+                    pass
+                finally:
+                    await self.gen_upload_form(file, session=session)
 
     @DatabaseManager.in_session
     async def _select(self, stmt: Select, session: AsyncSession) -> Base:
         stmt.add_columns(self.table.__table__.columns['ready'])
+        stmt.options(joinedload(getattr(self.table, 'upload')).load_only(Upload.s3_uploadId))
+
         file: S3File = await super()._select(stmt, session=session)
         await self._check_partial_upload(file, session=session)
         return file
@@ -133,6 +177,8 @@ class S3Service(CompositeEntityService):
     @DatabaseManager.in_session
     async def _select_many(self, stmt: Select, session: AsyncSession) -> Base:
         stmt.add_columns(self.table.__table__.columns['ready'])
+        stmt.options(joinedload(getattr(self.table, 'upload')).load_only(Upload.s3_uploadId))
+
         files: S3File = await super()._select_many(stmt, session=session)
         for file in files:
             await self._check_partial_upload(file, session=session)
@@ -156,7 +202,7 @@ class S3Service(CompositeEntityService):
         upload_id = await getattr(upload.awaitable_attrs, 's3_uploadId')
 
         complete = self.s3.complete_multipart_upload(
-            object_name=await self.gen_key(file, session=session),
+            object_name=(await self.gen_key(file, session=session)),
             upload_id=upload_id,
             parts=parts
         )
@@ -166,7 +212,6 @@ class S3Service(CompositeEntityService):
         ):
             # TODO: think about what happens to file/upload. use: abort_multipart_upload ?
             raise FileNotUploadedError("Multipart upload failed: cancelled")
-
         file.validated_at = utcnow()
         file.ready = True
         file.upload_id, file.upload = None, None
