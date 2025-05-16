@@ -1,0 +1,7 @@
+biodm.routing module
+====================
+
+.. automodule:: biodm.routing
+   :members:
+   :undoc-members:
+   :show-inheritance:
