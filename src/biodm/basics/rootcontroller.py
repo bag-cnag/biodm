@@ -77,10 +77,10 @@ class RootController(Controller):
         """swagger-ui html page
 
         ---
-        description: Returns full API schema
+        description: Returns html page for swagger-ui
         responses:
             200:
-                description: OpenAPIv3 schema
+                description: swagger-ui webpage
         """
         # https://swagger.io/docs/open-source-tools/swagger-ui/usage/installation/#unpkg
         schema = await self.openapi_schema(_)
