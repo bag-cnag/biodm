@@ -80,8 +80,11 @@ cd src/example/
 python3 src/example/app.py
 ```
 
-This stack comes with an interactive ``swagger-ui`` visitable at ``http://localhost:9080/``
-once the server is running.
+
+Visiting the `/swagger` route from a browser will open an interactive `swagger-ui` page.
+
+
+### Further steps
 
 To use kubernetes functionalities or tweak default configuration you should visit
 [getting started](https://bag-cnag.github.io/biodm) section of the documentation.

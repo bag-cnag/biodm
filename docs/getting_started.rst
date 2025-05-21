@@ -94,10 +94,6 @@ It might be a pre-requisite for keycloak as it is quite strict with security pro
 Definitely something to try if you cannot reach admin UI or your app is unable to fetch any data.
 
 
-**Swagger-UI** This compose file also bundles a Swagger-UI set to discover API routes.
-It is available at ``http://localhost:9080``
-
-
 **Optional:** - To personalize defaults, see `Individual configuration`_ below.
 - Keycloak comes with a default ``3TR`` realm and appropriate client that has user/group rights.
 - MinIO launches with ``admin`` credentials, that are used as ACCESS_KEY.
