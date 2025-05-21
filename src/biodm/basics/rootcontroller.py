@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from keycloak import KeycloakError
 from marshmallow import RAISE, ValidationError
 from starlette.requests import Request
-from starlette.responses import Response, PlainTextResponse
+from starlette.responses import Response, PlainTextResponse, HTMLResponse
 
 from biodm import config
 from biodm.components.controllers import Controller, HttpMethod
@@ -36,6 +36,7 @@ class RootController(Controller):
             PublicRoute("/logout",  endpoint=self.logout,  methods=[HttpMethod.POST]),
             PublicRoute("/syn_ack", endpoint=self.syn_ack),
             PublicRoute("/schema",  endpoint=self.openapi_schema),
+            PublicRoute("/swagger", endpoint=self.swagger_ui_page),
             Route("/authenticated", endpoint=self.authenticated),
         ] + (
             [Route("/kc_sync", endpoint=self.keycloak_sync)]
@@ -71,6 +72,56 @@ class RootController(Controller):
             self.app.apispec.get_schema(routes=self.app.routes),
             indent=config.INDENT
         ), status_code=200)
+
+    async def swagger_ui_page(self, _) -> Response:
+        """swagger-ui html page
+
+        ---
+        description: Returns full API schema
+        responses:
+            200:
+                description: OpenAPIv3 schema
+        """
+        # https://swagger.io/docs/open-source-tools/swagger-ui/usage/installation/#unpkg
+        schema = await self.openapi_schema(_)
+        html = f"""
+            <!DOCTYPE html>
+            <html lang="en">
+                <head>
+                    <title>{config.API_NAME}</title>
+                    <link rel="shortcut icon" href="https://swagger.io/docs/favicon.svg" type="image/svg+xml"/>
+                    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.21.0/swagger-ui.css" crossorigin/>
+                    <meta charset="utf-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1" />
+                    <meta name="description" content="SwaggerUI" />
+                </head>
+                <body>
+                    <div id="swagger-ui"></div>
+                    <script src="https://unpkg.com/swagger-ui-dist@5.21.0/swagger-ui-bundle.js" crossorigin></script>
+                    <script src="https://unpkg.com/swagger-ui-dist@5.21.0/swagger-ui-standalone-preset.js" crossorigin></script>
+                    <script>
+        """
+        html += """
+                        window.onload = () => {
+                            window.ui = SwaggerUIBundle({
+                                dom_id: '#swagger-ui',
+        """
+        html += f"""
+                                spec: {schema.body.decode('utf-8')},
+        """
+        html += """
+                                layout: "StandaloneLayout",
+                                presets: [
+                                    SwaggerUIBundle.presets.apis,
+                                    SwaggerUIStandalonePreset
+                                ]
+                            });
+                        };
+                    </script>
+                </body>
+            </html>
+        """
+        return HTMLResponse(html)
 
     def handshake(self) -> str:
         """Login handshake function.

@@ -6,7 +6,8 @@ User Manual
 
 This section describes how your Users may communicate with the API once it is deployed.
 
-The examples are demonstrating using ``curl``, but they are free to use any HTTP library out there.
+The examples are demonstrating using ``curl``, but you are free to use any HTTP library out there
+or the swagger-ui page.
 
 Integration tests located at ``src/tests/integration`` are also providing plenty of resources. 
 
@@ -20,6 +21,18 @@ Base routes
     curl ${SERVER_ENDPOINT}/schema
 
 Yields full API schema in JSON form.
+
+* swagger-ui
+
+.. code-block:: bash
+
+    curl ${SERVER_ENDPOINT}/swagger
+
+Return a ``swagger-ui`` HTML page from the API schema.
+
+.. note::
+
+    Static JavaScript/CSS files are served via `unpkg <https://unpkg.com//>`_.
 
 * Liveness endpoint
 
