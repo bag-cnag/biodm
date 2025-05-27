@@ -3,7 +3,6 @@ from asyncio import wait_for
 from datetime import datetime
 from inspect import getfullargspec
 import logging
-import logging.config
 from time import sleep
 from typing import Callable, List, Literal, Optional, Dict, Any, Type
 
@@ -111,6 +110,19 @@ class Api(Starlette):
         test: bool=False,
         **kwargs,
     ) -> None:
+        """instanciate server
+
+        :param controllers: Controller classes
+        :type controllers: Optional[List[Type[Controller]]]
+        :param scheme: Server scheme, defaults to 'http'
+        :type scheme: Literal[&#39;http&#39;] | Literal[&#39;https&#39;], optional
+        :param manifests: K8sManifest classes, defaults to None
+        :type manifests: Optional[List[Type[K8sManifest]]], optional
+        :param debug: Debug mode, **caution:** will reset DB, defaults to False
+        :type debug: bool, optional
+        :param test: Test mode, defaults to False
+        :type test: bool, optional
+        """
         # Scheme
         self.scheme = scheme
 

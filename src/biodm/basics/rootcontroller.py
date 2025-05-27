@@ -77,13 +77,23 @@ class RootController(Controller):
         """swagger-ui html page
 
         ---
-        description: Returns html page for swagger-ui
+        description: Returns a swagger-ui html page, leveraging OpenAPI schema
         responses:
             200:
-                description: swagger-ui webpage
+                description: swagger-ui HTML page
+                content:
+                    text/html:
+                        schema:
+                            type: string
         """
         # https://swagger.io/docs/open-source-tools/swagger-ui/usage/installation/#unpkg
-        schema = await self.openapi_schema(_)
+        schema = self.app.apispec.get_schema(routes=self.app.routes)
+
+        # Handle root_path
+        if config.ROOT_PATH:
+            schema['servers'] = [{ "url": config.ROOT_PATH }]
+
+        # 'render'
         html = f"""
             <!DOCTYPE html>
             <html lang="en">
@@ -107,14 +117,14 @@ class RootController(Controller):
                                 dom_id: '#swagger-ui',
         """
         html += f"""
-                                spec: {schema.body.decode('utf-8')},
+                                spec: {json.dumps(schema, indent=config.INDENT)},
         """
         html += """
                                 layout: "StandaloneLayout",
                                 presets: [
                                     SwaggerUIBundle.presets.apis,
                                     SwaggerUIStandalonePreset
-                                ]
+                                ],
                             });
                         };
                     </script>

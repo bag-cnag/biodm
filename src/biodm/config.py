@@ -15,6 +15,7 @@ API_DESCRIPTION = config("API_DESCRIPTION", cast=str,  default="")
 SERVER_HOST     = config("SERVER_HOST",     cast=str,  default="0.0.0.0")
 SERVER_PORT     = config("SERVER_PORT",     cast=int,  default=8000)
 SERVER_TIMEOUT  = config("SERVER_TIMEOUT",  cast=int,  default=30)
+ROOT_PATH       = config("ROOT_PATH",       cast=str,  default=None)
 REQUIRE_AUTH    = config("REQUIRE_AUTH",    cast=bool, default=False)
 
 # Responses.
