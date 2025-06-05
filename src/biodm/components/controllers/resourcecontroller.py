@@ -124,24 +124,28 @@ class ResourceController(EntityController):
         :param overloaded: overloaded flag, defaults to False
         :type overloaded: bool, optional
         :param self: controller instance, defaults to None
-        :type overloaded: Self
+        :type self: Self
         """
         mirror: Callable
 
         if self:
-            copied_method = copy(getattr(self, method))
-
+            unbound_method = getattr(type(self), method)
             async def mirror_self(*args, **kwargs):
-                return await copied_method(*args[1:], **kwargs) # args[0] is self
+                if args and args[0] == self:
+                    return await unbound_method(self, *args[1:], **kwargs)
+                else:
+                    return await unbound_method(self, *args, **kwargs)
 
             mirror = mirror_self
+
         else:
-            async def mirror_parent(self, *args, **kwargs):
-                return await getattr(super(self.__class__, self), method)(*args, **kwargs)
+            async def mirror_parent(self_arg, *args, **kwargs):
+                return await getattr(super(self_arg.__class__, self_arg), method)(*args, **kwargs)
 
             mirror = mirror_parent
 
-        mirror.__name__, mirror.__doc__ = method, doc
+        mirror.__name__ = method
+        mirror.__doc__ = doc
         mirror.overloaded = overloaded
         return mirror
 
