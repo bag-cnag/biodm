@@ -1,9 +1,9 @@
 from abc import ABCMeta, abstractmethod
-from typing import Dict, Type, Any, TYPE_CHECKING
+from typing import Dict, Type
 
 from biodm.component import ApiComponent
-from biodm.utils.security import UserInfo
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from .table import Base
 
 

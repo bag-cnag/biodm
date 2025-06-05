@@ -2,10 +2,10 @@ from __future__ import annotations
 from contextlib import asynccontextmanager, AsyncExitStack
 from typing import AsyncGenerator, TYPE_CHECKING, Callable, Any
 
-from databases import DatabaseURL
 from sqlalchemy import event
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from starlette.datastructures import Secret
 
 from biodm import Scope, config
 from biodm.component import ApiManager
@@ -20,7 +20,7 @@ class DatabaseManager(ApiManager):
     """Manages DB side query execution."""
     def __init__(self, app: Api) -> None:
         super().__init__(app=app)
-        self._database_url: DatabaseURL = self.async_database_url(config.DATABASE_URL)
+        self._database_url: Secret = self.async_database_url(config.DATABASE_URL)
         try:
             self.engine = create_async_engine(
                 str(self._database_url),
@@ -43,7 +43,7 @@ class DatabaseManager(ApiManager):
         return f"{self.engine.url.host}:{self.engine.url.port}"
 
     @staticmethod
-    def async_database_url(url: DatabaseURL) -> str:
+    def async_database_url(url: Secret) -> Secret:
         """Adds a matching async driver to a database url."""
         url = str(url)
         match url.split("://"):
@@ -59,7 +59,7 @@ class DatabaseManager(ApiManager):
                 raise DBError(
                     "Only ['postgresql', 'sqlite'] backends are supported at the moment."
                 )
-        return DatabaseURL(url)
+        return Secret(url)
 
     @asynccontextmanager
     async def session(self) -> AsyncGenerator[AsyncSession, None]:

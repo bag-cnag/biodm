@@ -1,7 +1,6 @@
 """Controller class for Tables acting as a Resource."""
 
 from __future__ import annotations
-from copy import copy
 from functools import partial
 from inspect import getmembers, ismethod
 from types import MethodType
@@ -9,7 +8,7 @@ from typing import TYPE_CHECKING, Callable, List, Set, Any, Dict, Type, Self
 
 from marshmallow.fields import Field, List, Nested, Date, DateTime, Number
 from marshmallow.class_registry import get_class
-from marshmallow.exceptions import RegistryError, ValidationError
+from marshmallow.exceptions import RegistryError
 from starlette.datastructures import QueryParams
 import starlette.routing as sr
 from starlette.requests import Request
