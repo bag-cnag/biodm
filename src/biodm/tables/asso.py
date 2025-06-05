@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Table, ForeignKey, Integer
+from sqlalchemy import Column, Table, ForeignKey
 
 from biodm.components.table import Base
 """Associative tables for join operations."""

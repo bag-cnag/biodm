@@ -1,6 +1,5 @@
 from starlette.config import Config
 from starlette.datastructures import Secret
-from databases import DatabaseURL
 
 try:
     config = Config('.env')
@@ -24,7 +23,7 @@ LIMIT           = config('LIMIT',           cast=int,  default=50)
 CACHE_MAX_AGE   = config('CACHE_MAX_AGE',   cast=int,  default=600)
 
 # DB.
-DATABASE_URL = config("DATABASE_URL", cast=DatabaseURL, default="sqlite:///:memory:")
+DATABASE_URL = config("DATABASE_URL", cast=Secret, default="sqlite:///:memory:")
 
 # S3 Bucket.
 S3_ENDPOINT_URL        = config('S3_ENDPOINT_URL',        cast=str,     default=None)

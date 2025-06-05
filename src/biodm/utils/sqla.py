@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Self, Sequence, Tuple, Any, TypeVar, Callable, Type, Set
+from typing import TYPE_CHECKING, Dict, Self, Tuple, Any, TypeVar, Callable, Type
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Insert, Update, Select, select, update, func

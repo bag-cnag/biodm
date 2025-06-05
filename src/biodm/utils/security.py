@@ -122,17 +122,21 @@ def login_required(f):
     # Handle special cases for nested compatiblity.
     if f.__name__ == "create":
         @wraps(f)
-        async def lr_write_wrapper(controller, request, *args, **kwargs):
-            return await f(controller, request, *args, **kwargs)
+        async def lr_write_wrapper(*args, **kwargs):
+            return await f(*args, **kwargs)
 
         lr_write_wrapper.login_required = 'write'
         return lr_write_wrapper
 
+    is_bound = hasattr(f, '__self__')
+
     # Else hardcheck here is enough.
     @wraps(f)
-    async def lr_wrapper(controller, request, *args, **kwargs):
+    async def lr_wrapper(*args, **kwargs):
+        request = args[0] if is_bound else args[1]
+
         if request.user.is_authenticated:
-            return await f(controller, request, *args, **kwargs)
+            return await f(*args, **kwargs)
         raise UnauthorizedError()
 
     # Read is protected on its endpoint and is handled specifically for nested cases in codebase.
@@ -143,30 +147,33 @@ def login_required(f):
 
 
 def group_required(groups: List[str]):
-    """Decorator for endpoints requiring authenticated user to be part of one of the list of paths.
-    """
+    """Decorator for endpoints requiring authenticated user to be part of one of the group paths."""
     if not groups:
         raise ImplementionError("@group_required applied with empty group list.")
 
     def _group_required(f):
         if f.__name__ == "create":
             @wraps(f)
-            async def gr_write_wrapper(controller, request, *args, **kwargs):
-                return await f(controller, request, *args, **kwargs)
+            async def gr_write_wrapper(*args, **kwargs):
+                return await f(*args, **kwargs)
 
-            gr_write_wrapper.group_required = {'write', groups}
+            gr_write_wrapper.group_required = {'write': tuple(groups)}
             return gr_write_wrapper
 
+        is_bound = hasattr(f, '__self__')
+
         @wraps(f)
-        async def gr_wrapper(controller, request, *args, **kwargs):
+        async def gr_wrapper(*args, **kwargs):
+            # bound: args = (request, *other_args), unbound: (controller, request, *other_args)
+            request = args[0] if is_bound else args[1]
             if request.user.is_authenticated and request.user.groups:
                 if any((ug in groups for ug in request.user.groups)):
-                    return await f(controller, request, *args, **kwargs)
+                    return await f(*args, **kwargs)
 
             raise UnauthorizedError("Insufficient group privileges for this operation.")
 
         if f.__name__ == "read":
-            gr_wrapper.group_required = {'read', groups}
+            gr_wrapper.group_required = {'read': tuple(groups)}
 
         return gr_wrapper
     return _group_required

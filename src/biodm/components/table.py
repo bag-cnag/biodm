@@ -306,7 +306,7 @@ class Base(DeclarativeBase, AsyncAttrs):
 class S3File:
     """Class to use in order to have a file managed on S3 bucket associated to this table
         Defaults internal fields that are expected by S3Service."""
-    filename = Column(String(100), nullable=False)
+    filename = Column(String(300), nullable=False)
     extension = Column(String(10), nullable=False)
     ready = Column(BOOLEAN, nullable=False, server_default='0')
     size = Column(BigInteger, nullable=False)

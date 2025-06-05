@@ -746,7 +746,7 @@ class UnaryEntityService(DatabaseService):
             # Wildcards.
             stmt = stmt.where(
                 unevalled_or([
-                    col.like(str(w).replace("*", "%"))
+                    col.ilike(str(w).replace("*", "%"))
                     for w in wildcards
                 ])
             ) if wildcards else stmt

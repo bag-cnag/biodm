@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING, List
-from uuid import UUID
 
-from sqlalchemy import Column, Uuid, String
+from sqlalchemy import Column, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from biodm import config
