@@ -93,7 +93,7 @@ To use kubernetes functionalities or tweak default configuration you should visi
 
 ## About
 
-Developed at CNAG
+Developed at [CNAG](https://www.cnag.eu/)
 
 ## Contributing
 
