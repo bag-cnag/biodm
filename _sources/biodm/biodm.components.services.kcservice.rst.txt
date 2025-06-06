@@ -1,0 +1,7 @@
+biodm.components.services.kcservice module
+==========================================
+
+.. automodule:: biodm.components.services.kcservice
+   :members:
+   :undoc-members:
+   :show-inheritance:

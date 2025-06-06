@@ -1,0 +1,7 @@
+biodm.tables.asso module
+========================
+
+.. automodule:: biodm.tables.asso
+   :members:
+   :undoc-members:
+   :show-inheritance:

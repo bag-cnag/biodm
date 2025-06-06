@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Manual &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="biodm/modules.html" />
+    <link rel="prev" title="Preparing for production" href="developer_manual/production.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.9.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer_manual/index.html">Developer Manual</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">User Manual</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#base-routes">Base routes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#entity-routes">Entity routes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#groups">Groups</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#versioning">Versioning</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#filtering">Filtering</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#query-a-nested-collection">Query a nested collection</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#file-management">File management</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#resume-upload">Resume upload</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#user-permissions">User permissions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="biodm/modules.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">User Manual</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/user_manual.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="user-manual">
+<span id="id1"></span><h1>User Manual<a class="headerlink" href="#user-manual" title="Link to this heading"></a></h1>
+<p>This section describes how your Users may communicate with the API once it is deployed.</p>
+<p>The examples are demonstrating using <code class="docutils literal notranslate"><span class="pre">curl</span></code>, but you are free to use any HTTP library out there
+or the swagger-ui page.</p>
+<p>Integration tests located at <code class="docutils literal notranslate"><span class="pre">src/tests/integration</span></code> are also providing plenty of resources.</p>
+<section id="base-routes">
+<h2>Base routes<a class="headerlink" href="#base-routes" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>OpenAPI schema</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/schema
+</pre></div>
+</div>
+<p>Yields full API schema in JSON form.</p>
+<ul class="simple">
+<li><p>swagger-ui</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/swagger
+</pre></div>
+</div>
+<p>Return a <code class="docutils literal notranslate"><span class="pre">swagger-ui</span></code> HTML page from the API schema.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Static JavaScript/CSS files are served via <a class="reference external" href="https://unpkg.com//">unpkg</a>.</p>
+</div>
+<ul class="simple">
+<li><p>Liveness endpoint</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/live
+</pre></div>
+</div>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">live</span></code> with a <code class="docutils literal notranslate"><span class="pre">200</span></code> status code.</p>
+<ul class="simple">
+<li><p>Login</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/login
+</pre></div>
+</div>
+<p>Returns a keycloak login url.
+Visiting and authenticating there gives you an authentication <code class="docutils literal notranslate"><span class="pre">JSON</span> <span class="pre">Web</span> <span class="pre">Token</span></code> that you shall
+provide in header to hit protected routes, see authenticated next.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/login
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Authenticated</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">TOKEN</span><span class="o">=</span>ey....
+curl<span class="w"> </span>-S<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span><span class="s2">/authenticated&quot;</span><span class="se">\</span>
+<span class="w">     </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="si">${</span><span class="nv">TOKEN</span><span class="si">}</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+<p>This routes checks token and returns requesting user info: <cite>username</cite>, <cite>groups</cite> and <cite>projects</cite>.</p>
+<ul class="simple">
+<li><p>Syn Ack</p></li>
+</ul>
+<p>This route is the callback login route located at <code class="docutils literal notranslate"><span class="pre">${SERVER_ENDPOINT}/syn_ack</span></code>
+and it is not meant to be accessed directly.</p>
+</section>
+<section id="entity-routes">
+<h2>Entity routes<a class="headerlink" href="#entity-routes" title="Link to this heading"></a></h2>
+<p>For each entity being managed by a <code class="docutils literal notranslate"><span class="pre">ResourceController</span></code>, the following routes are supported.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>As per REST standard, each entity is accessible under a resource prefix which is the name of the entity in plural form.</p></li>
+<li><p>URLs end <strong>without</strong> trailing slashes</p></li>
+<li><p>In the case of a multi-indexed entity (<strong>i.e.</strong> composite primary key), <code class="docutils literal notranslate"><span class="pre">{id}</span></code>
+refers to primary key elements separated by underscore symbol <code class="docutils literal notranslate"><span class="pre">_</span></code>.</p></li>
+</ul>
+</div>
+<ul class="simple">
+<li><p>POST</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">JSON_OBJECT</span><span class="si">}</span><span class="se">\</span>
+<span class="w">     </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/my_resources
+</pre></div>
+</div>
+<p>Supports submitting a resource and or a list of resource with nested resources.</p>
+<p><strong>Flexible write</strong>:</p>
+<p>This endpoint works as a flexible write operation. It supports a mixin input of old and new data:</p>
+<ul class="simple">
+<li><p>new data shall comply to resource Shema ruleset.</p></li>
+<li><p>reference old data by setting (at least) primary key values in the dict.</p>
+<ul>
+<li><p>Other fields will be applied as an update.</p></li>
+</ul>
+</li>
+</ul>
+<ul class="simple">
+<li><p>GET</p></li>
+</ul>
+<p>one</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/my_resources/<span class="o">{</span>id<span class="o">}</span>
+</pre></div>
+</div>
+<p>or all</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/my_resources
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>PUT</p></li>
+</ul>
+<p>Not available for versioned resources, see Versioning below.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>PUT<span class="se">\</span>
+<span class="w">     </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="se">\</span>
+<span class="w">     </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">UPDATED_JSON_OBJECT</span><span class="si">}</span><span class="se">\</span>
+<span class="w">     </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/my_resources/<span class="o">{</span>id<span class="o">}</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>DELETE</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>DELETE<span class="se">\</span>
+<span class="w">     </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/my_resources/<span class="o">{</span>id<span class="o">}</span>
+</pre></div>
+</div>
+<section id="groups">
+<h3>Groups<a class="headerlink" href="#groups" title="Link to this heading"></a></h3>
+<p>Group key is its <code class="docutils literal notranslate"><span class="pre">path</span></code> according to top level groups. Since <code class="docutils literal notranslate"><span class="pre">/</span></code> is a reserved route character
+it is replaced by double underscore: <code class="docutils literal notranslate"><span class="pre">__</span></code> (with no prefix).</p>
+<p><strong>E.g</strong>. <code class="docutils literal notranslate"><span class="pre">parent__child__grandchild</span></code></p>
+</section>
+<section id="versioning">
+<h3>Versioning<a class="headerlink" href="#versioning" title="Link to this heading"></a></h3>
+<p>When a table is inheriting from <code class="docutils literal notranslate"><span class="pre">Versioned</span></code> e.g <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> in our demo, associated controller
+exposes an extra route: <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/my_versioned_resources/{id}_{version}/release</span></code>.</p>
+<p>This triggers creation of a new row with a version increment.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/release</span></code> is the way of updating versioned resources.
+The endpoint <code class="docutils literal notranslate"><span class="pre">PUT</span> <span class="pre">/</span></code> (a.k.a <code class="docutils literal notranslate"><span class="pre">update</span></code>) is available, however it is meant to be used
+in order to update nested objects and collections of that resource. Thus,
+any attempt at updating a versioned resource through either <code class="docutils literal notranslate"><span class="pre">PUT</span> <span class="pre">/</span></code> or <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>
+shall raise an error.</p>
+</div>
+<p><strong>E.g.</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/my_file_resources/<span class="o">{</span>id<span class="o">}</span>_<span class="o">{</span>version<span class="o">}</span>/release
+</pre></div>
+</div>
+<p>OR to pass in an update for the new version.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;name&quot;: &quot;new_name&quot;}&#39;</span><span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/my_file_resources/<span class="o">{</span>id<span class="o">}</span>_<span class="o">{</span>version<span class="o">}</span>/release
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In the case of a resource both <code class="docutils literal notranslate"><span class="pre">Versioned</span></code> and <code class="docutils literal notranslate"><span class="pre">S3File</span></code>, <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/release</span></code> will generate
+a new upload form and set ready flag to false.</p>
+</div>
+</section>
+<section id="filtering">
+<h3>Filtering<a class="headerlink" href="#filtering" title="Link to this heading"></a></h3>
+<p>When requesting all resources under a prefix (i.e. <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/my_resources</span></code>)
+it is possible to filter results by appending a QueryString starting with <code class="docutils literal notranslate"><span class="pre">?</span></code>
+and followed by:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">field=value</span></code> pairs, separated by <code class="docutils literal notranslate"><span class="pre">&amp;</span></code></p>
+<ul>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">field=val1,val2,val3</span></code> to <code class="docutils literal notranslate"><span class="pre">OR</span></code> between multiple values</p>
+<ul>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">\</span></code> before a comma to escape it</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">field=val1&amp;field=val2&amp;field=val3</span></code> syntax is also supported</p></li>
+</ul>
+</li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">nested.field=val</span></code> to select on a nested attribute field</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">*</span></code> in a string attribute for wildcards</p></li>
+</ul>
+</li>
+<li><p>numeric operators <code class="docutils literal notranslate"><span class="pre">field.op([value])</span></code></p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">[lt,</span> <span class="pre">le,</span> <span class="pre">gt,</span> <span class="pre">ge]</span></code> are supported.</p></li>
+</ul>
+</li>
+<li><p>aggregation operators <code class="docutils literal notranslate"><span class="pre">field.op()</span></code></p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">[min,</span> <span class="pre">max]</span></code> Absolute min max.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">[min_v,</span> <span class="pre">max_v]</span></code> min or max version for <strong>versioned resources</strong>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">[min_a,</span> <span class="pre">max_a]</span></code> min or max of specified field, <strong>in respect with other filers</strong>.</p></li>
+</ul>
+</li>
+<li><p>special parameters</p>
+<ul>
+<li><p>Partial results</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">?fields=f1,...,fn</span></code> to get a subset of fields</p></li>
+</ul>
+</li>
+<li><p>Count</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">?count=True</span></code> will set <code class="docutils literal notranslate"><span class="pre">x-total-count</span></code> header with filter count regardless of paging.</p></li>
+</ul>
+</li>
+<li><p>Paging</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">?start=x</span></code> start at</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">?end=y</span></code> end at</p></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li><p>Supplementary query</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">?q={extra_query}</span></code> another way to pass query parameters. Provides a way of using
+undocumented parameters from code generated clients such as deep nesting and operators,
+which are tricky and or messy to extensively document with apispec</p></li>
+</ul>
+</li>
+</ul>
+</div></blockquote>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When querying with <code class="docutils literal notranslate"><span class="pre">curl</span></code>, don’t forget to escape <code class="docutils literal notranslate"><span class="pre">&amp;</span></code> symbol or enclose the whole url
+in double quotes, else your scripting language may intepret it as several commands.
+If you query a string with escaped commas, then enclosing in quotes is essential.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><code class="docutils literal notranslate"><span class="pre">min_a</span></code> and <code class="docutils literal notranslate"><span class="pre">max_a</span></code> will not take into account nested resource filtering.
+E.g. <code class="docutils literal notranslate"><span class="pre">/datasets?id=1&amp;files.extension=csv&amp;submission_date.max_a()</span></code> may return a result
+whose exact validity is unsupported.</p>
+</div>
+</section>
+<section id="query-a-nested-collection">
+<h3>Query a nested collection<a class="headerlink" href="#query-a-nested-collection" title="Link to this heading"></a></h3>
+<p>Alternatively you may get a resource nested collection like this</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/my_resources/<span class="o">{</span>id<span class="o">}</span>/<span class="o">{</span>collection<span class="o">}</span>
+</pre></div>
+</div>
+<p>It also supports partial results.</p>
+</section>
+</section>
+<section id="file-management">
+<h2>File management<a class="headerlink" href="#file-management" title="Link to this heading"></a></h2>
+<p>Files are stored leveraging an S3 bucket instance. Upload and Downloads are requested directly
+there through <a class="reference external" href="https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-presigned-urls.html">boto3 presigned-urls</a>.</p>
+<ul class="simple">
+<li><p>Upload</p></li>
+</ul>
+<p>On creating a new <code class="docutils literal notranslate"><span class="pre">/file</span></code> resource, it is required that you pass in the size in <code class="docutils literal notranslate"><span class="pre">bytes</span></code> that
+you can obtain from its descriptor.</p>
+<p>The resource shall contain a nested dictionary called <code class="docutils literal notranslate"><span class="pre">upload</span></code> composed of <code class="docutils literal notranslate"><span class="pre">parts</span></code>,
+containing presigned form for direct file upload.</p>
+<p>For large files, several parts will be present. Each allowing you to upload a chunk of
+<cite>size=100MB</cite>, possibly less for the last one.</p>
+<p>For each part successfuly uploaded, the bucket will return you an <code class="docutils literal notranslate"><span class="pre">ETag</span></code> that you have to
+keep track of and associate with the correct <code class="docutils literal notranslate"><span class="pre">part_number</span></code>.</p>
+<p>Ultimately, the process has to be completed by submitting that mapping in order for the bucket
+to aggregate all chunks into a single stored file.</p>
+<p>Following is an example using <code class="docutils literal notranslate"><span class="pre">python</span></code>:</p>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-text">upload_file.py</span><a class="headerlink" href="#id2" title="Link to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
+
+<span class="n">CHUNK_SIZE</span> <span class="o">=</span> <span class="mi">100</span><span class="o">*</span><span class="mi">1024</span><span class="o">**</span><span class="mi">2</span> <span class="c1"># 100MB</span>
+<span class="n">parts_etags</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">host</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="o">...</span> <span class="c1"># Server instance endpoint</span>
+<span class="n">file_id</span> <span class="o">=</span> <span class="o">...</span> <span class="c1"># obtained from file[&#39;id&#39;]</span>
+<span class="n">upload_forms</span> <span class="o">=</span> <span class="p">[{</span><span class="s1">&#39;part_number&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;form&#39;</span><span class="p">:</span> <span class="o">...</span><span class="p">},</span> <span class="o">...</span><span class="p">]</span> <span class="c1"># obtained from file[&#39;upload&#39;][&#39;parts&#39;]</span>
+
+<span class="c1"># Upload file</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">big_file_path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">upload_forms</span><span class="p">:</span>
+        <span class="n">part_data</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">CHUNK_SIZE</span><span class="p">)</span> <span class="c1"># Fetch one chunk.</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">put</span><span class="p">(</span>
+            <span class="n">part</span><span class="p">[</span><span class="s1">&#39;form&#39;</span><span class="p">],</span> <span class="n">data</span><span class="o">=</span><span class="n">part_data</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Content-Encoding&#39;</span><span class="p">:</span> <span class="s1">&#39;gzip&#39;</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="k">assert</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span>
+
+        <span class="c1"># Get etag and remove trailing quotes to not disturb subsequent (json) loading.</span>
+        <span class="n">etag</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ETag&#39;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="c1"># Build mapping.</span>
+        <span class="n">parts_etags</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s1">&#39;PartNumber&#39;</span><span class="p">:</span> <span class="n">part</span><span class="p">[</span><span class="s1">&#39;part_number&#39;</span><span class="p">],</span> <span class="s1">&#39;ETag&#39;</span><span class="p">:</span> <span class="n">etag</span><span class="p">})</span>
+
+<span class="c1"># Send completion notice with the mapping.</span>
+<span class="n">complete</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">put</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">host</span><span class="si">}</span><span class="s2">/files/</span><span class="si">{</span><span class="n">file_id</span><span class="si">}</span><span class="s2">/complete&quot;</span><span class="p">,</span>
+    <span class="n">data</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">parts_etags</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="k">assert</span> <span class="n">complete</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">201</span>
+<span class="k">assert</span> <span class="s1">&#39;Completed.&#39;</span> <span class="ow">in</span> <span class="n">complete</span><span class="o">.</span><span class="n">text</span>
+</pre></div>
+</div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This example above is a quite naive approach. For very large files, you should make use of a
+concurrency library (such as <code class="docutils literal notranslate"><span class="pre">concurrent.futures</span></code> or <code class="docutils literal notranslate"><span class="pre">multiprocessing</span></code> in <code class="docutils literal notranslate"><span class="pre">python</span></code>) in
+order to speed up that process, as parts can be uploaded in any order.</p>
+</div>
+<section id="resume-upload">
+<h3>Resume upload<a class="headerlink" href="#resume-upload" title="Link to this heading"></a></h3>
+<p>In case the upload is interrupted, the server will keep track of uploaded chunks and set an <code class="docutils literal notranslate"><span class="pre">etag</span></code>
+value on each upload part. Meaning you may upload missing chunks.</p>
+<p>Furthermore, you still shall send full completion notice, by aggregating new received etags, with
+the ones received from server.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Partially uploaded files information is only guaranteed to be returned by the server when
+directly fetching files resources (E.g. <cite>/files</cite>). It is so, from how nested resources are
+loaded via sqlalchemy API. Moreover, the server has to query the bucket for each file that is
+marked partial which is a costly operation.
+A global gurantee may be supported in a future version, if
+possible, but is not envisoned any time soon.</p>
+</div>
+<ul class="simple">
+<li><p>Download</p></li>
+</ul>
+<p>Calling <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/my_file_resources</span></code> will only return associated metadata (and the upload form(s)
+while it is still in prending state).</p>
+<p>To download a file use the following endpoint.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span><span class="si">${</span><span class="nv">SERVER_ENDPOINT</span><span class="si">}</span>/my_file_resources/<span class="o">{</span>id<span class="o">}</span>/download
+</pre></div>
+</div>
+<p>That will return a url to directly download the file via <code class="docutils literal notranslate"><span class="pre">GET</span></code> request.</p>
+</section>
+</section>
+<section id="user-permissions">
+<h2>User permissions<a class="headerlink" href="#user-permissions" title="Link to this heading"></a></h2>
+<p>When a Composition/One-to-Many relationship is flagged with permissions as described in
+<a class="reference internal" href="developer_manual/permissions.html#dev-user-permissions"><span class="std std-ref">Fine: Dynamic user owned permissions</span></a> a new field <code class="docutils literal notranslate"><span class="pre">perm_{relationship_name}</span></code> is available for that resource.</p>
+<p><strong>E.g.</strong> Dataset resource in our example, would have an extra field <code class="docutils literal notranslate"><span class="pre">perm_files</span></code>.</p>
+<p>A Permission is holding a ListGroup object for each enabled verbs.
+ListGroup being a route-less core table, allowing to manage lists of groups.</p>
+<p><strong>E.g.</strong> In our example, CREATE/READ/DOWNLOAD are enabled,
+hence a JSON representation of a dataset with its permissions looks like this, where leaving
+“read” empty means it will only account for decorator permissions if provided and left public
+otherwise.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ds_test&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my_dataset_owner&quot;</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;perm_files&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;write&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;groups&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;genomics_team&quot;</span><span class="p">},</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IT_team&quot;</span><span class="p">},</span>
+<span class="w">                </span><span class="p">{</span><span class="s2">&quot;...&quot;</span><span class="p">}</span>
+<span class="w">            </span><span class="p">]</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;download&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;groups&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="s2">&quot;...&quot;</span><span class="p">}]</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>Passing a top level group will allow all descending children group for that verb/resource tuple.</p></li>
+<li><p>Permissions are taken into account if and only if keycloak functionalities are enabled.</p>
+<ul>
+<li><p>Without keycloak, no token exchange -&gt; No way of getting back protected data.</p></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="developer_manual/production.html" class="btn btn-neutral float-left" title="Preparing for production" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="biodm/modules.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

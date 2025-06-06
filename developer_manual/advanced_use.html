@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advanced Use &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Kubernetes manifests" href="k8manifests.html" />
+    <link rel="prev" title="Documenting endpoints" href="doc_endpoints.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.9.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Developer Manual</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="index.html#basics">Basics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#concepts">Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#configuration">Configuration</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html#biodm-toolkit-guide">BioDM toolkit Guide</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="demo.html">Minimal Demo</a></li>
+<li class="toctree-l3"><a class="reference internal" href="s3conf.html">S3 Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="permissions.html">Permissions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="versioning.html">Versioning</a></li>
+<li class="toctree-l3"><a class="reference internal" href="table_schema.html">Tables and Schemas</a></li>
+<li class="toctree-l3"><a class="reference internal" href="doc_endpoints.html">Documenting endpoints</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Advanced Use</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#custom-resource">Custom resource</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#extending-prefix-vs-postfix">Extending: Prefix vs. Postfix</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#routing-and-auth">Routing and Auth</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="k8manifests.html">Kubernetes manifests</a></li>
+<li class="toctree-l3"><a class="reference internal" href="production.html">Preparing for production</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../biodm/modules.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Developer Manual</a></li>
+      <li class="breadcrumb-item active">Advanced Use</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/developer_manual/advanced_use.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="advanced-use">
+<h1>Advanced Use<a class="headerlink" href="#advanced-use" title="Link to this heading"></a></h1>
+<p>This section describes how to implement a server that goes beyond the standard functionalities
+provided by <code class="docutils literal notranslate"><span class="pre">BioDM</span></code>.</p>
+<section id="custom-resource">
+<h2>Custom resource<a class="headerlink" href="#custom-resource" title="Link to this heading"></a></h2>
+<p>As previously explained, a resource is a <code class="docutils literal notranslate"><span class="pre">Table</span></code>, <code class="docutils literal notranslate"><span class="pre">Schema</span></code>, <code class="docutils literal notranslate"><span class="pre">Controller</span></code> triplet, internally
+connected around a <code class="docutils literal notranslate"><span class="pre">Service</span></code>  finally communicating with one or more <code class="docutils literal notranslate"><span class="pre">Manager</span></code>.</p>
+<p>Depending on the level of complexity brought in the custom feature you would like to implement,
+you will have to fine tune, from one up to all, of those components together.</p>
+<p>Following sections are assuming you are weaving a valid Table and Schema as explained in earlier
+parts of the documentation.</p>
+<section id="a-bit-about-internals">
+<h3>A bit about Internals<a class="headerlink" href="#a-bit-about-internals" title="Link to this heading"></a></h3>
+<p>Standard pipeline for an incoming request goes like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-&gt;</span><span class="n">Server</span><span class="o">-&gt;</span><span class="n">Middlewares</span><span class="o">-&gt;</span><span class="n">Controller</span><span class="o">-&gt;</span><span class="n">Service</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">Manager</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Controller is the <code class="docutils literal notranslate"><span class="pre">BioDM</span></code> component that manages a set of routes.
+In order to avoid most mistakes with Controllers it is recommended to visit
+<cite>Starlette&lt;https://www.starlette.io/&gt;_</cite> documentation.</p>
+<p>Bread and butter for resources are <code class="docutils literal notranslate"><span class="pre">ResourceController</span></code> and <code class="docutils literal notranslate"><span class="pre">DatabaseService</span></code>. You may add a
+feature by extending them.</p>
+</section>
+<section id="keycloack-groups-a-case-study">
+<h3>Keycloack Groups: a case study<a class="headerlink" href="#keycloack-groups-a-case-study" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">/users</span></code> and <code class="docutils literal notranslate"><span class="pre">/groups</span></code> are internal examples of custom resources.
+What we want with them is to have a <cite>synchronized copy</cite> of those resources from keycloak.
+Additionally, since those resources may be created directly on keycloak by administrators,
+it is desirable that passing a primary key is sufficient for the api instance to discover the full
+resource.</p>
+<p>Basic operations and routes stay the same, so the controller is not changing. Following is the code
+snippet that manages group creation.</p>
+<p>Basic idea is to query
+our keycloak server before creating a new group to ensure its existence and recover its keycloak
+UUID that is necessary for some operations. Then populate it in the data dictionary that is
+ultimately sent down to <code class="docutils literal notranslate"><span class="pre">DatabaseService</span></code> (here the composite case) that will handle
+insert/update statement building and execution.</p>
+<div class="literal-block-wrapper docutils container" id="id1">
+<div class="code-block-caption"><span class="caption-text">kcservice.py</span><a class="headerlink" href="#id1" title="Link to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">KCService</span><span class="p">(</span><span class="n">CompositeEntityService</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract class for local keycloak entities.&quot;&quot;&quot;</span>
+    <span class="nd">@classproperty</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">kc</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KeycloakManager</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return KCManager instance.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">kc</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">remote_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">sync</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">remote</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sync Keycloak and input data.&quot;&quot;&quot;</span>
+        <span class="n">inter</span> <span class="o">=</span> <span class="n">remote</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">&amp;</span> <span class="p">(</span>
+            <span class="nb">set</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">table</span><span class="o">.</span><span class="n">__table__</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">table</span><span class="o">.</span><span class="n">pk</span>
+        <span class="p">)</span>
+        <span class="n">fill</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">key</span><span class="p">:</span> <span class="n">remote</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">inter</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="p">}</span>
+        <span class="n">update</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">key</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">inter</span>
+            <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="n">remote</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">update</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">remote</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">],</span> <span class="n">update</span><span class="p">)</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">fill</span><span class="p">)</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">read_or_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Query entity from keycloak, create it in case it does not exists, update in case it does.</span>
+<span class="sd">        Populates data with resulting id and/or found information.&quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">KCGroupService</span><span class="p">(</span><span class="n">KCService</span><span class="p">):</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">kcpath</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute keycloak path from api path.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">path</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;__&quot;</span><span class="p">,</span> <span class="s2">&quot;/&quot;</span><span class="p">))</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">remote_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">kc</span><span class="o">.</span><span class="n">update_group</span><span class="p">(</span><span class="n">group_id</span><span class="o">=</span><span class="n">remote_id</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">read_or_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;READ group from keycloak, CREATE if missing, UPDATE if exists.</span>
+
+<span class="sd">        :param data: Group data</span>
+<span class="sd">        :type data: Dict[str, Any]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kcpath</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">])</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">kc</span><span class="o">.</span><span class="n">get_group_by_path</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">group</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">parent_id</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parts</span> <span class="o">==</span> <span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,):</span>
+            <span class="n">parent</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">kc</span><span class="o">.</span><span class="n">get_group_by_path</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="p">))</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">parent</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">DataError</span><span class="p">(</span><span class="s2">&quot;Input path does not match any parent group.&quot;</span><span class="p">)</span>
+            <span class="n">parent_id</span> <span class="o">=</span> <span class="n">parent</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span>
+
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">kc</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">parent_id</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">|</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+        <span class="n">stmt_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">user_info</span><span class="p">:</span> <span class="n">UserInfo</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create entities on Keycloak Side before passing to parent class for DB.&quot;&quot;&quot;</span>
+        <span class="c1"># Check permissions beforehand.</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_permissions</span><span class="p">(</span><span class="s2">&quot;write&quot;</span><span class="p">,</span> <span class="n">user_info</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+
+        <span class="c1"># Create on keycloak side</span>
+        <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">to_it</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+            <span class="c1"># Group first.</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_or_create</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+            <span class="c1"># Then Users.</span>
+            <span class="k">for</span> <span class="n">user</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;users&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+                <span class="k">await</span> <span class="n">User</span><span class="o">.</span><span class="n">svc</span><span class="o">.</span><span class="n">read_or_create</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="p">[</span><span class="n">group</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">]],</span> <span class="p">[</span><span class="n">group</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]],)</span>
+
+        <span class="c1"># Send to DB</span>
+        <span class="c1"># Not passing user_info, which gives unrestricted permissions as check happens above.</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">stmt_only</span><span class="o">=</span><span class="n">stmt_only</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+<section id="extending-prefix-vs-postfix">
+<h2>Extending: Prefix vs. Postfix<a class="headerlink" href="#extending-prefix-vs-postfix" title="Link to this heading"></a></h2>
+<p>The above example describes a <cite>Prefix feature extension</cite>.</p>
+<p>Meaning, modifications are taking place <strong>before</strong> data gets inserted into the DB.
+This is the way to go in case you do not need a handle on DB objects/session.</p>
+<p>A prefix feature extension shall make sure that the data dictionary sent down to <code class="docutils literal notranslate"><span class="pre">DatabaseService</span></code>
+is respecting tables integrity.</p>
+<p>On the other hand, a <cite>Postfix feature extension</cite> happens <strong>after</strong> data gets inserted.
+This is the way to go in case you need to access entity relationships,
+database generated ids, and so on.</p>
+<p>Nothing prevents you from doing both at the same time.</p>
+<section id="s3-files-a-case-study">
+<h3>S3 Files: a case study<a class="headerlink" href="#s3-files-a-case-study" title="Link to this heading"></a></h3>
+<p>For small files (i.e. &lt;=100MB), an API instance will generate self sufficient presigned post urls.
+Those contain a callback, which allows the S3 storage to inform us directly on success of an upload.
+Evidently it is unique to each file and thus needs the key, which is an autoincrement field in our
+example.</p>
+<p>This callback and downloading features are two extra endpoints that we extend on
+a <code class="docutils literal notranslate"><span class="pre">ResourceController</span></code>.</p>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-text">s3controller.py</span><a class="headerlink" href="#id2" title="Link to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">biodm.routing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Route</span><span class="p">,</span> <span class="n">PublicRoute</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">S3Controller</span><span class="p">(</span><span class="n">ResourceController</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Controller for entities involving file management leveraging an S3Service.&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_infer_svc</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Type</span><span class="p">[</span><span class="n">S3Service</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Attach our new service type via _infer_svc method.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">issubclass</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">table</span><span class="p">,</span> <span class="n">S3File</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">ImplementionError</span><span class="p">(</span>
+                <span class="s2">&quot;S3Controller should be attached on a table inheriting&quot;</span>
+                <span class="s2">&quot; from biodm.component.S3File&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">S3Service</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">routes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">_</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Mount</span> <span class="o">|</span> <span class="n">Route</span><span class="p">]</span> <span class="o">|</span> <span class="n">List</span><span class="p">[</span><span class="n">Mount</span><span class="p">]</span> <span class="o">|</span> <span class="n">List</span><span class="p">[</span><span class="n">BaseRoute</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add an endpoint for successful file uploads and direct download.&quot;&quot;&quot;</span>
+        <span class="c1"># flake8: noqa: E501  pylint: disable=line-too-long</span>
+        <span class="n">prefix</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">qp_id</span><span class="si">}</span><span class="s1">/&#39;</span>
+        <span class="n">file_routes</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">Route</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s1">download&#39;</span><span class="p">,</span>           <span class="bp">self</span><span class="o">.</span><span class="n">download</span><span class="p">,</span>           <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="n">HttpMethod</span><span class="o">.</span><span class="n">GET</span><span class="p">]),</span>
+            <span class="n">PublicRoute</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s1">post_success&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">post_success</span><span class="p">,</span>       <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="n">HttpMethod</span><span class="o">.</span><span class="n">GET</span><span class="p">]),</span>
+            <span class="o">...</span>
+        <span class="p">]</span>
+        <span class="c1"># Set an extra attribute for later.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">post_upload_callback</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">file_routes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">file_routes</span> <span class="o">+</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">routes</span><span class="p">()</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">download</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns boto3 presigned download URL with a redirect header.</span>
+
+<span class="sd">        ---</span>
+
+<span class="sd">        description: Returns a download presigned URL to retrieve file from s3 bucket.</span>
+<span class="sd">        parameters:</span>
+<span class="sd">        - in: path</span>
+<span class="sd">            name: id</span>
+<span class="sd">        responses:</span>
+<span class="sd">            307:</span>
+<span class="sd">                description: Download URL, with a redirect header.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">RedirectResponse</span><span class="p">(</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">svc</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
+                <span class="n">pk_val</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_extract_pk_val</span><span class="p">(</span><span class="n">request</span><span class="p">),</span>
+                <span class="n">user_info</span><span class="o">=</span><span class="k">await</span> <span class="n">UserInfo</span><span class="p">(</span><span class="n">request</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">post_success</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Used as a callback in the s3 presigned upload urls that are emitted.</span>
+<span class="sd">            Uppon receival, update entity status in the DB.</span>
+
+<span class="sd">        ---</span>
+
+<span class="sd">        description: File upload callback - hit by s3 bucket on success upload.</span>
+<span class="sd">        parameters:</span>
+<span class="sd">        - in: path</span>
+<span class="sd">            name: id</span>
+<span class="sd">        responses:</span>
+<span class="sd">            201:</span>
+<span class="sd">                description: Upload confirmation &#39;Uploaded.&#39;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">svc</span><span class="o">.</span><span class="n">post_success</span><span class="p">(</span>
+            <span class="n">pk_val</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_extract_pk_val</span><span class="p">(</span><span class="n">request</span><span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">json_response</span><span class="p">(</span><span class="s2">&quot;Uploaded.&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<dl class="simple">
+<dt>Following we implement the expected custom service, with the following requirements:</dt><dd><ul class="simple">
+<li><p>populate a unique <code class="docutils literal notranslate"><span class="pre">upload</span> <span class="pre">form</span></code> upon creating a new <code class="docutils literal notranslate"><span class="pre">/files</span></code> resource</p>
+<ul>
+<li><p>Handled in <code class="docutils literal notranslate"><span class="pre">_insert</span></code> and <code class="docutils literal notranslate"><span class="pre">_insert_list</span></code> methods which is the postfix way</p></li>
+</ul>
+</li>
+<li><p>implement <code class="docutils literal notranslate"><span class="pre">post_success</span></code> that registers a success of upload</p></li>
+<li><p>implement <code class="docutils literal notranslate"><span class="pre">download</span></code> in order to return direct upload URL to clients</p></li>
+</ul>
+</dd>
+</dl>
+<p>A lot of that code has to do with retrieving async SQLAlchemy objects attributes.</p>
+<div class="literal-block-wrapper docutils container" id="id3">
+<div class="code-block-caption"><span class="caption-text">s3service.py</span><a class="headerlink" href="#id3" title="Link to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">S3Service</span><span class="p">(</span><span class="n">CompositeEntityService</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class for automatic management of S3 bucket transactions for file resources.&quot;&quot;&quot;</span>
+    <span class="nd">@classproperty</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">s3</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S3Manager</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">s3</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">post_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">mapping</span> <span class="o">=</span> <span class="p">{</span> <span class="c1"># Map primary key values to route elements.</span>
+            <span class="n">key</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">table</span><span class="o">.</span><span class="n">pk</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Access controller via table.</span>
+        <span class="n">route</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">table</span><span class="o">.</span><span class="n">ctrl</span><span class="o">.</span><span class="n">post_upload_callback</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">route</span> <span class="o">=</span> <span class="n">route</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;{&quot;</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;}&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">))</span>
+
+        <span class="n">srv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">server_endpoint</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">srv</span><span class="si">}{</span><span class="n">route</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">gen_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate the unique bucket key from file elements.&quot;&quot;&quot;</span>
+        <span class="c1"># Fetch necessary fields from DB.</span>
+        <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">refresh</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">,</span> <span class="s1">&#39;extension&#39;</span><span class="p">])</span>
+        <span class="n">version</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">table</span><span class="o">.</span><span class="n">is_versioned</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">refresh</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;version&#39;</span><span class="p">])</span>
+            <span class="n">version</span> <span class="o">=</span> <span class="s2">&quot;_v&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
+        <span class="c1"># Custom key prefix mechanism.</span>
+        <span class="n">key_salt</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">awaitable_attrs</span><span class="p">,</span> <span class="s1">&#39;key_salt&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">iscoroutine</span><span class="p">(</span><span class="n">key_salt</span><span class="p">):</span>
+            <span class="n">item</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="s1">&#39;session&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">session</span>
+            <span class="n">key_salt</span> <span class="o">=</span> <span class="k">await</span> <span class="n">item</span><span class="o">.</span><span class="n">key_salt</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key_salt</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">item</span><span class="o">.</span><span class="n">filename</span><span class="si">}{</span><span class="n">version</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">item</span><span class="o">.</span><span class="n">extension</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">gen_upload_form</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">:</span> <span class="n">S3File</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Populates an Upload for a newly created file. Handling simple post and multipart_upload</span>
+<span class="sd">        cases.</span>
+
+<span class="sd">        :param file: New file</span>
+<span class="sd">        :type file: S3File</span>
+<span class="sd">        :param session: current session</span>
+<span class="sd">        :type session: AsyncSession</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">S3File</span><span class="p">)</span> <span class="c1"># mypy.</span>
+
+        <span class="c1"># Use a proxy Upload table that also handles large files.</span>
+        <span class="n">file</span><span class="o">.</span><span class="n">upload</span> <span class="o">=</span> <span class="n">Upload</span><span class="p">()</span>
+        <span class="c1"># Flushing is necessary to generate an id.</span>
+        <span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">upload</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">upload</span><span class="o">.</span><span class="n">awaitable_attrs</span><span class="p">,</span> <span class="s1">&#39;parts&#39;</span><span class="p">)</span>
+
+        <span class="n">key</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">gen_key</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">)</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">UploadPart</span><span class="p">(</span>
+                <span class="n">upload_id</span><span class="o">=</span><span class="n">file</span><span class="o">.</span><span class="n">upload</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="n">form</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">s3</span><span class="o">.</span><span class="n">create_presigned_post</span><span class="p">(</span>
+                        <span class="n">object_name</span><span class="o">=</span><span class="n">key</span><span class="p">,</span>
+                        <span class="n">callback</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">post_callback</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="nd">@DatabaseManager</span><span class="o">.</span><span class="n">in_session</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">post_success</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pk_val</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="n">file</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">pk_val</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;ready&#39;</span><span class="p">,</span> <span class="s1">&#39;upload&#39;</span><span class="p">],</span> <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">)</span>
+        <span class="n">file</span><span class="o">.</span><span class="n">validated_at</span> <span class="o">=</span> <span class="n">utcnow</span><span class="p">()</span>
+        <span class="n">file</span><span class="o">.</span><span class="n">ready</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">file</span><span class="o">.</span><span class="n">upload_id</span><span class="p">,</span> <span class="n">file</span><span class="o">.</span><span class="n">upload</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+    <span class="nd">@DatabaseManager</span><span class="o">.</span><span class="n">in_session</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">download</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">pk_val</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">user_info</span><span class="p">:</span> <span class="n">UserInfo</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get File entry from DB, and return a direct download url.</span>
+
+<span class="sd">        :param pk_val: key</span>
+<span class="sd">        :type pk_val: List[Any]</span>
+<span class="sd">        :param user_info: requesting user info</span>
+<span class="sd">        :type user_info: UserInfo | None</span>
+<span class="sd">        :param session: current db session</span>
+<span class="sd">        :type session: AsyncSession</span>
+<span class="sd">        :raises FileNotUploadedError: File entry exists but has not been validated yet</span>
+<span class="sd">        :return: direct download url.</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># File management fields.</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">,</span> <span class="s1">&#39;extension&#39;</span><span class="p">,</span> <span class="s1">&#39;dl_count&#39;</span><span class="p">,</span> <span class="s1">&#39;ready&#39;</span><span class="p">]</span>
+        <span class="c1"># Also fetch foreign keys, as some may be necessary for permission check below.</span>
+        <span class="n">fields</span> <span class="o">+=</span> <span class="nb">list</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">table</span><span class="o">.</span><span class="n">__table__</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">foreign_keys</span><span class="p">)</span>
+        <span class="c1"># Shall raise an error if given file doesn&#39;t exists.</span>
+        <span class="n">file</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">pk_val</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="n">fields</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">S3File</span><span class="p">)</span> <span class="c1"># mypy.</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_permissions</span><span class="p">(</span><span class="s2">&quot;download&quot;</span><span class="p">,</span> <span class="n">user_info</span><span class="p">,</span> <span class="n">file</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file</span><span class="o">.</span><span class="n">ready</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">FileNotUploadedError</span><span class="p">(</span><span class="s2">&quot;File exists but has not been uploaded yet.&quot;</span><span class="p">)</span>
+
+        <span class="n">url</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">s3</span><span class="o">.</span><span class="n">create_presigned_download_url</span><span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">gen_key</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">))</span>
+        <span class="n">file</span><span class="o">.</span><span class="n">dl_count</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">url</span>
+
+    <span class="nd">@DatabaseManager</span><span class="o">.</span><span class="n">in_session</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_insert</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">stmt</span><span class="p">:</span> <span class="n">Insert</span><span class="p">,</span>
+        <span class="n">user_info</span><span class="p">:</span> <span class="n">UserInfo</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;INSERT special case for file: populate url after getting entity id.&quot;&quot;&quot;</span>
+        <span class="n">file</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_insert</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">user_info</span><span class="o">=</span><span class="n">user_info</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">gen_upload_form</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">file</span>
+
+    <span class="nd">@DatabaseManager</span><span class="o">.</span><span class="n">in_session</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_insert_list</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">stmts</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Insert</span><span class="p">],</span>
+        <span class="n">user_info</span><span class="p">:</span> <span class="n">UserInfo</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Base</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;INSERT many objects into the DB database, check token write permission before commit.&quot;&quot;&quot;</span>
+        <span class="n">files</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_insert_list</span><span class="p">(</span><span class="n">stmts</span><span class="p">,</span> <span class="n">user_info</span><span class="o">=</span><span class="n">user_info</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">gen_upload_form</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">files</span>
+
+    <span class="nd">@DatabaseManager</span><span class="o">.</span><span class="n">in_session</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">release</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">pk_val</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+        <span class="n">fields</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">update</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+        <span class="n">session</span><span class="p">:</span> <span class="n">AsyncSession</span><span class="p">,</span>
+        <span class="n">user_info</span><span class="p">:</span> <span class="n">UserInfo</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Base</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Important: Also override /files/{id}/release behaviour.&quot;&quot;&quot;</span>
+        <span class="c1"># Bumps version.</span>
+        <span class="n">file</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">release</span><span class="p">(</span>
+            <span class="n">pk_val</span><span class="o">=</span><span class="n">pk_val</span><span class="p">,</span>
+            <span class="n">fields</span><span class="o">=</span><span class="n">fields</span><span class="p">,</span>
+            <span class="n">update</span><span class="o">=</span><span class="n">update</span><span class="p">,</span>
+            <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">,</span>
+            <span class="n">user_info</span><span class="o">=</span><span class="n">user_info</span>
+        <span class="p">)</span>
+        <span class="c1"># Reset special fields.</span>
+        <span class="n">file</span><span class="o">.</span><span class="n">created_at</span> <span class="o">=</span> <span class="n">utcnow</span><span class="p">()</span>
+        <span class="n">file</span><span class="o">.</span><span class="n">validated_at</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">file</span><span class="o">.</span><span class="n">ready</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">file</span><span class="o">.</span><span class="n">dl_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># Generate a new form.</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">gen_upload_form</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">file</span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+<section id="routing-and-auth">
+<span id="dev-routing"></span><h2>Routing and Auth<a class="headerlink" href="#routing-and-auth" title="Link to this heading"></a></h2>
+<p>As shown in the <code class="docutils literal notranslate"><span class="pre">S3Controller</span></code> example above, <code class="docutils literal notranslate"><span class="pre">BioDM</span></code> provides two
+<code class="docutils literal notranslate"><span class="pre">Routes</span></code> class: <code class="docutils literal notranslate"><span class="pre">PublicRoute</span></code> and <code class="docutils literal notranslate"><span class="pre">Route</span></code>.</p>
+<p>In case you are defining your own routes you should use those ones instead of
+starlette’s <code class="docutils literal notranslate"><span class="pre">Route</span></code>.</p>
+<p>Ultimately, this allows to use the config parameter <code class="docutils literal notranslate"><span class="pre">REQUIRE_AUTH</span></code> which when set to <code class="docutils literal notranslate"><span class="pre">True</span></code>
+will require authentication on all endpoints routed
+with simple <code class="docutils literal notranslate"><span class="pre">Routes</span></code> while leaving endpoints marked with <code class="docutils literal notranslate"><span class="pre">PublicRoute</span></code> public.
+This distinction can be important as in the example above, s3 bucket is <strong>not</strong> authenticated
+when sending us a successful notice of file upload.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="doc_endpoints.html" class="btn btn-neutral float-left" title="Documenting endpoints" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="k8manifests.html" class="btn btn-neutral float-right" title="Kubernetes manifests" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BioDM: A fast and RESTful Data Management framework &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Getting Started" href="getting_started.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.9.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer_manual/index.html">Developer Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biodm/modules.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">BioDM: A fast and RESTful Data Management framework</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="biodm-a-fast-and-restful-data-management-framework">
+<h1>BioDM: A fast and RESTful Data Management framework<a class="headerlink" href="#biodm-a-fast-and-restful-data-management-framework" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>BioDM: A fast and RESTful Data Management framework<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p align="center"><img src="https://github.com/bag-cnag/biodm/blob/main/logo.png?raw=true" alt="logo" width="200"/></p><hr class="docutils" />
+<p><strong>Source Code</strong>: <span class="raw-html-md"><a href="https://github.com/bag-cnag/biodm" target="_blank">https://github.com/bag-cnag/biodm</a></span></p>
+<p><strong>Documentation</strong>: <span class="raw-html-md"><a href="https://bag-cnag.github.io/biodm/" target="_blank">https://bag-cnag.github.io/biodm/</a></span></p>
+<p><strong>Introduction Presentation</strong>: <span class="raw-html-md"><a href="https://www.overleaf.com/read/wxpdnptnkpsy" target="_blank">https://www.overleaf.com/read/wxpdnptnkpsy</a></span></p>
+<p><strong>(Draft) Publication</strong>: <span class="raw-html-md"><a href="https://www.overleaf.com/read/ptmtbdcdkdsh" target="_blank">https://www.overleaf.com/read/ptmtbdcdkdsh</a></span></p>
+<hr class="docutils" />
+<p>BioDM is a fast, modular, stateless and asynchronous REST API framework with the following core features:</p>
+<ul class="simple">
+<li><p>Provide standard HTTP REST-to-CRUD endpoints from <strong>developper provided</strong> entity definitions:</p>
+<ul>
+<li><p><em>`SQLAlchemy &lt;https://github.com/sqlalchemy/sqlalchemy/&gt;`_</em> tables</p></li>
+<li><p><em>`marshmallow &lt;https://github.com/marshmallow-code/marshmallow&gt;`_</em> schemas</p></li>
+</ul>
+</li>
+<li><p>Inter-operate services ecosystem:</p>
+<ul>
+<li><p>Permissions leveraging <em>Keycloak</em></p></li>
+<li><p>Storage leveraging <em>S3</em> protocol</p></li>
+<li><p>Jobs &amp; Visualization leveraging <em>Kubernetes</em> cluster</p></li>
+</ul>
+</li>
+<li><p>Also sets up essentials:</p>
+<ul>
+<li><p>Liveness endpoint</p></li>
+<li><p>Login and token retrieval system</p></li>
+<li><p>OpenAPI schema generation through <a class="reference external" href="https://github.com/marshmallow-code/apispec">apispec</a></p></li>
+</ul>
+</li>
+</ul>
+<p>It sits on the <strong>F**indability and **A**ccessibility part of the **F.A.I.R</strong> principles,
+while remaining flexible for the remainder to be implemented.</p>
+<section id="quickstart">
+<h3>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading"></a></h3>
+<section id="install">
+<h4>Install<a class="headerlink" href="#install" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3<span class="w"> </span>install<span class="w"> </span>git+https://github.com/bag-cnag/biodm
+</pre></div>
+</div>
+<p>To run an API instance you will also need an ASGI server, <strong>e.g.</strong> uvicorn+uvloop:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3<span class="w"> </span>install<span class="w"> </span>uvicorn<span class="w"> </span>uvloop
+</pre></div>
+</div>
+</section>
+<section id="run-example-project">
+<h4>Run Example project<a class="headerlink" href="#run-example-project" title="Link to this heading"></a></h4>
+<p>Provided within this repository.</p>
+<p><em>Note:</em> Prior to this step,
+it is recommended to create and activate a new <code class="docutils literal notranslate"><span class="pre">python3</span></code> (&gt;=3.11) virtual environment.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>src/requirements/dev.txt
+pip3<span class="w"> </span>install<span class="w"> </span>.
+</pre></div>
+</div>
+<p>you may use the following in order to deploy the development stack:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>compose.yml<span class="w"> </span>up<span class="w"> </span>--build<span class="w"> </span>-d
+</pre></div>
+</div>
+<p>It is recommended to give them hostnames.
+In particular keycloak does hard checks and login shall fail without this step.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>cat<span class="w"> </span>&gt;&gt;<span class="w"> </span>/etc/hosts<span class="w"> </span><span class="s">&lt;&lt;EOF</span>
+<span class="s"># biodm-dev</span>
+<span class="s">10.10.0.2       postgres.local</span>
+<span class="s">10.10.0.3       keycloak.local host.minikube.internal</span>
+<span class="s">10.10.0.4       s3bucket.local</span>
+<span class="s">EOF</span>
+</pre></div>
+</div>
+<p>Then you may run <code class="docutils literal notranslate"><span class="pre">example</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>src/example/
+python3<span class="w"> </span>src/example/app.py
+</pre></div>
+</div>
+<p>Visiting the <code class="docutils literal notranslate"><span class="pre">/swagger</span></code> route from a browser will open an interactive <code class="docutils literal notranslate"><span class="pre">swagger-ui</span></code> page.</p>
+</section>
+<section id="further-steps">
+<h4>Further steps<a class="headerlink" href="#further-steps" title="Link to this heading"></a></h4>
+<p>To use kubernetes functionalities or tweak default configuration you should visit
+<a class="reference external" href="https://bag-cnag.github.io/biodm">getting started</a> section of the documentation.</p>
+</section>
+</section>
+<section id="about">
+<h3>About<a class="headerlink" href="#about" title="Link to this heading"></a></h3>
+<p>Developed at <a class="reference external" href="https://www.cnag.eu/">CNAG</a></p>
+</section>
+<section id="contributing">
+<h3>Contributing<a class="headerlink" href="#contributing" title="Link to this heading"></a></h3>
+<p>No contributing policy yet. However, issues and pull requests are welcome.</p>
+</section>
+<section id="licence">
+<h3>Licence<a class="headerlink" href="#licence" title="Link to this heading"></a></h3>
+<p>GNU/AGPLv3</p>
+</section>
+</section>
+<section id="welcome-to-biodm-s-documentation">
+<h2>Welcome to biodm’s documentation!<a class="headerlink" href="#welcome-to-biodm-s-documentation" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#install">Install</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#start-server">Start Server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#development-environment">Development environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#minikube">Minikube</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#documentation">Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#tests">Tests</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="developer_manual/index.html">Developer Manual</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="developer_manual/index.html#basics">Basics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="developer_manual/index.html#concepts">Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="developer_manual/index.html#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="developer_manual/index.html#biodm-toolkit-guide">BioDM toolkit Guide</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="user_manual.html">User Manual</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="user_manual.html#base-routes">Base routes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_manual.html#entity-routes">Entity routes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_manual.html#file-management">File management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_manual.html#user-permissions">User permissions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="biodm/modules.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="biodm/biodm.html">biodm package</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="licence.html">License</a></li>
+</ul>
+</div>
+</section>
+<section id="indices-and-tables">
+<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="getting_started.html" class="btn btn-neutral float-right" title="Getting Started" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

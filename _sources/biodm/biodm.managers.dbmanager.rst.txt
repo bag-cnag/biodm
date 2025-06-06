@@ -1,0 +1,7 @@
+biodm.managers.dbmanager module
+===============================
+
+.. automodule:: biodm.managers.dbmanager
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+biodm.basics.rootcontroller module
+==================================
+
+.. automodule:: biodm.basics.rootcontroller
+   :members:
+   :undoc-members:
+   :show-inheritance:

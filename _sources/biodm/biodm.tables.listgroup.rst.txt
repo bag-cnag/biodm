@@ -1,0 +1,7 @@
+biodm.tables.listgroup module
+=============================
+
+.. automodule:: biodm.tables.listgroup
+   :members:
+   :undoc-members:
+   :show-inheritance:

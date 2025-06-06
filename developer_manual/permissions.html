@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Permissions &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Versioning" href="versioning.html" />
+    <link rel="prev" title="S3 Configuration" href="s3conf.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.9.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Developer Manual</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="index.html#basics">Basics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#concepts">Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#configuration">Configuration</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html#biodm-toolkit-guide">BioDM toolkit Guide</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="demo.html">Minimal Demo</a></li>
+<li class="toctree-l3"><a class="reference internal" href="s3conf.html">S3 Configuration</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Permissions</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#server-level-require-auth">Server level: REQUIRE_AUTH</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#coarse-static-rule-on-a-controller-endpoint">Coarse: Static rule on a Controller endpoint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#fine-dynamic-user-owned-permissions">Fine: Dynamic user owned permissions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="versioning.html">Versioning</a></li>
+<li class="toctree-l3"><a class="reference internal" href="table_schema.html">Tables and Schemas</a></li>
+<li class="toctree-l3"><a class="reference internal" href="doc_endpoints.html">Documenting endpoints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="advanced_use.html">Advanced Use</a></li>
+<li class="toctree-l3"><a class="reference internal" href="k8manifests.html">Kubernetes manifests</a></li>
+<li class="toctree-l3"><a class="reference internal" href="production.html">Preparing for production</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../biodm/modules.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Developer Manual</a></li>
+      <li class="breadcrumb-item active">Permissions</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/developer_manual/permissions.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="permissions">
+<h1>Permissions<a class="headerlink" href="#permissions" title="Link to this heading"></a></h1>
+<p>In order to protect your data, <code class="docutils literal notranslate"><span class="pre">BioDM</span></code> provides two structures of permissions.</p>
+<p>Those are requiring a keycloak service running and the following variables to
+be provided in a <code class="docutils literal notranslate"><span class="pre">.env</span></code> file at the same level as your <code class="docutils literal notranslate"><span class="pre">demo.py</span></code> script.</p>
+<div class="literal-block-wrapper docutils container" id="id1">
+<div class="code-block-caption"><span class="caption-text">.env</span><a class="headerlink" href="#id1" title="Link to this code"></a></div>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">KC_HOST</span><span class="o">=</span>
+<span class="nv">KC_REALM</span><span class="o">=</span>
+<span class="nv">KC_PUBLIC_KEY</span><span class="o">=</span>
+<span class="nv">KC_ADMIN</span><span class="o">=</span>
+<span class="nv">KC_ADMIN_PASSWORD</span><span class="o">=</span>
+<span class="nv">KC_CLIENT_ID</span><span class="o">=</span>
+<span class="nv">KC_CLIENT_SECRET</span><span class="o">=</span>
+</pre></div>
+</div>
+</div>
+<section id="server-level-require-auth">
+<h2>Server level: REQUIRE_AUTH<a class="headerlink" href="#server-level-require-auth" title="Link to this heading"></a></h2>
+<p>Setting <code class="docutils literal notranslate"><span class="pre">REQUIRE_AUTH=True</span></code> config argument, will make all routes, except the ones explicitely
+marked public (such as <code class="docutils literal notranslate"><span class="pre">/login</span></code> and <code class="docutils literal notranslate"><span class="pre">/[resources/|]schemas)</span></code> require authentication.</p>
+<p>See more at <a class="reference internal" href="advanced_use.html#dev-routing"><span class="std std-ref">Routing and Auth</span></a></p>
+</section>
+<section id="coarse-static-rule-on-a-controller-endpoint">
+<h2>Coarse: Static rule on a Controller endpoint<a class="headerlink" href="#coarse-static-rule-on-a-controller-endpoint" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">biodm.utils.security</span></code> module contains three decorators that are meant to be used
+on Controller endpoints in order to apply static permissions directly within the codebase.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&#64;token_required()</span></code></p>
+<ul>
+<li><p>Protects the endpoint demanding incomming requests to by signed with a valid <code class="docutils literal notranslate"><span class="pre">Keycloak</span> <span class="pre">JW</span> <span class="pre">Token</span></code></p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&#64;group_required(groups=[gpath_1,...</span> <span class="pre">gpath_n])</span></code></p>
+<ul>
+<li><p>Like token_required, plus assesses that requesting <code class="docutils literal notranslate"><span class="pre">User</span></code> is part of one of those <code class="docutils literal notranslate"><span class="pre">Groups</span></code></p></li>
+<li><p>A group path: starts with no leading delimiter and has <code class="docutils literal notranslate"><span class="pre">/</span></code> replaced by <code class="docutils literal notranslate"><span class="pre">__</span></code></p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&#64;admin_required()</span></code></p>
+<ul>
+<li><p>group_required special case, requesting <code class="docutils literal notranslate"><span class="pre">User</span></code> must be part of <code class="docutils literal notranslate"><span class="pre">admin</span></code> group.</p></li>
+</ul>
+</li>
+</ul>
+<p>On our example, this is how you could apply those on <cite>DatasetController</cite>:</p>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-text">demo.py</span><a class="headerlink" href="#id2" title="Link to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">biodm.utils.security</span><span class="w"> </span><span class="kn">import</span> <span class="n">group_required</span><span class="p">,</span> <span class="n">admin_required</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">DatasetController</span><span class="p">(</span><span class="n">bdc</span><span class="o">.</span><span class="n">ResourceController</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">app</span><span class="o">=</span><span class="n">app</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span> <span class="o">=</span> <span class="n">group_required</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">create</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;my_team&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span> <span class="o">=</span> <span class="n">group_required</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;my_team&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">release</span> <span class="o">=</span> <span class="n">group_required</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">release</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;my_team__data_owners&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delete</span> <span class="o">=</span> <span class="n">admin_required</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">delete</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Here we restricted the creation and updating of datasets to <code class="docutils literal notranslate"><span class="pre">my_team</span></code>, publishing a new release
+is reserved to <code class="docutils literal notranslate"><span class="pre">data_owners</span></code> subgroup of and deletion is <code class="docutils literal notranslate"><span class="pre">admin</span></code> priviledge.
+Implicitely reading data is left public.</p>
+<section id="nested-propagation">
+<h3>Nested propagation<a class="headerlink" href="#nested-propagation" title="Link to this heading"></a></h3>
+<p>For some endpoints, those decorators shall also affect nested behaviour.
+<strong>I.e.</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p>The check is applied when creating a resource whose <code class="docutils literal notranslate"><span class="pre">create</span></code> endpoint is protected by those decorators from a composite upper level resource.</p></li>
+<li><p>filtering/reading a nested collocation will also need to pass the check if that given resource has its <code class="docutils literal notranslate"><span class="pre">read</span></code> endpoint protected.</p></li>
+</ul>
+</div></blockquote>
+</section>
+</section>
+<section id="fine-dynamic-user-owned-permissions">
+<span id="dev-user-permissions"></span><h2>Fine: Dynamic user owned permissions<a class="headerlink" href="#fine-dynamic-user-owned-permissions" title="Link to this heading"></a></h2>
+<p>If your data management platform is intended to receive data from users, <code class="docutils literal notranslate"><span class="pre">BioDM</span></code> provide tools to
+let them in control of permissions by providing them directly as the resource input data.</p>
+<p><code class="docutils literal notranslate"><span class="pre">biodm.components.Permission</span></code> class is designed as an extra SQLAlchemy table argument that let
+you flag composition pattern (i.e. One-to-Many relationships) with the following permissions that
+will be applied recursively for all children of that particular entity:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Read</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Write</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Download</span></code></p></li>
+</ul>
+<p>In our example:</p>
+<div class="literal-block-wrapper docutils container" id="id3">
+<div class="code-block-caption"><span class="caption-text">demo.py</span><a class="headerlink" href="#id3" title="Link to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">biodm.components</span><span class="w"> </span><span class="kn">import</span> <span class="n">Permission</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Dataset</span><span class="p">(</span><span class="n">bd</span><span class="o">.</span><span class="n">components</span><span class="o">.</span><span class="n">Base</span><span class="p">):</span>
+    <span class="nb">id</span>            <span class="p">:</span> <span class="n">sao</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>          <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">Integer</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="o">...</span>
+    <span class="n">files</span>         <span class="p">:</span> <span class="n">sao</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="s2">&quot;File&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">sao</span><span class="o">.</span><span class="n">relationship</span><span class="p">(</span><span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;dataset&quot;</span><span class="p">)</span>
+
+    <span class="n">__permissions__</span> <span class="o">=</span> <span class="p">(</span>
+      <span class="n">Permission</span><span class="p">(</span><span class="n">files</span><span class="p">,</span> <span class="n">write</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">read</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The latter enables <code class="docutils literal notranslate"><span class="pre">File</span></code> permissions at the <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> level.</p>
+<p>In other words it lets you define for a top level resource who is allowed to interact
+with a nested collection and its elements.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Those permissions will be taken into account when directly accessing <code class="docutils literal notranslate"><span class="pre">/files</span></code> API routes.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You always need a top level resource. This system is thought to be combined with decorator
+based permission for such resources.</p>
+</div>
+<section id="nesting-and-propagation">
+<h3>Nesting and propagation<a class="headerlink" href="#nesting-and-propagation" title="Link to this heading"></a></h3>
+<p>This tool offers flexible options. Imagine a case with one more level of collections with a
+<code class="docutils literal notranslate"><span class="pre">Project</span></code> table, containing a collection of <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> such as showcased in <code class="docutils literal notranslate"><span class="pre">example</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Project</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
+    <span class="nb">id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">Integer</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="o">...</span>
+
+    <span class="n">datasets</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="s2">&quot;Dataset&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;project&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Then you may use a string selector to apply that top level permission directly on a lower level
+resource, skipping the mid level.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Project</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
+    <span class="o">...</span>
+  <span class="n">__permissions__</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">Permission</span><span class="p">(</span><span class="s2">&quot;datasets.files&quot;</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+  <span class="p">)</span>
+</pre></div>
+</div>
+<p>Moreover, you have the option of propagating that top level permission to the lower nested
+collections. Sharing those permissions between intermediate level and lower level.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Project</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
+    <span class="o">...</span>
+  <span class="n">__permissions__</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">Permission</span><span class="p">(</span><span class="n">datasets</span><span class="p">,</span> <span class="n">read</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">write</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">propagates_to</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;files&quot;</span><span class="p">]),</span>
+  <span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="self">
+<h3>Self<a class="headerlink" href="#self" title="Link to this heading"></a></h3>
+<p>The term <code class="docutils literal notranslate"><span class="pre">self</span></code> is also supported in this configuration, it will bind those permissions
+on the same resource.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Project</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
+    <span class="o">...</span>
+  <span class="n">__permissions__</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">Permission</span><span class="p">(</span><span class="s2">&quot;self&quot;</span><span class="p">,</span> <span class="n">read</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+  <span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>It shall raise an <code class="docutils literal notranslate"><span class="pre">ImplementationError</span></code> if used in conjunction with <code class="docutils literal notranslate"><span class="pre">write</span></code>
+as it does not makes sense to tie writing rights directly on a resource.</p>
+</div>
+</section>
+<section id="strict-composition">
+<h3>Strict composition<a class="headerlink" href="#strict-composition" title="Link to this heading"></a></h3>
+<p>Currently, <code class="docutils literal notranslate"><span class="pre">BioDM</span></code> assumes a strict composition pattern of resource for those permissions.
+Which allow them to be taken into account while directly accessing children resource routes
+like mentioned above.</p>
+<p>Unfortunately, that also means that distributing permissions from two, or more, parent level
+resources is currently not tested and shall most likely result in soft-locking those resources.</p>
+<p>This may or may not be supported in a future version of the Core, depending on technical
+feasibility.</p>
+<p>If you wish to achieve something in that vein, it is for now advised to create an identical
+resource with a different name.</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="s3conf.html" class="btn btn-neutral float-left" title="S3 Configuration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="versioning.html" class="btn btn-neutral float-right" title="Versioning" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

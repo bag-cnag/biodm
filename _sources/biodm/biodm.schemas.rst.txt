@@ -1,0 +1,23 @@
+biodm.schemas package
+=====================
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   biodm.schemas.error
+   biodm.schemas.group
+   biodm.schemas.listgroup
+   biodm.schemas.refresh
+   biodm.schemas.upload
+   biodm.schemas.user
+
+Module contents
+---------------
+
+.. automodule:: biodm.schemas
+   :members:
+   :undoc-members:
+   :show-inheritance:

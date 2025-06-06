@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Preparing for production &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="User Manual" href="../user_manual.html" />
+    <link rel="prev" title="Kubernetes manifests" href="k8manifests.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.9.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Developer Manual</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="index.html#basics">Basics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#concepts">Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#configuration">Configuration</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html#biodm-toolkit-guide">BioDM toolkit Guide</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="demo.html">Minimal Demo</a></li>
+<li class="toctree-l3"><a class="reference internal" href="s3conf.html">S3 Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="permissions.html">Permissions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="versioning.html">Versioning</a></li>
+<li class="toctree-l3"><a class="reference internal" href="table_schema.html">Tables and Schemas</a></li>
+<li class="toctree-l3"><a class="reference internal" href="doc_endpoints.html">Documenting endpoints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="advanced_use.html">Advanced Use</a></li>
+<li class="toctree-l3"><a class="reference internal" href="k8manifests.html">Kubernetes manifests</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Preparing for production</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#distributing">Distributing</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#running-in-https">Running in HTTPS</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../biodm/modules.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Developer Manual</a></li>
+      <li class="breadcrumb-item active">Preparing for production</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/developer_manual/production.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="preparing-for-production">
+<h1>Preparing for production<a class="headerlink" href="#preparing-for-production" title="Link to this heading"></a></h1>
+<section id="distributing">
+<h2>Distributing<a class="headerlink" href="#distributing" title="Link to this heading"></a></h2>
+<p>As showcased in <cite>example</cite> project, it is advised to make a package out of your server.
+That will facilite distribution and imports. To do so is quite simple since <span class="target" id="index-0"></span><a class="pep reference external" href="https://peps.python.org/pep-0621/"><strong>PEP 621</strong></a>, we recommend
+to check out the <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code> file and adapt it to your own needs, according to how you have
+organized your sources.</p>
+</section>
+<section id="running-in-https">
+<h2>Running in HTTPS<a class="headerlink" href="#running-in-https" title="Link to this heading"></a></h2>
+<p>To serve HTTPS requests, you have to provide your web server with appropriate certificates and
+pass <code class="docutils literal notranslate"><span class="pre">scheme='https'</span></code> argument to the server object at instanciation in <code class="docutils literal notranslate"><span class="pre">app.py</span></code>.</p>
+<section id="uvicorn">
+<h3>Uvicorn<a class="headerlink" href="#uvicorn" title="Link to this heading"></a></h3>
+<p>As per uvicorn, <a class="reference external" href="https://www.uvicorn.org/deployment/#running-with-https">documentation</a>,
+you have to pass in paths to <code class="docutils literal notranslate"><span class="pre">ssl_keyfile</span></code> and <code class="docutils literal notranslate"><span class="pre">ssl_certfile</span></code>
+to the <code class="docutils literal notranslate"><span class="pre">uvicorn.run</span></code> method in <code class="docutils literal notranslate"><span class="pre">app.py</span></code> then the server will run in HTTPS mode.</p>
+</section>
+<section id="tls-proxy">
+<h3>TLS Proxy<a class="headerlink" href="#tls-proxy" title="Link to this heading"></a></h3>
+<p>A common approach would be to leave the server running in HTTP, but deploy a TLS Proxy on top of it
+that would use the certificates and manage secure connections while commicating with the server
+using regular HTTP requests.</p>
+<p>For that purpose, it is advised to pass <code class="docutils literal notranslate"><span class="pre">proxy_headers=True</span></code> and <code class="docutils literal notranslate"><span class="pre">forwarded_allow_ips='*'</span></code> to
+uvicorn or equivalent if you’re using another web server library.</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="k8manifests.html" class="btn btn-neutral float-left" title="Kubernetes manifests" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../user_manual.html" class="btn btn-neutral float-right" title="User Manual" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

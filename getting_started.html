@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting Started &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Developer Manual" href="developer_manual/index.html" />
+    <link rel="prev" title="BioDM: A fast and RESTful Data Management framework" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.9.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#install">Install</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#start-server">Start Server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#development-environment">Development environment</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#quick-dependency-setup">Quick dependency setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#individual-configuration">Individual configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#minikube">Minikube</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#documentation">Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tests">Tests</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#unit">Unit</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#integration">Integration</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="developer_manual/index.html">Developer Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biodm/modules.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Getting Started</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/getting_started.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="getting-started">
+<h1>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading"></a></h1>
+<section id="install">
+<h2>Install<a class="headerlink" href="#install" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Recommended: <span class="target" id="index-0"></span><a class="pep reference external" href="https://peps.python.org/pep-0405/"><strong>PEP 405</strong></a> Create virtual environment</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>venv
+<span class="nb">source</span><span class="w"> </span>venv/bin/activate/
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>using built in python tools such as <code class="docutils literal notranslate"><span class="pre">venv</span></code> and <code class="docutils literal notranslate"><span class="pre">pip</span></code> is preferred.
+<code class="docutils literal notranslate"><span class="pre">conda</span></code> and co. package managers are currently untested.</p>
+</div>
+<ul class="simple">
+<li><p>Using pip and git</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3<span class="w"> </span>install<span class="w"> </span>git+https://github.com/bag-cnag/biodm
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Install with kubernetes functionalities</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;biodm[kubernetes] @ git+https://github.com/bag-cnag/biodm&quot;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Build from sources</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/bag-cnag/biodm
+<span class="nb">cd</span><span class="w"> </span>biodm/
+pip3<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>src/requirements/dev.txt
+pip3<span class="w"> </span>install<span class="w"> </span>.
+</pre></div>
+</div>
+</section>
+<section id="start-server">
+<h2>Start Server<a class="headerlink" href="#start-server" title="Link to this heading"></a></h2>
+<p>E.g. for our <code class="docutils literal notranslate"><span class="pre">example</span></code> project.
+Configuration is done through <code class="docutils literal notranslate"><span class="pre">.env</span></code> files, thus server has to be run from its immediate directory.
+The one provided at <code class="docutils literal notranslate"><span class="pre">src/example/.env</span></code> is set on development environment values.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>src/example/
+python3<span class="w"> </span>app.py
+</pre></div>
+</div>
+</section>
+<section id="development-environment">
+<span id="id1"></span><h2>Development environment<a class="headerlink" href="#development-environment" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Install in editable mode</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>src/requirements/dev.txt
+pip3<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+</pre></div>
+</div>
+<section id="quick-dependency-setup">
+<h3>Quick dependency setup<a class="headerlink" href="#quick-dependency-setup" title="Link to this heading"></a></h3>
+<p>To start all service dependnencies (except <cite>minikube</cite>, see below) at once and skip individual
+configuration you may use the provided <code class="docutils literal notranslate"><span class="pre">compose.yml</span></code>. Passing the flag <code class="docutils literal notranslate"><span class="pre">--build</span></code> it will also
+build for you an appropriate keycloak image with your local certificates in order to serve
+<code class="docutils literal notranslate"><span class="pre">https://</span></code> requests.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>--build<span class="w"> </span>-d
+</pre></div>
+</div>
+<p>Default configuration parameters are set on fixed IPs declared in this <code class="docutils literal notranslate"><span class="pre">compose.yml</span></code> file.</p>
+<p><strong>optional - essential for keycloak/minikube -:</strong> for testing convenience you
+should add those lines to your host table.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>cat<span class="w"> </span>&gt;&gt;<span class="w"> </span>/etc/hosts<span class="w"> </span><span class="s">&lt;&lt;EOF</span>
+<span class="s"># biodm-dev</span>
+<span class="s">10.10.0.2       postgres.local</span>
+<span class="s">10.10.0.3       keycloak.local host.minikube.internal</span>
+<span class="s">10.10.0.4       s3bucket.local</span>
+<span class="s">EOF</span>
+</pre></div>
+</div>
+<p>It might be a pre-requisite for keycloak as it is quite strict with security protocols.
+Definitely something to try if you cannot reach admin UI or your app is unable to fetch any data.</p>
+<p><strong>Optional:</strong> - To personalize defaults, see <a class="reference internal" href="#individual-configuration">Individual configuration</a> below.
+- Keycloak comes with a default <code class="docutils literal notranslate"><span class="pre">3TR</span></code> realm and appropriate client that has user/group rights.
+- MinIO launches with <code class="docutils literal notranslate"><span class="pre">admin</span></code> credentials, that are used as ACCESS_KEY.</p>
+</section>
+<section id="individual-configuration">
+<h3>Individual configuration<a class="headerlink" href="#individual-configuration" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Database</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--name<span class="w"> </span>api-db<span class="w"> </span>-e<span class="w"> </span><span class="nv">POSTGRES_PASSWORD</span><span class="o">=</span>pass<span class="w"> </span>-d<span class="w"> </span>postgres:16-bookworm
+docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-u<span class="w"> </span>postgres<span class="w"> </span>api-db<span class="w"> </span>createdb<span class="w"> </span>biodm
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Keycloak</p></li>
+</ul>
+<p id="keycloak">First you need to build the image yourself according to <a class="reference external" href="https://www.keycloak.org/server/containers/">keycloak documentation</a>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>docker/<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+docker<span class="w"> </span>build<span class="w"> </span>.<span class="w"> </span>-t<span class="w"> </span>keycloak:22.0_local-certs<span class="w"> </span><span class="se">\</span>
+<span class="w">               </span>-f<span class="w"> </span>Dockerfile.keycloak-22.0_local-certs<span class="w"> </span><span class="se">\</span>
+<span class="w">               </span>--build-arg<span class="w"> </span><span class="nv">_KC_DB</span><span class="o">=</span>postgres<span class="w"> </span><span class="se">\</span>
+<span class="w">               </span>--build-arg<span class="w"> </span><span class="nv">_KC_DB_USERNAME</span><span class="o">=</span>postgres<span class="w"> </span><span class="se">\</span>
+<span class="w">               </span>--build-arg<span class="w"> </span><span class="nv">_KC_DB_PASSWORD</span><span class="o">=</span>pass<span class="w"> </span><span class="se">\</span>
+<span class="w">               </span>--build-arg<span class="o">=</span><span class="nv">_KC_HOSTNAME</span><span class="o">=</span>keycloak.local<span class="w"> </span><span class="se">\</span>
+<span class="w">               </span>--build-arg<span class="w"> </span><span class="nv">_KC_DB_URL</span><span class="o">=</span>jdbc:postgresql://10.10.0.5:5432/keycloak<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+<span class="nb">cd</span><span class="w"> </span>-
+</pre></div>
+</div>
+<p>Keycloak also needs a databse:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--name<span class="w"> </span>kc-db<span class="w"> </span>-e<span class="w"> </span><span class="nv">POSTGRES_PASSWORD</span><span class="o">=</span>pass<span class="w"> </span>-e<span class="w"> </span><span class="nv">POSTGRES_DB</span><span class="o">=</span>keycloak<span class="w"> </span>-d<span class="w"> </span>postgres:16-bookworm
+docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-u<span class="w"> </span>postgres<span class="w"> </span>biodm-pg<span class="w"> </span>createdb<span class="w"> </span>keycloak
+</pre></div>
+</div>
+<p>Then you may start keycloak itself:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--name<span class="w"> </span>local_keycloak<span class="w"> </span>-e<span class="w"> </span><span class="nv">KEYCLOAK_USER</span><span class="o">=</span>admin<span class="w"> </span>-e<span class="w"> </span><span class="nv">KEYCLOAK_PASSWORD</span><span class="o">=</span>admin<span class="w"> </span>-p<span class="w"> </span><span class="m">8443</span>:8080<span class="w"> </span>keycloak:22.0.5_local-certs
+</pre></div>
+</div>
+<p class="rubric">Configuration</p>
+<p>Once keycloak is running you need to configure a realm and a client for the app to log in.
+Default values are:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">KC_REALM</span><span class="o">=</span><span class="s2">&quot;3TR&quot;</span>
+<span class="nv">KC_CLIENT_ID</span><span class="o">=</span><span class="s2">&quot;submission_client&quot;</span>
+</pre></div>
+</div>
+<p>Once you’ve created the realm, create the client. Then</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>set <cite>Access Type</cite> to confidential</p></li>
+<li><p>set <cite>Inplicit Flow Enabled</cite> to <cite>True</cite>.</p></li>
+<li><p>Add Valid Redirect Uri:</p>
+<ul>
+<li><p><strong>dev</strong>: <cite>http://*</cite> and <cite>https://*</cite></p></li>
+<li><p><strong>prod</strong>: provide the url of the login callback <cite>{SERVER_HOST}/syn_ack</cite>.</p></li>
+</ul>
+</li>
+</ul>
+</div></blockquote>
+<p>Additionally, <code class="docutils literal notranslate"><span class="pre">BioDM</span></code> expects token to feature groups. For this, a client scope is necessary. Go to</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><cite>Client Scopes</cite> -&gt; <cite>Create Client Scope</cite></p>
+<ul>
+<li><p>Name: <cite>groups</cite></p></li>
+<li><p>Protocol: <cite>OpenID Connect</cite></p></li>
+<li><p>Type: <cite>Default</cite></p></li>
+<li><p>Include in token scope: <cite>On</cite></p></li>
+<li><p>Save</p></li>
+</ul>
+</li>
+<li><p><cite>Client Scopes</cite> -&gt; <cite>Groups</cite> -&gt; <cite>Mappers</cite> -&gt; <cite>Configure a new mapper</cite> -&gt; <cite>Group membership</cite></p>
+<ul>
+<li><p>Name: <cite>groups</cite></p></li>
+<li><p>token claim name: <cite>groups</cite></p></li>
+<li><p>At least <cite>Full group path</cite> and <cite>Add to access token</cite>: <cite>On</cite></p></li>
+<li><p>Save</p></li>
+</ul>
+</li>
+<li><p><cite>Clients</cite> -&gt; <cite>MyClient</cite> -&gt; <cite>Client Scopes</cite> -&gt; <cite>Add Client Scope</cite> -&gt; <cite>Groups</cite> -&gt; <cite>Add - Default</cite></p></li>
+</ul>
+</div></blockquote>
+<p>Moreover, admin privileges are granted to users belonging to <cite>admin</cite> group.
+It is recommended to create that group and at least one user in it,
+if you want to create keycloak entities from the API for instance.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Depending on your keycloak version or running instance <cite>KC_HOST</cite> may have to be appended with <cite>/auth</cite>.</p>
+</div>
+<p>Then you should provide the server with the <cite>SECRET</cite> field located in the
+<cite>Credentials</cite> tab, that appears <strong>after</strong> you changed access type and the realm public key
+located at <code class="docutils literal notranslate"><span class="pre">{KC_HOST}[auth/]realms/{KC_REALM}/</span></code>.</p>
+<p>To be able to serve as a gateway to administrate keycloak concepts,
+the API also needs admin credentials:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">KC_HOST</span><span class="o">={</span>url<span class="o">}</span>
+<span class="nv">KC_CLIENT_SECRET</span><span class="o">={</span>secret<span class="o">}</span>
+<span class="nv">KC_PUBLIC_KEY</span><span class="o">={</span>public_key<span class="o">}</span>
+<span class="nv">KC_ADMIN</span><span class="o">={</span>admin_id<span class="o">}</span>
+<span class="nv">KC_ADMIN_PASSWORD</span><span class="o">={</span>admin_password<span class="o">}</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Minio</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>-e<span class="w"> </span><span class="nv">MINIO_ROOT_USER</span><span class="o">=</span>admin<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-e<span class="w"> </span><span class="nv">MINIO_ROOT_PASSWORD</span><span class="o">=</span><span class="m">12345678</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-e<span class="w"> </span><span class="nv">MINIO_DEFAULT_BUCKETS</span><span class="o">=</span>bucketdevel3tropal<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-p<span class="w"> </span><span class="m">9000</span>:9000<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-p<span class="w"> </span><span class="m">9001</span>:9001<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>bitnami/minio:2024-debian-12
+</pre></div>
+</div>
+<p>Then visit the administration interface at <cite>localhost:9001</cite>,
+generate a key and populate:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">S3_ENDPOINT_URL</span><span class="o">={</span>url<span class="o">}</span>
+<span class="nv">S3_BUCKET_NAME</span><span class="o">={</span>bucket_name<span class="o">}</span>
+<span class="nv">S3_ACCESS_KEY_ID</span><span class="o">={</span>access_key_id<span class="o">}</span>
+<span class="nv">S3_SECRET_ACCESS_KEY</span><span class="o">={</span>access_key<span class="o">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="minikube">
+<h2>Minikube<a class="headerlink" href="#minikube" title="Link to this heading"></a></h2>
+<p>In order to develop Kubernetes functionalities we use a <code class="docutils literal notranslate"><span class="pre">Minikube</span></code> server.</p>
+<p>Setting it up is not as simple as adding a extra service in <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">compose</span></code>.
+Hence, it needs to be done somewhat manually.</p>
+<p>First you need to install it one your distribution according to
+<a class="reference external" href="https://minikube.sigs.k8s.io/docs/start">minikube documentation</a>.</p>
+<p>Then start server (at the beginning of each session).</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>minikube<span class="w"> </span>start
+</pre></div>
+</div>
+<p>If done for the first time, enable <cite>ingress-nginx-controller</cite> like this:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>minikube<span class="w"> </span>addons<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>ingress
+</pre></div>
+</div>
+<p>For convenience you may add the following alias to your shell. Setup scripts shall assume this.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">alias</span><span class="w"> </span><span class="nv">kubectl</span><span class="o">=</span><span class="s2">&quot;minikube kubectl --&quot;</span>
+</pre></div>
+</div>
+<p>In order to use on demand visualization of <code class="docutils literal notranslate"><span class="pre">.h5ad</span></code> files feature integrated in our <code class="docutils literal notranslate"><span class="pre">example</span></code>
+project you should run the following script.
+It leverages a proof of concept from <code class="docutils literal notranslate"><span class="pre">bag-cnag/cxg_on_k8</span></code> repository.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="sb">``</span>bash<span class="w"> </span>minikube/setup-visualization.sh<span class="sb">``</span>
+</pre></div>
+</div>
+<p>This scrip takes a while and prepares everything that is necessary for the demo.
+Ultimately it will output a token that you should set as <code class="docutils literal notranslate"><span class="pre">K8_TOKEN</span></code> in <code class="docutils literal notranslate"><span class="pre">src/example/.env</span></code>.</p>
+</section>
+<section id="documentation">
+<h2>Documentation<a class="headerlink" href="#documentation" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>pre-requisite:</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>src/requirements/docs.txt
+</pre></div>
+</div>
+<p>Then you may use the following:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sphinx-apidoc<span class="w"> </span>--implicit-namespaces<span class="w"> </span>--separate<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;API Reference&quot;</span><span class="w"> </span>-fo<span class="w"> </span>docs/biodm/<span class="w"> </span>src/biodm<span class="w"> </span><span class="s2">&quot;**/*tests*&quot;</span>
+python3<span class="w"> </span>-m<span class="w"> </span>sphinx<span class="w"> </span>-b<span class="w"> </span>html<span class="w"> </span>docs/<span class="w"> </span>docs/build/html
+</pre></div>
+</div>
+</section>
+<section id="tests">
+<h2>Tests<a class="headerlink" href="#tests" title="Link to this heading"></a></h2>
+<section id="unit">
+<h3>Unit<a class="headerlink" href="#unit" title="Link to this heading"></a></h3>
+<p>Unit tests are leveraging an in-memory sqlite database and not testing any feature requiring
+deployement of an external service.</p>
+<ul class="simple">
+<li><p>pre-requisite:</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>src/requirements/dev.txt
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>run tests</p></li>
+</ul>
+<p>Just like example, tests have to be run within their directory.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>src/biodm/tests/
+pytest
+<span class="nb">cd</span><span class="w"> </span>-
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>coverage</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>src/biodm/tests/
+pytest<span class="w"> </span>--cov-report<span class="w"> </span>term<span class="w"> </span>--cov<span class="o">=</span>../
+<span class="nb">cd</span><span class="w"> </span>-
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>run in a VSCode debugpy session</p></li>
+</ul>
+<p>To run a unit test in a debugging session, you may create the following <code class="docutils literal notranslate"><span class="pre">.vscode/launch.json</span></code>
+file at the root of this repository. The <code class="docutils literal notranslate"><span class="pre">run</span> <span class="pre">and</span> <span class="pre">debug</span></code> tab should now ofer an extra option.
+If you installed sources in editable mode, that allows you to set breakpoints within
+<code class="docutils literal notranslate"><span class="pre">BioDM</span></code> codebase.</p>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-text">launch.json</span><a class="headerlink" href="#id2" title="Link to this code"></a></div>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.2.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;configurations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PyTest: BioDM Unit tests&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;debugpy&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;request&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;launch&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;cwd&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;${workspaceFolder}/src/tests/unit&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;subProcess&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;module&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pytest&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;python&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/path/to/myvenv/bin/python3&quot;</span><span class="p">,</span><span class="w"> </span><span class="c1">// Replace with your virtual environment</span>
+<span class="w">            </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                </span><span class="c1">// &quot;-k&quot;, &quot;test_basics&quot;, // Optional: pick your tests</span>
+<span class="w">                </span><span class="s2">&quot;-vv&quot;</span>
+<span class="w">            </span><span class="p">],</span>
+<span class="w">            </span><span class="nt">&quot;justMyCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="integration">
+<h3>Integration<a class="headerlink" href="#integration" title="Link to this heading"></a></h3>
+<p>Integration tests are leveraging <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">compose</span></code> and the development environment to simulate
+external services allowing for end to end testing. It is effectively testing the app from
+outside.</p>
+<p>Integration are split in silos according to their external service dependency:</p>
+<ul class="simple">
+<li><p>Keycloak</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>compose.test.yml<span class="w"> </span>run<span class="w"> </span>--build<span class="w"> </span>test-keycloak-run
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>compose.test.yml<span class="w"> </span>down
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>S3</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>compose.test.yml<span class="w"> </span>run<span class="w"> </span>--build<span class="w"> </span>test-s3-run
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>compose.test.yml<span class="w"> </span>down
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>run in a VSCode debugpy session</p></li>
+</ul>
+<p><strong>pre-requisite</strong> development environment up</p>
+<p>For integration tests you need two sessions: server side (api) and client side (tests), you
+may adjust the following configurations to your need.</p>
+<p>VSCode supports running both sessions at the same time from the <code class="docutils literal notranslate"><span class="pre">run</span> <span class="pre">and</span> <span class="pre">debug</span></code> tab.</p>
+<div class="literal-block-wrapper docutils container" id="id3">
+<div class="code-block-caption"><span class="caption-text">launch.json</span><a class="headerlink" href="#id3" title="Link to this code"></a></div>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.2.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;configurations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Python: BioDM Example API&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;debugpy&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;request&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;launch&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;cwd&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;${workspaceFolder}/src/example/&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;program&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;app.py&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;console&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;integratedTerminal&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;python&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/path/to/myvenv/bin/python3&quot;</span><span class="p">,</span><span class="w"> </span><span class="c1">// Replace with your virtual environment</span>
+<span class="w">            </span><span class="nt">&quot;justMyCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PyTest: BioDM Integration tests&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;debugpy&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;request&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;launch&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;cwd&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;${workspaceFolder}/src/tests/integration/kc|s3|k8&quot;</span><span class="p">,</span><span class="w"> </span><span class="c1">// pick one directory</span>
+<span class="w">            </span><span class="nt">&quot;subProcess&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;module&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pytest&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;python&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/path/to/myvenv/bin/python3&quot;</span><span class="p">,</span><span class="w"> </span><span class="c1">// Replace with your virtual environment</span>
+<span class="w">            </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                </span><span class="c1">// &quot;-k&quot;, &quot;some_test_name&quot; // Optional: pick your tests</span>
+<span class="w">                </span><span class="s2">&quot;-vv&quot;</span>
+<span class="w">            </span><span class="p">],</span>
+<span class="w">            </span><span class="nt">&quot;justMyCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;envFile&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;${cwd}.env&quot;</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="BioDM: A fast and RESTful Data Management framework" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="developer_manual/index.html" class="btn btn-neutral float-right" title="Developer Manual" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,7 @@
+biodm.schemas.upload module
+===========================
+
+.. automodule:: biodm.schemas.upload
+   :members:
+   :undoc-members:
+   :show-inheritance:

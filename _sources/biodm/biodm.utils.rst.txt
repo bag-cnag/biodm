@@ -1,0 +1,22 @@
+biodm.utils package
+===================
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   biodm.utils.apispec
+   biodm.utils.biodm
+   biodm.utils.security
+   biodm.utils.sqla
+   biodm.utils.utils
+
+Module contents
+---------------
+
+.. automodule:: biodm.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:

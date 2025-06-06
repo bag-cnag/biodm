@@ -1,0 +1,37 @@
+biodm package
+=============
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   biodm.basics
+   biodm.components
+   biodm.managers
+   biodm.schemas
+   biodm.tables
+   biodm.utils
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   biodm.api
+   biodm.component
+   biodm.config
+   biodm.error
+   biodm.exceptions
+   biodm.routing
+   biodm.scope
+
+Module contents
+---------------
+
+.. automodule:: biodm
+   :members:
+   :undoc-members:
+   :show-inheritance:

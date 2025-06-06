@@ -1,0 +1,7 @@
+biodm.tables.user module
+========================
+
+.. automodule:: biodm.tables.user
+   :members:
+   :undoc-members:
+   :show-inheritance:

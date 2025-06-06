@@ -1,0 +1,21 @@
+biodm.components.controllers package
+====================================
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   biodm.components.controllers.admincontroller
+   biodm.components.controllers.controller
+   biodm.components.controllers.resourcecontroller
+   biodm.components.controllers.s3controller
+
+Module contents
+---------------
+
+.. automodule:: biodm.components.controllers
+   :members:
+   :undoc-members:
+   :show-inheritance:

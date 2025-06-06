@@ -1,0 +1,7 @@
+biodm.api module
+================
+
+.. automodule:: biodm.api
+   :members:
+   :undoc-members:
+   :show-inheritance:

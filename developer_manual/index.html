@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Developer Manual &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Minimal Demo" href="demo.html" />
+    <link rel="prev" title="Getting Started" href="../getting_started.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.9.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Developer Manual</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#basics">Basics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#concepts">Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#biodm-toolkit-guide">BioDM toolkit Guide</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demo.html">Minimal Demo</a></li>
+<li class="toctree-l3"><a class="reference internal" href="s3conf.html">S3 Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="permissions.html">Permissions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="versioning.html">Versioning</a></li>
+<li class="toctree-l3"><a class="reference internal" href="table_schema.html">Tables and Schemas</a></li>
+<li class="toctree-l3"><a class="reference internal" href="doc_endpoints.html">Documenting endpoints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="advanced_use.html">Advanced Use</a></li>
+<li class="toctree-l3"><a class="reference internal" href="k8manifests.html">Kubernetes manifests</a></li>
+<li class="toctree-l3"><a class="reference internal" href="production.html">Preparing for production</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../biodm/modules.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Developer Manual</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/developer_manual/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="developer-manual">
+<span id="id1"></span><h1>Developer Manual<a class="headerlink" href="#developer-manual" title="Link to this heading"></a></h1>
+<p>This section describes how to use <code class="docutils literal notranslate"><span class="pre">biodm</span></code> package in order to swiftly deploy a modular
+data management API tailored to your needs.</p>
+<p>You also may consult <code class="docutils literal notranslate"><span class="pre">src/example/</span></code> toy project, which encapsulates more complex project needs.</p>
+<p>Following, we will go in detail about the toolkit and builtins.</p>
+<section id="basics">
+<h2>Basics<a class="headerlink" href="#basics" title="Link to this heading"></a></h2>
+<p>At the core, Data Management means storing collections of files and their associated metadata.</p>
+<p><code class="docutils literal notranslate"><span class="pre">BioDM</span></code> is leveraging SQLAlchemy ORM Tables definitions + matching Marshmallow Schemas, specifying
+metadata and relationships, to setup standard RESTful endpoints.</p>
+<p>Furthermore, it is providing a structure and toolkit in order to manage common Data Management problems
+such as: s3 protocol remote file storage, group based permissions access (on both resources and
+endpoints), resource versioning, cluster jobs and so on.</p>
+<p>Moreover, the modular and flexible architecture allows you to easily extend base features for
+instance specific use cases.</p>
+</section>
+<section id="concepts">
+<h2>Concepts<a class="headerlink" href="#concepts" title="Link to this heading"></a></h2>
+<p>The main server class <code class="docutils literal notranslate"><span class="pre">biodm.Api</span></code> is a vessel for <code class="docutils literal notranslate"><span class="pre">biodm.components.controllers.Controller</span></code>
+subinstances.</p>
+<p>Each Controller is independently responsible for exposing a set of routes, validating and serializing
+<cite>i/o</cite> and send incomming Request data to a relevant <code class="docutils literal notranslate"><span class="pre">biodm.component.ApiService</span></code> subinstance.</p>
+<p>Services, are tied to a Table and calling each other in order to parse and adapt
+input data.
+All Services are <code class="docutils literal notranslate"><span class="pre">biodm.components.services.DatabaseService</span></code> subinstances as their
+primary mission is to faithfully log activity and maintain data integrity.</p>
+<p>Finally this internal representation is sent to a <code class="docutils literal notranslate"><span class="pre">biodm.component.ApiManager</span></code>, each holding
+primitives enabling communication with an external micro-service (i.e. DB, S3, Kubernetes,
+…).</p>
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">BioDM</span></code> extends <a class="reference external" href="https://www.starlette.io/config/">Starlette</a>,
+hence its Configuration system works by populating a <code class="docutils literal notranslate"><span class="pre">.env</span></code> file, preferably sitting in the same directory as the running script.</p>
+<p>We invite you to consult <a class="reference external" href="https://github.com/bag-cnag/biodm/blob/main/src/biodm/config.py">config.py</a>
+to discover all possible options.</p>
+<p>Functionalities depending on external micro-services are enabled if matching configuration options are provided.</p>
+<p><strong>e.g.</strong> Keycloak functionalities shall be activated, if and only if, defaultless config parameters prefixed by <code class="docutils literal notranslate"><span class="pre">KC_</span></code> are populated.
+Otherwise, User/Group tables shall still be deployed. However, they shall not be synced against a keycloak server.</p>
+<p>You may have a look at <code class="docutils literal notranslate"><span class="pre">compose.test.yml</span></code> file to see how testing containers used in our <cite>CI</cite>, are deployed with partial configuration in order to test by parts.</p>
+</section>
+<section id="biodm-toolkit-guide">
+<h2>BioDM toolkit Guide<a class="headerlink" href="#biodm-toolkit-guide" title="Link to this heading"></a></h2>
+<p>Following we have a tutorial in the form of a small demo server, that we will expand upon to
+introduce the toolkit:</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Manual:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">Minimal Demo</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="demo.html#naming-convention">Naming convention</a></li>
+<li class="toctree-l2"><a class="reference internal" href="demo.html#base-resource">Base Resource</a></li>
+<li class="toctree-l2"><a class="reference internal" href="demo.html#file-management">File management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="demo.html#versioning">Versioning</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="s3conf.html">S3 Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="s3conf.html#file-management">File management</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="permissions.html">Permissions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="permissions.html#server-level-require-auth">Server level: REQUIRE_AUTH</a></li>
+<li class="toctree-l2"><a class="reference internal" href="permissions.html#coarse-static-rule-on-a-controller-endpoint">Coarse: Static rule on a Controller endpoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="permissions.html#fine-dynamic-user-owned-permissions">Fine: Dynamic user owned permissions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="versioning.html">Versioning</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="versioning.html#deep-clones">Deep clones</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="table_schema.html">Tables and Schemas</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="table_schema.html#tables">Tables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="table_schema.html#schemas">Schemas</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="doc_endpoints.html">Documenting endpoints</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="doc_endpoints.html#docstrings-guide">Docstrings Guide</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_use.html">Advanced Use</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="advanced_use.html#custom-resource">Custom resource</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_use.html#extending-prefix-vs-postfix">Extending: Prefix vs. Postfix</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_use.html#routing-and-auth">Routing and Auth</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="k8manifests.html">Kubernetes manifests</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="k8manifests.html#k8scontroller">K8sController</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="production.html">Preparing for production</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="production.html#distributing">Distributing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="production.html#running-in-https">Running in HTTPS</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../getting_started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="demo.html" class="btn btn-neutral float-right" title="Minimal Demo" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>biodm.utils.sqla module &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="biodm.utils.utils module" href="biodm.utils.utils.html" />
+    <link rel="prev" title="biodm.utils.security module" href="biodm.utils.security.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.9.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/index.html">Developer Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual.html">User Manual</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="biodm.html">biodm package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="biodm.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="biodm.basics.html">biodm.basics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.components.html">biodm.components package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.managers.html">biodm.managers package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.schemas.html">biodm.schemas package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.tables.html">biodm.tables package</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="biodm.utils.html">biodm.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.html#module-biodm">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="biodm.html">biodm package</a></li>
+          <li class="breadcrumb-item"><a href="biodm.utils.html">biodm.utils package</a></li>
+      <li class="breadcrumb-item active">biodm.utils.sqla module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/biodm/biodm.utils.sqla.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-biodm.utils.sqla">
+<span id="biodm-utils-sqla-module"></span><h1>biodm.utils.sqla module<a class="headerlink" href="#module-biodm.utils.sqla" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="biodm.utils.sqla.CompositeInsert">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CompositeInsert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#biodm.utils.sqla.UpsertStmtValuesHolder" title="biodm.utils.sqla.UpsertStmtValuesHolder"><span class="pre">UpsertStmtValuesHolder</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">nested</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#biodm.utils.sqla.UpsertStmtValuesHolder" title="biodm.utils.sqla.UpsertStmtValuesHolder"><span class="pre">UpsertStmtValuesHolder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Self</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#biodm.utils.sqla.UpsertStmtValuesHolder" title="biodm.utils.sqla.UpsertStmtValuesHolder"><span class="pre">UpsertStmtValuesHolder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Self</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delayed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#biodm.utils.sqla.UpsertStmtValuesHolder" title="biodm.utils.sqla.UpsertStmtValuesHolder"><span class="pre">UpsertStmtValuesHolder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Self</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#biodm.utils.sqla.UpsertStmtValuesHolder" title="biodm.utils.sqla.UpsertStmtValuesHolder"><span class="pre">UpsertStmtValuesHolder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Self</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.utils.sqla.CompositeInsert" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to hold composite entities statements before insertion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>item</strong> (<em>Insert</em>) – Parent item insert statement</p></li>
+<li><p><strong>nested</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>Insert</em><em> | </em><a class="reference internal" href="#biodm.utils.sqla.CompositeInsert" title="biodm.utils.sqla.CompositeInsert"><em>CompositeInsert</em></a><em> | </em><em>List</em><em>[</em><em>Insert</em><em>] </em><em>| </em><em>List</em><em>[</em><a class="reference internal" href="#biodm.utils.sqla.CompositeInsert" title="biodm.utils.sqla.CompositeInsert"><em>CompositeInsert</em></a><em>]</em><em>]</em>) – Nested items insert statement indexed by attribute name</p></li>
+<li><p><strong>delayed</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>Insert</em><em> | </em><a class="reference internal" href="#biodm.utils.sqla.CompositeInsert" title="biodm.utils.sqla.CompositeInsert"><em>CompositeInsert</em></a><em> | </em><em>List</em><em>[</em><em>Insert</em><em>] </em><em>| </em><em>List</em><em>[</em><a class="reference internal" href="#biodm.utils.sqla.CompositeInsert" title="biodm.utils.sqla.CompositeInsert"><em>CompositeInsert</em></a><em>]</em><em>]</em>) – Nested list of items insert statements indexed by attribute name</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="biodm.utils.sqla.CompositeInsert.delayed">
+<span class="sig-name descname"><span class="pre">delayed</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#biodm.utils.sqla.UpsertStmtValuesHolder" title="biodm.utils.sqla.UpsertStmtValuesHolder"><span class="pre">UpsertStmtValuesHolder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Self</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#biodm.utils.sqla.UpsertStmtValuesHolder" title="biodm.utils.sqla.UpsertStmtValuesHolder"><span class="pre">UpsertStmtValuesHolder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Self</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#biodm.utils.sqla.CompositeInsert.delayed" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.utils.sqla.CompositeInsert.is_empty">
+<span class="sig-name descname"><span class="pre">is_empty</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#biodm.utils.sqla.CompositeInsert.is_empty" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="biodm.utils.sqla.CompositeInsert.item">
+<span class="sig-name descname"><span class="pre">item</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#biodm.utils.sqla.UpsertStmtValuesHolder" title="biodm.utils.sqla.UpsertStmtValuesHolder"><span class="pre">UpsertStmtValuesHolder</span></a></em><a class="headerlink" href="#biodm.utils.sqla.CompositeInsert.item" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="biodm.utils.sqla.CompositeInsert.nested">
+<span class="sig-name descname"><span class="pre">nested</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#biodm.utils.sqla.UpsertStmtValuesHolder" title="biodm.utils.sqla.UpsertStmtValuesHolder"><span class="pre">UpsertStmtValuesHolder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Self</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#biodm.utils.sqla.UpsertStmtValuesHolder" title="biodm.utils.sqla.UpsertStmtValuesHolder"><span class="pre">UpsertStmtValuesHolder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Self</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#biodm.utils.sqla.CompositeInsert.nested" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="biodm.utils.sqla.Operator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Operator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">op</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.utils.sqla.Operator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Contains operators parsed from query parameters.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="biodm.utils.sqla.Operator.op">
+<span class="sig-name descname"><span class="pre">op</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#biodm.utils.sqla.Operator.op" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="biodm.utils.sqla.UpsertStmtValuesHolder">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">UpsertStmtValuesHolder</span></span><a class="headerlink" href="#biodm.utils.sqla.UpsertStmtValuesHolder" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></p>
+<p>Dict Class that holds values for an upsert statement.
+Such statement exists as a simple dict during parsing, and is patched during insertion.
+Then the actual statement is emitted just before querying the DB with all possible values.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.utils.sqla.UpsertStmtValuesHolder.to_stmt">
+<span class="sig-name descname"><span class="pre">to_stmt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">svc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="biodm.components.services.dbservice.html#biodm.components.services.dbservice.DatabaseService" title="biodm.components.services.dbservice.DatabaseService"><span class="pre">DatabaseService</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/dml.html#sqlalchemy.sql.expression.Insert" title="(in SQLAlchemy v2.0)"><span class="pre">Insert</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/dml.html#sqlalchemy.sql.expression.Update" title="(in SQLAlchemy v2.0)"><span class="pre">Update</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/selectable.html#sqlalchemy.sql.expression.Select" title="(in SQLAlchemy v2.0)"><span class="pre">Select</span></a></span></span><a class="headerlink" href="#biodm.utils.sqla.UpsertStmtValuesHolder.to_stmt" title="Link to this definition"></a></dt>
+<dd><p>Generates an upsert (Insert + .on_conflict_do_x) depending on data population
+OR an explicit Update/Select statement when the core assesses full primary key and
+insufficient data to create a record.</p>
+<p>Latter edge cases do not necessarily always return a value, hence we handle them that way
+to guarantee consistency.</p>
+<p>In case of incomplete data, some upserts will fail, and raise it up to controller
+which has the details about initial validation fail.
+Ultimately, the goal is to offer support for a more flexible and tolerant mode of writing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>svc</strong> (<a class="reference internal" href="biodm.components.services.dbservice.html#biodm.components.services.dbservice.DatabaseService" title="biodm.components.services.dbservice.DatabaseService"><em>DatabaseService</em></a>) – service</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>statement</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Insert | Update | Select</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="biodm.utils.sqla.ValuedOperator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ValuedOperator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">op</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.utils.sqla.ValuedOperator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.utils.sqla.Operator" title="biodm.utils.sqla.Operator"><code class="xref py py-class docutils literal notranslate"><span class="pre">Operator</span></code></a></p>
+<p>Operator special case, taking a value.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="biodm.utils.sqla.ValuedOperator.value">
+<span class="sig-name descname"><span class="pre">value</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></em><a class="headerlink" href="#biodm.utils.sqla.ValuedOperator.value" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="biodm.utils.sqla.get_max_id">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_max_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="biodm.components.table.html#biodm.components.table.Base" title="biodm.components.table.Base"><span class="pre">Base</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">session</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#sqlalchemy.ext.asyncio.AsyncSession" title="(in SQLAlchemy v2.0)"><span class="pre">AsyncSession</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.utils.sqla.get_max_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="biodm.utils.sqla.stmt_to_dict">
+<span class="sig-name descname"><span class="pre">stmt_to_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stmt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/dml.html#sqlalchemy.sql.expression.Insert" title="(in SQLAlchemy v2.0)"><span class="pre">Insert</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/dml.html#sqlalchemy.sql.expression.Update" title="(in SQLAlchemy v2.0)"><span class="pre">Update</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#biodm.utils.sqla.stmt_to_dict" title="Link to this definition"></a></dt>
+<dd><p>Returns mapped values as dict for a statement.</p>
+<p>Accesses private attribute _value, may change in a future version of sqla.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>stmt</strong> (<em>UpsertStmt</em>) – statement</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict values.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, Any]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="biodm.utils.security.html" class="btn btn-neutral float-left" title="biodm.utils.security module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="biodm.utils.utils.html" class="btn btn-neutral float-right" title="biodm.utils.utils module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

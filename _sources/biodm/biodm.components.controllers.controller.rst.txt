@@ -1,0 +1,7 @@
+biodm.components.controllers.controller module
+==============================================
+
+.. automodule:: biodm.components.controllers.controller
+   :members:
+   :undoc-members:
+   :show-inheritance:

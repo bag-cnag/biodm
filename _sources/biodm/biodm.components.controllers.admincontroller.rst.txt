@@ -1,0 +1,7 @@
+biodm.components.controllers.admincontroller module
+===================================================
+
+.. automodule:: biodm.components.controllers.admincontroller
+   :members:
+   :undoc-members:
+   :show-inheritance:

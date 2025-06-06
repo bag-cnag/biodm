@@ -1,0 +1,7 @@
+biodm.managers.s3manager module
+===============================
+
+.. automodule:: biodm.managers.s3manager
+   :members:
+   :undoc-members:
+   :show-inheritance:

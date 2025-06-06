@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>biodm.utils.apispec module &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="biodm.utils.biodm module" href="biodm.utils.biodm.html" />
+    <link rel="prev" title="biodm.utils package" href="biodm.utils.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.9.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/index.html">Developer Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual.html">User Manual</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="biodm.html">biodm package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="biodm.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="biodm.basics.html">biodm.basics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.components.html">biodm.components package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.managers.html">biodm.managers package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.schemas.html">biodm.schemas package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.tables.html">biodm.tables package</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="biodm.utils.html">biodm.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.html#module-biodm">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="biodm.html">biodm package</a></li>
+          <li class="breadcrumb-item"><a href="biodm.utils.html">biodm.utils package</a></li>
+      <li class="breadcrumb-item active">biodm.utils.apispec module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/biodm/biodm.utils.apispec.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-biodm.utils.apispec">
+<span id="biodm-utils-apispec-module"></span><h1>biodm.utils.apispec module<a class="headerlink" href="#module-biodm.utils.apispec" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="biodm.utils.apispec.BDMarshmallowPlugin">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">BDMarshmallowPlugin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema_name_resolver</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.utils.apispec.BDMarshmallowPlugin" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">MarshmallowPlugin</span></code></p>
+<p>Redefines schema_helper in order to fetch schema instances from our custom registry in order
+to take runtime patches into account when outputing OpenAPI schema.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.utils.apispec.BDMarshmallowPlugin.schema_helper">
+<span class="sig-name descname"><span class="pre">schema_helper</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.utils.apispec.BDMarshmallowPlugin.schema_helper" title="Link to this definition"></a></dt>
+<dd><p>Definition helper that allows using a marshmallow
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Schema</span></code> to provide OpenAPI
+metadata.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>schema</strong> (<em>type</em><em>|</em><a class="reference internal" href="biodm.utils.biodm.html#biodm.utils.biodm.Schema" title="biodm.utils.biodm.Schema"><em>Schema</em></a>) – A marshmallow Schema class or instance.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="biodm.utils.apispec.BDOpenApiConverter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">BDOpenApiConverter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">openapi_version</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Version</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_name_resolver</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">APISpec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.utils.apispec.BDOpenApiConverter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">OpenAPIConverter</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.utils.apispec.BDOpenApiConverter.schema2jsonschema">
+<span class="sig-name descname"><span class="pre">schema2jsonschema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.utils.apispec.BDOpenApiConverter.schema2jsonschema" title="Link to this definition"></a></dt>
+<dd><p>Sets additionalProperties to false.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.utils.apispec.BDOpenApiConverter.schema2parameters">
+<span class="sig-name descname"><span class="pre">schema2parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">location</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'body'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.utils.apispec.BDOpenApiConverter.schema2parameters" title="Link to this definition"></a></dt>
+<dd><p>Tweak schema2parameters in order to accurately describe
+optional comma separated vlaues query parameters.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="biodm.utils.apispec.process_apispec_docstrings">
+<span class="sig-name descname"><span class="pre">process_apispec_docstrings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ctrl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="biodm.components.controllers.resourcecontroller.html#biodm.components.controllers.resourcecontroller.ResourceController" title="biodm.components.controllers.resourcecontroller.ResourceController"><span class="pre">ResourceController</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">abs_doc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.utils.apispec.process_apispec_docstrings" title="Link to this definition"></a></dt>
+<dd><p>Process an abstract documentation block to adapt it to a controllers instance characteristics</p>
+<p>Current patterns for abstract documentation:
+- Marshmallow Schema |</p>
+<blockquote>
+<div><p>schema: Schema -&gt; schema: self.Schema.__class__.__name__</p>
+</div></blockquote>
+<ul>
+<li><dl>
+<dt>key Attributes |</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt>in: path</dt><dd><p>name: id</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>-&gt;
+List of table primary keys, with their description from marshmallow schema if any.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Errors responses |</dt><dd><ul class="simple">
+<li><p>all 4xx and 5xx will be populated with ErrorSchema content.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ctrl</strong> (<a class="reference internal" href="biodm.components.controllers.resourcecontroller.html#biodm.components.controllers.resourcecontroller.ResourceController" title="biodm.components.controllers.resourcecontroller.ResourceController"><em>ResourceController</em></a>) – ResourceController</p></li>
+<li><p><strong>abs_doc</strong> (<em>str</em>) – Abstract documentation block</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Processed documentation block</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="biodm.utils.apispec.register_runtime_schema">
+<span class="sig-name descname"><span class="pre">register_runtime_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><span class="pre">Schema</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inst</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Schema</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#biodm.utils.apispec.register_runtime_schema" title="Link to this definition"></a></dt>
+<dd><p>Adds entry to registry. Indexed by class, since we should not assume the name.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="biodm.utils.apispec.replace_docstrings_pattern">
+<span class="sig-name descname"><span class="pre">replace_docstrings_pattern</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">apispec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pattern</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">typing.Tuple[str]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">blocks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">typing.List[typing.List[str]]</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#biodm.utils.apispec.replace_docstrings_pattern" title="Link to this definition"></a></dt>
+<dd><p>Takes a 2 line pattern and replace it by lines in block, matching indentation.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="biodm.utils.apispec.update_runtime_schema">
+<span class="sig-name descname"><span class="pre">update_runtime_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><span class="pre">Schema</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Field</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#biodm.utils.apispec.update_runtime_schema" title="Link to this definition"></a></dt>
+<dd><p>Adds field to a runtime schema, and all its instances.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cls</strong> (<em>Type</em><em>[</em><a class="reference internal" href="biodm.utils.biodm.html#biodm.utils.biodm.Schema" title="biodm.utils.biodm.Schema"><em>Schema</em></a><em>]</em>) – Schema class</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – New field name</p></li>
+<li><p><strong>field</strong> (<em>mf.Field</em>) – New field</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="biodm.utils.html" class="btn btn-neutral float-left" title="biodm.utils package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="biodm.utils.biodm.html" class="btn btn-neutral float-right" title="biodm.utils.biodm module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

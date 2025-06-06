@@ -1,0 +1,7 @@
+biodm.components.services.s3service module
+==========================================
+
+.. automodule:: biodm.components.services.s3service
+   :members:
+   :undoc-members:
+   :show-inheritance:

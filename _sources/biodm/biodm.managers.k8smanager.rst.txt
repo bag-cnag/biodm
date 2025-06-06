@@ -1,0 +1,7 @@
+biodm.managers.k8smanager module
+================================
+
+.. automodule:: biodm.managers.k8smanager
+   :members:
+   :undoc-members:
+   :show-inheritance:
