@@ -581,13 +581,17 @@ class UnaryEntityService(DatabaseService):
             target = rel.mapper.entity
 
             # Get relationship fields
-            if nested_fields.get(n):
-                stmt = stmt.options(
-                    joinedload(getattr(self.table, n))
-                    .load_only(*[getattr(target, f) for f in nested_fields.get(n)])
-                )
+            if rel.direction is ONETOMANY:
+                loader_option = selectinload(getattr(self.table, n))
             else:
-                stmt = stmt.options(joinedload(getattr(self.table, n)))
+                loader_option = joinedload(getattr(self.table, n))
+
+                if nested_fields.get(n):
+                    stmt = stmt.options(
+                        loader_option.load_only(*[getattr(target, f) for f in nested_fields.get(n)])
+                    )
+                else:
+                    stmt = stmt.options(loader_option)
 
             # Filter based on permissions.
             if rel.direction in (MANYTOONE, ONETOMANY): # TODO: Handle else ? -> MANYTOMANY
