@@ -4,11 +4,13 @@
 
 ---
 
-**Introduction Presentation**: <a href="https://www.overleaf.com/read/wxpdnptnkpsy" target="_blank">https://www.overleaf.com/read/wxpdnptnkpsy</a> 
-
 **Source Code**: <a href="https://github.com/bag-cnag/biodm" target="_blank">https://github.com/bag-cnag/biodm</a>
 
 **Documentation**: <a href="https://bag-cnag.github.io/biodm/" target="_blank">https://bag-cnag.github.io/biodm/</a>
+
+**Introduction Presentation**: <a href="https://www.overleaf.com/read/wxpdnptnkpsy" target="_blank">https://www.overleaf.com/read/wxpdnptnkpsy</a> 
+
+**(Draft) Publication**: <a href="https://www.overleaf.com/read/ptmtbdcdkdsh" target="_blank">https://www.overleaf.com/read/ptmtbdcdkdsh</a> 
 
 ---
 
@@ -91,7 +93,7 @@ To use kubernetes functionalities or tweak default configuration you should visi
 
 ## About
 
-Developed at CNAG
+Developed at [CNAG](https://www.cnag.eu/)
 
 ## Contributing
 
