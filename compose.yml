@@ -77,7 +77,7 @@ services:
         ipv4_address: 10.10.0.3
 
   s3bucket:
-    image: bitnami/minio:2024-debian-12
+    image: bitnami/minio:latest
     ports:
       - 9000:9000
       - 9001:9001
