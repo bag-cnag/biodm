@@ -576,18 +576,25 @@ class UnaryEntityService(DatabaseService):
             Load(self.table).load_only(*[getattr(self.table, f) for f in fields])
         ) if fields else stmt
 
-        for n in set(nested) | nested_fields.keys():
+        for n in (set(nested) | set(nested_fields.keys())):
             rel = self.table.relationships[n]
             target = rel.mapper.entity
 
             # Get relationship fields
-            if nested_fields.get(n):
-                stmt = stmt.options(
-                    joinedload(getattr(self.table, n))
-                    .load_only(*[getattr(target, f) for f in nested_fields.get(n)])
-                )
+            if rel.direction is ONETOMANY:
+                loader_option = selectinload(getattr(self.table, n))
             else:
-                stmt = stmt.options(joinedload(getattr(self.table, n)))
+                loader_option = joinedload(getattr(self.table, n))
+
+            nested_cols = nested_fields.get(n)
+            if nested_cols:
+                cols_to_load = [getattr(target, f) for f in nested_cols if hasattr(target, f)]
+                if cols_to_load:
+                    stmt = stmt.options(loader_option.load_only(*cols_to_load))
+                else:
+                    stmt = stmt.options(loader_option)
+            else:
+                stmt = stmt.options(loader_option)
 
             # Filter based on permissions.
             if rel.direction in (MANYTOONE, ONETOMANY): # TODO: Handle else ? -> MANYTOMANY
