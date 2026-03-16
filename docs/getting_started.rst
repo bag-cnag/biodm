@@ -157,7 +157,8 @@ Once you've created the realm, create the client. Then
   * Add Valid Redirect Uri:
 
     * **dev**: `http://*` and `https://*`
-    * **prod**: provide the url of the login callback `{SERVER_HOST}/syn_ack`.
+    * **prod**: provide the public url of the login callback,
+      for example `https://<public-api-host><root_path>/syn_ack`.
 
 Additionally, ``BioDM`` expects token to feature groups. For this, a client scope is necessary. Go to
 
