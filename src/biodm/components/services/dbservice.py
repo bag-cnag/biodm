@@ -32,7 +32,6 @@ from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 NUM_OPERATORS = ("gt", "ge", "lt", "le")
 AGG_OPERATORS = ("min", "max", "min_v", "max_v", "min_a", "max_a")
 GROUP_SEP = "__"
-GLOBAL_WRITE_BLOCKED_GROUPS = {"all", "3tr"}
 
 
 class DatabaseService(ApiService, metaclass=ABCMeta):
@@ -1215,41 +1214,6 @@ class CompositeEntityService(UnaryEntityService):
             sub = data.pop(key, {}) # {} default value -> only happens for empty permissions.
             rel = self.table.relationships[key]
             
-            # Guardrail: prevent locking yourself out when editing permissions
-            if key in self.permission_relationships and user_info and not user_info.is_admin:
-                perm_dict = sub or {}
-                for verb, lg_data in perm_dict.items():
-                    if verb not in ("read", "write"):
-                        continue
-                    if not lg_data:
-                        continue
-
-                    groups_payload = lg_data.get("groups")
-
-                    if verb == "write" and not groups_payload:
-                        raise DataError("Write access cannot be public/empty.")
-
-                    if groups_payload:
-                        allowed_paths = [g.get("path") for g in groups_payload if g.get("path")]
-                        if verb == "write":
-                            blocked = [
-                                g for g in allowed_paths
-                                if g.lower() in GLOBAL_WRITE_BLOCKED_GROUPS
-                            ]
-                            if blocked:
-                                raise DataError(
-                                    "Write access cannot include global groups "
-                                    f"({', '.join(blocked)})."
-                                )
-                        if allowed_paths and not self._group_path_matching(
-                            set(allowed_paths),
-                            set(user_info.groups or []),
-                        ):
-                            raise DataError(
-                                f"Cannot restrict '{verb}' without including one of your groups."
-                            )
-
-
             # Infer fields that will get populated at insertion time (for error detection).
             nested_futures = []
             if rel.secondary is None:
