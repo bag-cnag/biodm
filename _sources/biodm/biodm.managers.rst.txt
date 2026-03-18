@@ -1,0 +1,21 @@
+biodm.managers package
+======================
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   biodm.managers.dbmanager
+   biodm.managers.k8smanager
+   biodm.managers.kcmanager
+   biodm.managers.s3manager
+
+Module contents
+---------------
+
+.. automodule:: biodm.managers
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+biodm.error module
+==================
+
+.. automodule:: biodm.error
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+biodm.components.controllers.s3controller module
+================================================
+
+.. automodule:: biodm.components.controllers.s3controller
+   :members:
+   :undoc-members:
+   :show-inheritance:

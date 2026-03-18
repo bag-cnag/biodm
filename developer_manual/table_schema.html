@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tables and Schemas &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Documenting endpoints" href="doc_endpoints.html" />
+    <link rel="prev" title="Versioning" href="versioning.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.9.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Developer Manual</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="index.html#basics">Basics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#concepts">Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#configuration">Configuration</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html#biodm-toolkit-guide">BioDM toolkit Guide</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="demo.html">Minimal Demo</a></li>
+<li class="toctree-l3"><a class="reference internal" href="s3conf.html">S3 Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="permissions.html">Permissions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="versioning.html">Versioning</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Tables and Schemas</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tables">Tables</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#schemas">Schemas</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="doc_endpoints.html">Documenting endpoints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="advanced_use.html">Advanced Use</a></li>
+<li class="toctree-l3"><a class="reference internal" href="k8manifests.html">Kubernetes manifests</a></li>
+<li class="toctree-l3"><a class="reference internal" href="production.html">Preparing for production</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../biodm/modules.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Developer Manual</a></li>
+      <li class="breadcrumb-item active">Tables and Schemas</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/developer_manual/table_schema.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="tables-and-schemas">
+<h1>Tables and Schemas<a class="headerlink" href="#tables-and-schemas" title="Link to this heading"></a></h1>
+<p>This section describes how <code class="docutils literal notranslate"><span class="pre">BioDM</span></code> is leveraging your <code class="docutils literal notranslate"><span class="pre">Tables</span></code> and <code class="docutils literal notranslate"><span class="pre">Schemas</span></code> in order to set
+up resources. It contains some useful information for developers to design their own.</p>
+<p>It is recommended to visit the documentation of both <code class="docutils literal notranslate"><span class="pre">SQLAlchemy</span></code> and <code class="docutils literal notranslate"><span class="pre">Marshmallow</span></code> beforehand.
+Moreover, our <code class="docutils literal notranslate"><span class="pre">example</span></code> project also provides plenty of inspiration for this task.</p>
+<section id="tables">
+<h2>Tables<a class="headerlink" href="#tables" title="Link to this heading"></a></h2>
+<p>In principle any valid <code class="docutils literal notranslate"><span class="pre">SQLALchemy</span></code> table is accepted by <code class="docutils literal notranslate"><span class="pre">BioDM</span></code>. Yet,
+depending how you configure it, it shall adopt varying behaviors.</p>
+<p>SQLAlchemy 2.0 ORM API is a really nice and convenient piece of technology.
+However, it does not natively support trees of entities (nested dictionaries).</p>
+<p>To palliate this problem, <code class="docutils literal notranslate"><span class="pre">BioDM</span></code> does a pass of parsing on schema validation results under the
+hood, using Tables as litterals in order to build the hirarchical tree of statements.
+In a second pass, it inserts the whole tree in order, ensuring integrity.</p>
+<section id="relationship-specifics">
+<h3>Relationship specifics<a class="headerlink" href="#relationship-specifics" title="Link to this heading"></a></h3>
+<p>Statement building leverages tables <code class="docutils literal notranslate"><span class="pre">relationships</span></code> definitions, taking orientation into account.</p>
+<p>In particular, if a relationship is one-armed (pointing in one direction only), it will not
+be possible to create a nested resource in the other direction.</p>
+</section>
+<section id="special-columns">
+<h3>Special columns<a class="headerlink" href="#special-columns" title="Link to this heading"></a></h3>
+<p>Some special column will yield built-in behavior.</p>
+<p><strong>Tracking resource submitter: submitter_username</strong></p>
+<p>Setting up the following <cite>foreign key</cite>, in a table will automatically populate the field
+with requesting user’s username creating the resource.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">MyTable</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
+    <span class="nb">id</span><span class="p">:</span>          <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>   <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">Integer</span><span class="p">(),</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="o">...</span>
+    <span class="n">submitter_username</span><span class="p">:</span>  <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;USER.username&quot;</span><span class="p">),</span> <span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This effectively has a similar effect as <cite>&#64;login_required</cite> to create that resource.</p>
+</div>
+</section>
+</section>
+<section id="schemas">
+<h2>Schemas<a class="headerlink" href="#schemas" title="Link to this heading"></a></h2>
+<p>Schemas are the “i/o surface” of your app.
+This is where you decide what gets loaded and dumped for a specific resource.</p>
+<p>For most cases, you may simply set fields identical to matching Table, using Marshmallow syntax,
+making sure to have <strong>matching names</strong> between columns.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Marshmallow</span></code> also comes with some limitations, such as not being able to infer foreign key
+population in respect to nested entities while <code class="docutils literal notranslate"><span class="pre">de-serializing</span></code>.</p>
+<p><strong>E.g.</strong> Given the following matching table and schema:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Dataset</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
+    <span class="nb">id</span><span class="p">:</span>          <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>   <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">Integer</span><span class="p">(),</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="o">...</span>
+    <span class="n">project_id</span><span class="p">:</span>  <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>   <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;PROJECT.id&quot;</span><span class="p">),</span> <span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">project</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="s2">&quot;Project&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;datasets&quot;</span><span class="p">)</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">DatasetSchema</span><span class="p">(</span><span class="n">Schema</span><span class="p">):</span>
+    <span class="nb">id</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">()</span>
+    <span class="o">...</span>
+    <span class="n">project_id</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">()</span>
+    <span class="n">project</span> <span class="o">=</span> <span class="n">Nested</span><span class="p">(</span><span class="s1">&#39;ProjectSchema&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If you <code class="docutils literal notranslate"><span class="pre">POST</span></code> a new <code class="docutils literal notranslate"><span class="pre">/datasets</span></code> resource definition with a nested project.
+Upon strict validation, <code class="docutils literal notranslate"><span class="pre">project_id</span></code> will not be populated, which ultimately is your
+<code class="docutils literal notranslate"><span class="pre">NOT</span> <span class="pre">NULL</span> <span class="pre">FOREIGN</span> <span class="pre">KEY</span></code> field. Hence SQL insert statement shall raise integrity errors.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Marshmallow</span></code> is offering built-ins in the form of decorators that let you tag functions
+attached to the <code class="docutils literal notranslate"><span class="pre">Schema</span></code> such as <code class="docutils literal notranslate"><span class="pre">&#64;pre_load</span></code> which is a hook called before validation,
+that lets you manually get data if you detect it present in the dict.</p>
+<p>This technique has two major disadvantages:</p>
+<ul class="simple">
+<li><p>It is quite cumbersome and error prone for the developer, as for each relationship you may
+have to set foreign keys on either side and is as many conditions checking what is
+present in your input dict and whatnot.</p></li>
+<li><p>This cannot take into account generated keys. In our example, we may be creating the
+project as well. Hence it will not have an id yet, thus raise a <code class="docutils literal notranslate"><span class="pre">ValidationError</span></code> for the
+dataset if we set <code class="docutils literal notranslate"><span class="pre">required=True</span></code> flag for <code class="docutils literal notranslate"><span class="pre">project_id</span></code>.</p></li>
+</ul>
+<p>To bypass those limitations, <code class="docutils literal notranslate"><span class="pre">BioDM</span></code> validates incoming data using <code class="docutils literal notranslate"><span class="pre">Marshmallow</span></code>’s
+<code class="docutils literal notranslate"><span class="pre">partial=True</span></code> flag. Meaning that <code class="docutils literal notranslate"><span class="pre">required</span></code> keywords on fields are ignored during this step.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>While required flags are ignored at this validation step those flags are still relevant for
+client side validation</p>
+</div>
+<p>This yields a (List of) dictionary (of nested Dictionaries) that is sent down to a <code class="docutils literal notranslate"><span class="pre">Service</span></code>
+for statement building and insertion. The Core will use knowledge of Table relationships to infer
+this foreign key population and raise appropriate errors in case of truely incomplete input data or
+emit the right statements in order when the structure complies.</p>
+<p>This ultimately allows for more flexibily on input such as sending a mixin of create/update of new
+resources via <code class="docutils literal notranslate"><span class="pre">POST</span></code> and limit the total number of requests to achieve the same result.</p>
+<section id="custom-schema-component">
+<h3>Custom Schema Component<a class="headerlink" href="#custom-schema-component" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">BioDM</span></code> provides a custom <code class="docutils literal notranslate"><span class="pre">Schema</span></code> component that may be used by importing
+<code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">biodm.utils.biodm</span> <span class="pre">import</span> <span class="pre">Schema</span></code>.</p>
+<p>The use of this component is <strong>discouraged</strong> but may provides some performance improvements by
+turning SQLALchemy objects to <code class="docutils literal notranslate"><span class="pre">transient</span></code> state effectively disabling further lazy loading
+of nested attributes upon serializing.</p>
+<p>This can be an alternative to circular dumping policies described
+below. However this approach can be quite risky and result in missing data down the line.</p>
+<p>This component remains provided as it may be of interest for testing purposes.</p>
+</section>
+<section id="nested-flags-policy">
+<h3>Nested flags policy<a class="headerlink" href="#nested-flags-policy" title="Link to this heading"></a></h3>
+<p>Serialization is following down <code class="docutils literal notranslate"><span class="pre">Nested</span></code> fields. In particular that means it is important to
+limit the depth of data that is fetched, as it is easy to end up in infinite loops in case of
+circular or self referencial dependencies.</p>
+<p><strong>E.g.</strong></p>
+<div class="literal-block-wrapper docutils container" id="id1">
+<div class="code-block-caption"><span class="caption-text">user.py</span><a class="headerlink" href="#id1" title="Link to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">Schema</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Schema for Keycloak Users. id field is purposefully out as we manage it internally.&quot;&quot;&quot;</span>
+    <span class="n">username</span> <span class="o">=</span> <span class="n">String</span><span class="p">()</span>
+    <span class="n">password</span> <span class="o">=</span> <span class="n">String</span><span class="p">(</span><span class="n">load_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">email</span> <span class="o">=</span> <span class="n">String</span><span class="p">()</span>
+    <span class="n">firstName</span> <span class="o">=</span> <span class="n">String</span><span class="p">()</span>
+    <span class="n">lastName</span> <span class="o">=</span> <span class="n">String</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">dump_group</span><span class="p">():</span> <span class="c1"># Delay import using a function.</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.group</span><span class="w"> </span><span class="kn">import</span> <span class="n">GroupSchema</span>
+        <span class="k">return</span> <span class="n">GroupSchema</span><span class="p">(</span><span class="n">load_only</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;users&#39;</span><span class="p">,</span> <span class="s1">&#39;children&#39;</span><span class="p">,</span> <span class="s1">&#39;parent&#39;</span><span class="p">])</span>
+
+    <span class="n">groups</span> <span class="o">=</span> <span class="n">List</span><span class="p">(</span><span class="n">Nested</span><span class="p">(</span><span class="n">dump_group</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-text">group.py</span><a class="headerlink" href="#id2" title="Link to this code"></a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">GroupSchema</span><span class="p">(</span><span class="n">Schema</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Schema for Keycloak Groups.&quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">String</span><span class="p">(</span><span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Group name chain separated by &#39;__&#39;&quot;</span><span class="p">})</span>
+    <span class="c1"># If import order allows it: you may pass lambdas.</span>
+    <span class="n">users</span> <span class="o">=</span> <span class="n">List</span><span class="p">(</span><span class="n">Nested</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">UserSchema</span><span class="p">(</span><span class="n">load_only</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;groups&#39;</span><span class="p">])))</span>
+    <span class="n">children</span> <span class="o">=</span> <span class="n">List</span><span class="p">(</span><span class="n">Nested</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">GroupSchema</span><span class="p">(</span><span class="n">load_only</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;users&#39;</span><span class="p">,</span> <span class="s1">&#39;children&#39;</span><span class="p">,</span> <span class="s1">&#39;parent&#39;</span><span class="p">])))</span>
+    <span class="c1"># Make sense to not create parents from children.</span>
+    <span class="n">parent</span> <span class="o">=</span> <span class="n">Nested</span><span class="p">(</span><span class="s1">&#39;GroupSchema&#39;</span><span class="p">,</span> <span class="n">dump_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The example above is demonstrating how to allow loading sensible relationships while limiting
+dumping depth to one. In other words, to have a resource output its attached related resources,
+with their own fields but not their subsequent related resources.</p>
+<p>This is the <strong>highly recommended</strong> approach, both to avoid critical errors while using <code class="docutils literal notranslate"><span class="pre">BioDM</span></code> and
+follow RESTful principles.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Marshmallow provides other primitives such as <code class="docutils literal notranslate"><span class="pre">only</span></code> and <code class="docutils literal notranslate"><span class="pre">exclude</span></code> that can be
+used to do this restriction.</p>
+<p>However, be careful with your dumping configuration in order not to impede a Schema’s
+loading capabilites of essential fields for creating a new resource.</p>
+<p>Although you may allow more depth at places depending on your use case, always make sure
+that the resulting tree do not have cycles.</p>
+<p>Alternatively using the custom schema component will naturally occur in a 2 level pruned tree.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Setting “metadata.description” like for path in our example example above, is used for
+automatic apispec docstrings generation.</p>
+</div>
+</section>
+<section id="duplicate-schemas">
+<h3>Duplicate Schemas<a class="headerlink" href="#duplicate-schemas" title="Link to this heading"></a></h3>
+<p>While setting your nested flags policy, you may get a notice from apispec in the form or a
+<cite>UserWarning</cite> that multiple schemas got resolved to the same name. In that case it will generate
+other schemas with incrementing trailing numbers in the name (Group1, User1 …).</p>
+<p>It is a normal behavior as per the OpenAPI specification, partials schemas are considered others.
+However, it may not help your client to automatically discover your app,
+with careful configuration it is possible to avoid the case.</p>
+<p>If that proves to be necessary, a future version of <code class="docutils literal notranslate"><span class="pre">BioDM</span></code> may implement a name resolver.</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="versioning.html" class="btn btn-neutral float-left" title="Versioning" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="doc_endpoints.html" class="btn btn-neutral float-right" title="Documenting endpoints" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

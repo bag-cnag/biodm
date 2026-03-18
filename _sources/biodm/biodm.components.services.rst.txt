@@ -1,0 +1,21 @@
+biodm.components.services package
+=================================
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   biodm.components.services.dbservice
+   biodm.components.services.k8service
+   biodm.components.services.kcservice
+   biodm.components.services.s3service
+
+Module contents
+---------------
+
+.. automodule:: biodm.components.services
+   :members:
+   :undoc-members:
+   :show-inheritance:

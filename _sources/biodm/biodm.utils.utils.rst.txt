@@ -1,0 +1,7 @@
+biodm.utils.utils module
+========================
+
+.. automodule:: biodm.utils.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+biodm.components.table module
+=============================
+
+.. automodule:: biodm.components.table
+   :members:
+   :undoc-members:
+   :show-inheritance:

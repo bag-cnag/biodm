@@ -1,0 +1,7 @@
+biodm.component module
+======================
+
+.. automodule:: biodm.component
+   :members:
+   :undoc-members:
+   :show-inheritance:

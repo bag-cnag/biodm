@@ -1,0 +1,28 @@
+biodm.components package
+========================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   biodm.components.controllers
+   biodm.components.services
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   biodm.components.k8smanifest
+   biodm.components.table
+
+Module contents
+---------------
+
+.. automodule:: biodm.components
+   :members:
+   :undoc-members:
+   :show-inheritance:

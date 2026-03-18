@@ -1,0 +1,7 @@
+biodm.utils.sqla module
+=======================
+
+.. automodule:: biodm.utils.sqla
+   :members:
+   :undoc-members:
+   :show-inheritance:

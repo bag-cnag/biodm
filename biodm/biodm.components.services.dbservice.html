@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>biodm.components.services.dbservice module &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="biodm.components.services.k8service module" href="biodm.components.services.k8service.html" />
+    <link rel="prev" title="biodm.components.services package" href="biodm.components.services.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.9.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/index.html">Developer Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual.html">User Manual</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="biodm.html">biodm package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="biodm.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="biodm.basics.html">biodm.basics package</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="biodm.components.html">biodm.components package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.managers.html">biodm.managers package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.schemas.html">biodm.schemas package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.tables.html">biodm.tables package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.html">biodm.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.html#module-biodm">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="biodm.html">biodm package</a></li>
+          <li class="breadcrumb-item"><a href="biodm.components.html">biodm.components package</a></li>
+          <li class="breadcrumb-item"><a href="biodm.components.services.html">biodm.components.services package</a></li>
+      <li class="breadcrumb-item active">biodm.components.services.dbservice module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/biodm/biodm.components.services.dbservice.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-biodm.components.services.dbservice">
+<span id="biodm-components-services-dbservice-module"></span><h1>biodm.components.services.dbservice module<a class="headerlink" href="#module-biodm.components.services.dbservice" title="Link to this heading"></a></h1>
+<p>Database service: Translates requests data into SQLA statements and execute.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.CompositeEntityService">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CompositeEntityService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">app</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="biodm.components.table.html#biodm.components.table.Base" title="biodm.components.table.Base"><span class="pre">Base</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.components.services.dbservice.CompositeEntityService" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.components.services.dbservice.UnaryEntityService" title="biodm.components.services.dbservice.UnaryEntityService"><code class="xref py py-class docutils literal notranslate"><span class="pre">UnaryEntityService</span></code></a></p>
+<p>Handles the WRITE operation for composite entities.</p>
+<p>SQLAlchemy doesn’t support creating ORM mapped objects with a hierarchical dict structure.
+This class is implementing methods in order to parse and insert such data.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.CompositeEntityService.permission_relationships">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">permission_relationships</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/internals.html#sqlalchemy.orm.Relationship" title="(in SQLAlchemy v2.0)"><span class="pre">Relationship</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#biodm.components.services.dbservice.CompositeEntityService.permission_relationships" title="Link to this definition"></a></dt>
+<dd><p>Get permissions relationships by computing the difference of between instanciation time
+and runtime, since those get populated later in Base.setup_permissions().</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.CompositeEntityService.write">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="biodm.components.table.html#biodm.components.table.Base" title="biodm.components.table.Base"><span class="pre">Base</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="biodm.components.table.html#biodm.components.table.Base" title="biodm.components.table.Base"><span class="pre">Base</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">UpsertStmt</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">UpsertStmt</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#biodm.components.services.dbservice.CompositeEntityService.write" title="Link to this definition"></a></dt>
+<dd><p>CREATE, Handle list and single case.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.DatabaseService">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DatabaseService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">app</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="biodm.api.html#biodm.api.Api" title="biodm.api.Api"><span class="pre">Api</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.components.services.dbservice.DatabaseService" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="biodm.component.html#biodm.component.ApiService" title="biodm.component.ApiService"><code class="xref py py-class docutils literal notranslate"><span class="pre">ApiService</span></code></a></p>
+<p>DB Service abstract class: manages database transactions for entities.
+This class holds atomic database statement execution and utility functions plus
+permission logic.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.DatabaseService.populate_ids_sqlite">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">populate_ids_sqlite</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.components.services.dbservice.DatabaseService.populate_ids_sqlite" title="Link to this definition"></a></dt>
+<dd><p>Handle SQLite autoincrement for composite primary key.
+Which is a handy feature for a versioned entity. So we fetch the current max id in a
+separate request and prepopulate the dicts. This is not the most performant, but sqlite
+support is mostly for testing purposes.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.DatabaseService.table">
+<span class="sig-name descname"><span class="pre">table</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="biodm.components.table.html#biodm.components.table.Base" title="biodm.components.table.Base"><span class="pre">Base</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#biodm.components.services.dbservice.DatabaseService.table" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.UnaryEntityService">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">UnaryEntityService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">app</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="biodm.components.table.html#biodm.components.table.Base" title="biodm.components.table.Base"><span class="pre">Base</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.components.services.dbservice.UnaryEntityService" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.components.services.dbservice.DatabaseService" title="biodm.components.services.dbservice.DatabaseService"><code class="xref py py-class docutils literal notranslate"><span class="pre">DatabaseService</span></code></a></p>
+<p>Generic Database service class.</p>
+<p>Called Unary. However, It effectively implements all methods except write for Composite
+entities as their implementation is easy to make generic.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.UnaryEntityService.check_allowed_nested">
+<span class="sig-name descname"><span class="pre">check_allowed_nested</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nested_fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.UserInfo" title="biodm.utils.security.UserInfo"><span class="pre">UserInfo</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#biodm.components.services.dbservice.UnaryEntityService.check_allowed_nested" title="Link to this definition"></a></dt>
+<dd><p>Checks whether all user requested fields are allowed by static permissions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>nested_fields</strong> – list of relationship fields</p></li>
+<li><p><strong>user_info</strong> (<a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.UserInfo" title="biodm.utils.security.UserInfo"><em>UserInfo</em></a>) – user info</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.UnauthorizedError" title="biodm.exceptions.UnauthorizedError"><strong>UnauthorizedError</strong></a> – protected nested field required without sufficient authorization</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.UnaryEntityService.delete">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">delete</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#biodm.components.services.dbservice.UnaryEntityService.delete" title="Link to this definition"></a></dt>
+<dd><p>DELETE.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.UnaryEntityService.filter">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stmt_only</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="k"><span class="pre">True</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.UserInfo" title="biodm.utils.security.UserInfo"><span class="pre">UserInfo</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/selectable.html#sqlalchemy.sql.expression.Select" title="(in SQLAlchemy v2.0)"><span class="pre">Select</span></a></span></span><a class="headerlink" href="#biodm.components.services.dbservice.UnaryEntityService.filter" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stmt_only</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="k"><span class="pre">False</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.UserInfo" title="biodm.utils.security.UserInfo"><span class="pre">UserInfo</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="biodm.components.table.html#biodm.components.table.Base" title="biodm.components.table.Base"><span class="pre">Base</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>READ rows filted on query parameters.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.UnaryEntityService.gen_cond">
+<span class="sig-name descname"><span class="pre">gen_cond</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pk_val</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#biodm.components.services.dbservice.UnaryEntityService.gen_cond" title="Link to this definition"></a></dt>
+<dd><p>Generates (pk_1 == pk_1.type.python_type(val_1)) &amp; (pk_2 == …) …).
+Without evaluating at runtime, so it can be plugged in a where condition.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>pk_val</strong> (<em>List</em><em>[</em><em>Any</em><em>]</em>) – Primary key values</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>CNF Clause</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Any</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.UnaryEntityService.gen_upsert_holder">
+<span class="sig-name descname"><span class="pre">gen_upsert_holder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">futures</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.UserInfo" title="biodm.utils.security.UserInfo"><span class="pre">UserInfo</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="biodm.utils.sqla.html#biodm.utils.sqla.UpsertStmtValuesHolder" title="biodm.utils.sqla.UpsertStmtValuesHolder"><span class="pre">UpsertStmtValuesHolder</span></a></span></span><a class="headerlink" href="#biodm.components.services.dbservice.UnaryEntityService.gen_upsert_holder" title="Link to this definition"></a></dt>
+<dd><p>Generates an upsert statement values holder item.</p>
+<p>This statement builder is by design working on a unit entity dict, it checks data
+completion using ‘futures’ that are a list of fields that shall be populated at insertion
+time in CompositeEntityService._insert_composite().</p>
+<p>Versioned resource: in the case of a versioned resource,
+passing a reference is allowed, updating nested resources through updates as well,
+BUT an actual update is not as it should go through /release route.</p>
+<p>auto-population of ‘special columns’ is handled here as well.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.UnaryEntityService.getattr_in_session">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">getattr_in_session</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="biodm.components.table.html#biodm.components.table.Base" title="biodm.components.table.Base"><span class="pre">Base</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#biodm.components.services.dbservice.UnaryEntityService.getattr_in_session" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.UnaryEntityService.read">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pk_val</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nested_attribute</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.UserInfo" title="biodm.utils.security.UserInfo"><span class="pre">UserInfo</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="biodm.components.table.html#biodm.components.table.Base" title="biodm.components.table.Base"><span class="pre">Base</span></a></span></span><a class="headerlink" href="#biodm.components.services.dbservice.UnaryEntityService.read" title="Link to this definition"></a></dt>
+<dd><p>READ: fetch one ORM mapped object from value(s) of its primary key.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pk_val</strong> (<em>List</em><em>[</em><em>Any</em><em>]</em>) – entity primary key values in order</p></li>
+<li><p><strong>fields</strong> (<em>List</em><em>[</em><em>str</em><em>]</em><em>, </em><em>optional</em>) – fields to restrict the query on, defaults to None</p></li>
+<li><p><strong>user_info</strong> (<a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.UserInfo" title="biodm.utils.security.UserInfo"><em>UserInfo</em></a><em> | </em><em>None</em><em>, </em><em>optional</em>) – userinfo, defaults to None</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>SQLAlchemy ORM item</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="biodm.components.table.html#biodm.components.table.Base" title="biodm.components.table.Base">Base</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.UnaryEntityService.read_nested">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read_nested</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.components.services.dbservice.UnaryEntityService.read_nested" title="Link to this definition"></a></dt>
+<dd><p>Read nested collection from an entity.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.UnaryEntityService.release">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">release</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="biodm.components.table.html#biodm.components.table.Base" title="biodm.components.table.Base"><span class="pre">Base</span></a></span></span><a class="headerlink" href="#biodm.components.services.dbservice.UnaryEntityService.release" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.UnaryEntityService.takeout_unallowed_nested">
+<span class="sig-name descname"><span class="pre">takeout_unallowed_nested</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.UserInfo" title="biodm.utils.security.UserInfo"><span class="pre">UserInfo</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#biodm.components.services.dbservice.UnaryEntityService.takeout_unallowed_nested" title="Link to this definition"></a></dt>
+<dd><p>Take out fields not allowed by static permissions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fields</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – list of fields</p></li>
+<li><p><strong>user_info</strong> (<a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.UserInfo" title="biodm.utils.security.UserInfo"><em>UserInfo</em></a>) – user info</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of fields with unallowed ones taken out.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.services.dbservice.UnaryEntityService.write">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stmt_only</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="k"><span class="pre">True</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.UserInfo" title="biodm.utils.security.UserInfo"><span class="pre">UserInfo</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">UpsertStmt</span></span></span><a class="headerlink" href="#biodm.components.services.dbservice.UnaryEntityService.write" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stmt_only</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="k"><span class="pre">True</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.UserInfo" title="biodm.utils.security.UserInfo"><span class="pre">UserInfo</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">UpsertStmt</span><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stmt_only</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="k"><span class="pre">False</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.UserInfo" title="biodm.utils.security.UserInfo"><span class="pre">UserInfo</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="biodm.components.table.html#biodm.components.table.Base" title="biodm.components.table.Base"><span class="pre">Base</span></a></span></span></dt>
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stmt_only</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="k"><span class="pre">False</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.UserInfo" title="biodm.utils.security.UserInfo"><span class="pre">UserInfo</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="biodm.components.table.html#biodm.components.table.Base" title="biodm.components.table.Base"><span class="pre">Base</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>WRITE validated input data into the db.</p>
+<p>Supports input list and a mixin of new and passed by reference inserted data.
+Does UPSERTS behind the hood, hence this method is also called by UPDATE</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="biodm.components.services.html" class="btn btn-neutral float-left" title="biodm.components.services package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="biodm.components.services.k8service.html" class="btn btn-neutral float-right" title="biodm.components.services.k8service module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

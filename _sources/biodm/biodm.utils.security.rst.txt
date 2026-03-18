@@ -1,0 +1,7 @@
+biodm.utils.security module
+===========================
+
+.. automodule:: biodm.utils.security
+   :members:
+   :undoc-members:
+   :show-inheritance:

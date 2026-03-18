@@ -1,0 +1,7 @@
+biodm.components.k8smanifest module
+===================================
+
+.. automodule:: biodm.components.k8smanifest
+   :members:
+   :undoc-members:
+   :show-inheritance:

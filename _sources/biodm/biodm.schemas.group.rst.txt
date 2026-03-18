@@ -1,0 +1,7 @@
+biodm.schemas.group module
+==========================
+
+.. automodule:: biodm.schemas.group
+   :members:
+   :undoc-members:
+   :show-inheritance:

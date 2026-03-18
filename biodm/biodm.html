@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>biodm package &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="biodm.basics package" href="biodm.basics.html" />
+    <link rel="prev" title="API Reference" href="modules.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.9.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/index.html">Developer Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual.html">User Manual</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">biodm package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.basics.html">biodm.basics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.components.html">biodm.components package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.managers.html">biodm.managers package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.schemas.html">biodm.schemas package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.tables.html">biodm.tables package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.html">biodm.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#submodules">Submodules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.api.html">biodm.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.component.html">biodm.component module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.config.html">biodm.config module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.error.html">biodm.error module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.exceptions.html">biodm.exceptions module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.routing.html">biodm.routing module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.scope.html">biodm.scope module</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-biodm">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">API Reference</a></li>
+      <li class="breadcrumb-item active">biodm package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/biodm/biodm.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="biodm-package">
+<h1>biodm package<a class="headerlink" href="#biodm-package" title="Link to this heading"></a></h1>
+<section id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="biodm.basics.html">biodm.basics package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="biodm.basics.html#submodules">Submodules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.basics.k8scontroller.html">biodm.basics.k8scontroller module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.basics.k8scontroller.html#biodm.basics.k8scontroller.K8sController"><code class="docutils literal notranslate"><span class="pre">K8sController</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.basics.rootcontroller.html">biodm.basics.rootcontroller module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.basics.rootcontroller.html#biodm.basics.rootcontroller.RootController"><code class="docutils literal notranslate"><span class="pre">RootController</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.basics.html#module-biodm.basics">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.basics.html#biodm.basics.GroupController"><code class="docutils literal notranslate"><span class="pre">GroupController</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.basics.html#biodm.basics.UserController"><code class="docutils literal notranslate"><span class="pre">UserController</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="biodm.components.html">biodm.components package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="biodm.components.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.components.controllers.html">biodm.components.controllers package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.components.controllers.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.components.controllers.html#module-biodm.components.controllers">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.components.services.html">biodm.components.services package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.components.services.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.components.services.html#module-biodm.components.services">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.components.html#submodules">Submodules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.components.k8smanifest.html">biodm.components.k8smanifest module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.components.k8smanifest.html#biodm.components.k8smanifest.K8sManifest"><code class="docutils literal notranslate"><span class="pre">K8sManifest</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.components.table.html">biodm.components.table module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.components.table.html#biodm.components.table.Base"><code class="docutils literal notranslate"><span class="pre">Base</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.components.table.html#biodm.components.table.S3File"><code class="docutils literal notranslate"><span class="pre">S3File</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.components.table.html#biodm.components.table.StrictVersioned"><code class="docutils literal notranslate"><span class="pre">StrictVersioned</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.components.table.html#biodm.components.table.Versioned"><code class="docutils literal notranslate"><span class="pre">Versioned</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.components.table.html#biodm.components.table.add_versioned_table_methods"><code class="docutils literal notranslate"><span class="pre">add_versioned_table_methods()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.components.html#module-biodm.components">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="biodm.managers.html">biodm.managers package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="biodm.managers.html#submodules">Submodules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.managers.dbmanager.html">biodm.managers.dbmanager module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.managers.dbmanager.html#biodm.managers.dbmanager.DatabaseManager"><code class="docutils literal notranslate"><span class="pre">DatabaseManager</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.managers.k8smanager.html">biodm.managers.k8smanager module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.managers.k8smanager.html#biodm.managers.k8smanager.K8sManager"><code class="docutils literal notranslate"><span class="pre">K8sManager</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.managers.kcmanager.html">biodm.managers.kcmanager module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.managers.kcmanager.html#biodm.managers.kcmanager.KeycloakManager"><code class="docutils literal notranslate"><span class="pre">KeycloakManager</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.managers.s3manager.html">biodm.managers.s3manager module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.managers.s3manager.html#biodm.managers.s3manager.S3Manager"><code class="docutils literal notranslate"><span class="pre">S3Manager</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.managers.html#module-biodm.managers">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="biodm.schemas.html">biodm.schemas package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="biodm.schemas.html#submodules">Submodules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.schemas.error.html">biodm.schemas.error module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.schemas.error.html#biodm.schemas.error.ErrorSchema"><code class="docutils literal notranslate"><span class="pre">ErrorSchema</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.schemas.group.html">biodm.schemas.group module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.schemas.group.html#biodm.schemas.group.GroupSchema"><code class="docutils literal notranslate"><span class="pre">GroupSchema</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.schemas.listgroup.html">biodm.schemas.listgroup module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.schemas.listgroup.html#biodm.schemas.listgroup.ListGroupSchema"><code class="docutils literal notranslate"><span class="pre">ListGroupSchema</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.schemas.refresh.html">biodm.schemas.refresh module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.schemas.refresh.html#biodm.schemas.refresh.RefreshSchema"><code class="docutils literal notranslate"><span class="pre">RefreshSchema</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.schemas.upload.html">biodm.schemas.upload module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.schemas.upload.html#biodm.schemas.upload.PartsEtagSchema"><code class="docutils literal notranslate"><span class="pre">PartsEtagSchema</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.schemas.upload.html#biodm.schemas.upload.UploadPartSchema"><code class="docutils literal notranslate"><span class="pre">UploadPartSchema</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.schemas.upload.html#biodm.schemas.upload.UploadSchema"><code class="docutils literal notranslate"><span class="pre">UploadSchema</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.schemas.user.html">biodm.schemas.user module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.schemas.user.html#biodm.schemas.user.UserSchema"><code class="docutils literal notranslate"><span class="pre">UserSchema</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.schemas.html#module-biodm.schemas">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="biodm.tables.html">biodm.tables package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="biodm.tables.html#submodules">Submodules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.tables.asso.html">biodm.tables.asso module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.tables.group.html">biodm.tables.group module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.tables.group.html#biodm.tables.group.Group"><code class="docutils literal notranslate"><span class="pre">Group</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.tables.history.html">biodm.tables.history module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.tables.history.html#biodm.tables.history.History"><code class="docutils literal notranslate"><span class="pre">History</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.tables.listgroup.html">biodm.tables.listgroup module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.tables.listgroup.html#biodm.tables.listgroup.ListGroup"><code class="docutils literal notranslate"><span class="pre">ListGroup</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.tables.upload.html">biodm.tables.upload module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.tables.upload.html#biodm.tables.upload.Upload"><code class="docutils literal notranslate"><span class="pre">Upload</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.tables.upload_part.html">biodm.tables.upload_part module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.tables.upload_part.html#biodm.tables.upload_part.UploadPart"><code class="docutils literal notranslate"><span class="pre">UploadPart</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.tables.user.html">biodm.tables.user module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.tables.user.html#biodm.tables.user.User"><code class="docutils literal notranslate"><span class="pre">User</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.tables.html#module-biodm.tables">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="biodm.utils.html">biodm.utils package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="biodm.utils.html#submodules">Submodules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.utils.apispec.html">biodm.utils.apispec module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.apispec.html#biodm.utils.apispec.BDMarshmallowPlugin"><code class="docutils literal notranslate"><span class="pre">BDMarshmallowPlugin</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.apispec.html#biodm.utils.apispec.BDOpenApiConverter"><code class="docutils literal notranslate"><span class="pre">BDOpenApiConverter</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.apispec.html#biodm.utils.apispec.process_apispec_docstrings"><code class="docutils literal notranslate"><span class="pre">process_apispec_docstrings()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.apispec.html#biodm.utils.apispec.register_runtime_schema"><code class="docutils literal notranslate"><span class="pre">register_runtime_schema()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.apispec.html#biodm.utils.apispec.replace_docstrings_pattern"><code class="docutils literal notranslate"><span class="pre">replace_docstrings_pattern()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.apispec.html#biodm.utils.apispec.update_runtime_schema"><code class="docutils literal notranslate"><span class="pre">update_runtime_schema()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.utils.biodm.html">biodm.utils.biodm module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.biodm.html#biodm.utils.biodm.Schema"><code class="docutils literal notranslate"><span class="pre">Schema</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.biodm.html#biodm.utils.biodm.gen_schema"><code class="docutils literal notranslate"><span class="pre">gen_schema()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.biodm.html#biodm.utils.biodm.gettattr_unbound"><code class="docutils literal notranslate"><span class="pre">gettattr_unbound()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.utils.security.html">biodm.utils.security module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.AuthenticationMiddleware"><code class="docutils literal notranslate"><span class="pre">AuthenticationMiddleware</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.Permission"><code class="docutils literal notranslate"><span class="pre">Permission</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.PermissionLookupTables"><code class="docutils literal notranslate"><span class="pre">PermissionLookupTables</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.UserInfo"><code class="docutils literal notranslate"><span class="pre">UserInfo</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.admin_required"><code class="docutils literal notranslate"><span class="pre">admin_required()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.group_required"><code class="docutils literal notranslate"><span class="pre">group_required()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.security.html#biodm.utils.security.login_required"><code class="docutils literal notranslate"><span class="pre">login_required()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.utils.sqla.html">biodm.utils.sqla module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.sqla.html#biodm.utils.sqla.CompositeInsert"><code class="docutils literal notranslate"><span class="pre">CompositeInsert</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.sqla.html#biodm.utils.sqla.Operator"><code class="docutils literal notranslate"><span class="pre">Operator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.sqla.html#biodm.utils.sqla.UpsertStmtValuesHolder"><code class="docutils literal notranslate"><span class="pre">UpsertStmtValuesHolder</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.sqla.html#biodm.utils.sqla.ValuedOperator"><code class="docutils literal notranslate"><span class="pre">ValuedOperator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.sqla.html#biodm.utils.sqla.get_max_id"><code class="docutils literal notranslate"><span class="pre">get_max_id()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.sqla.html#biodm.utils.sqla.stmt_to_dict"><code class="docutils literal notranslate"><span class="pre">stmt_to_dict()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.utils.utils.html">biodm.utils.utils module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.utils.html#biodm.utils.utils.aobject"><code class="docutils literal notranslate"><span class="pre">aobject</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.utils.html#biodm.utils.utils.check_hash"><code class="docutils literal notranslate"><span class="pre">check_hash()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.utils.html#biodm.utils.utils.classproperty"><code class="docutils literal notranslate"><span class="pre">classproperty</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.utils.html#biodm.utils.utils.coalesce_dicts"><code class="docutils literal notranslate"><span class="pre">coalesce_dicts()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.utils.html#biodm.utils.utils.csplit_esc"><code class="docutils literal notranslate"><span class="pre">csplit_esc()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.utils.html#biodm.utils.utils.json_bytes"><code class="docutils literal notranslate"><span class="pre">json_bytes()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.utils.html#biodm.utils.utils.json_response"><code class="docutils literal notranslate"><span class="pre">json_response()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.utils.html#biodm.utils.utils.partition"><code class="docutils literal notranslate"><span class="pre">partition()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.utils.html#biodm.utils.utils.remove_empty"><code class="docutils literal notranslate"><span class="pre">remove_empty()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.utils.html#biodm.utils.utils.to_it"><code class="docutils literal notranslate"><span class="pre">to_it()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.utils.html#biodm.utils.utils.touch"><code class="docutils literal notranslate"><span class="pre">touch()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.utils.html#biodm.utils.utils.unevalled_all"><code class="docutils literal notranslate"><span class="pre">unevalled_all()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.utils.html#biodm.utils.utils.unevalled_or"><code class="docutils literal notranslate"><span class="pre">unevalled_or()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.utils.html#biodm.utils.utils.utcnow"><code class="docutils literal notranslate"><span class="pre">utcnow()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.utils.html#module-biodm.utils">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="biodm.api.html">biodm.api module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="biodm.api.html#biodm.api.Api"><code class="docutils literal notranslate"><span class="pre">Api</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.api.html#biodm.api.Api.adopt_controller"><code class="docutils literal notranslate"><span class="pre">Api.adopt_controller()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.api.html#biodm.api.Api.controllers"><code class="docutils literal notranslate"><span class="pre">Api.controllers</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.api.html#biodm.api.Api.db"><code class="docutils literal notranslate"><span class="pre">Api.db</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.api.html#biodm.api.Api.deploy_managers"><code class="docutils literal notranslate"><span class="pre">Api.deploy_managers()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.api.html#biodm.api.Api.k8"><code class="docutils literal notranslate"><span class="pre">Api.k8</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.api.html#biodm.api.Api.kc"><code class="docutils literal notranslate"><span class="pre">Api.kc</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.api.html#biodm.api.Api.logger"><code class="docutils literal notranslate"><span class="pre">Api.logger</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.api.html#biodm.api.Api.onstart"><code class="docutils literal notranslate"><span class="pre">Api.onstart()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.api.html#biodm.api.Api.s3"><code class="docutils literal notranslate"><span class="pre">Api.s3</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.api.html#biodm.api.Api.server_endpoint"><code class="docutils literal notranslate"><span class="pre">Api.server_endpoint</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.api.html#biodm.api.HistoryMiddleware"><code class="docutils literal notranslate"><span class="pre">HistoryMiddleware</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.api.html#biodm.api.HistoryMiddleware.dispatch"><code class="docutils literal notranslate"><span class="pre">HistoryMiddleware.dispatch()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.api.html#biodm.api.TimeoutMiddleware"><code class="docutils literal notranslate"><span class="pre">TimeoutMiddleware</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.api.html#biodm.api.TimeoutMiddleware.dispatch"><code class="docutils literal notranslate"><span class="pre">TimeoutMiddleware.dispatch()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="biodm.component.html">biodm.component module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="biodm.component.html#biodm.component.ApiComponent"><code class="docutils literal notranslate"><span class="pre">ApiComponent</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.component.html#biodm.component.ApiComponent.app"><code class="docutils literal notranslate"><span class="pre">ApiComponent.app</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.component.html#biodm.component.ApiComponent.logger"><code class="docutils literal notranslate"><span class="pre">ApiComponent.logger</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.component.html#biodm.component.ApiManager"><code class="docutils literal notranslate"><span class="pre">ApiManager</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.component.html#biodm.component.ApiManager.endpoint"><code class="docutils literal notranslate"><span class="pre">ApiManager.endpoint</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.component.html#biodm.component.ApiService"><code class="docutils literal notranslate"><span class="pre">ApiService</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.component.html#biodm.component.ApiService.delete"><code class="docutils literal notranslate"><span class="pre">ApiService.delete()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.component.html#biodm.component.ApiService.filter"><code class="docutils literal notranslate"><span class="pre">ApiService.filter()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.component.html#biodm.component.ApiService.read"><code class="docutils literal notranslate"><span class="pre">ApiService.read()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.component.html#biodm.component.ApiService.release"><code class="docutils literal notranslate"><span class="pre">ApiService.release()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.component.html#biodm.component.ApiService.write"><code class="docutils literal notranslate"><span class="pre">ApiService.write()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="biodm.config.html">biodm.config module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="biodm.error.html">biodm.error module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="biodm.error.html#biodm.error.Error"><code class="docutils literal notranslate"><span class="pre">Error</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.error.html#biodm.error.Error.response"><code class="docutils literal notranslate"><span class="pre">Error.response</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.error.html#biodm.error.onerror"><code class="docutils literal notranslate"><span class="pre">onerror()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="biodm.exceptions.html">biodm.exceptions module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.AsyncDBError"><code class="docutils literal notranslate"><span class="pre">AsyncDBError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.DBError"><code class="docutils literal notranslate"><span class="pre">DBError</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.DBError.sa_error"><code class="docutils literal notranslate"><span class="pre">DBError.sa_error</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.DataError"><code class="docutils literal notranslate"><span class="pre">DataError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.EndpointError"><code class="docutils literal notranslate"><span class="pre">EndpointError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.FailedCreate"><code class="docutils literal notranslate"><span class="pre">FailedCreate</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.FailedDelete"><code class="docutils literal notranslate"><span class="pre">FailedDelete</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.FailedRead"><code class="docutils literal notranslate"><span class="pre">FailedRead</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.FailedUpdate"><code class="docutils literal notranslate"><span class="pre">FailedUpdate</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.FileNotUploadedError"><code class="docutils literal notranslate"><span class="pre">FileNotUploadedError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.FileTooLargeError"><code class="docutils literal notranslate"><span class="pre">FileTooLargeError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.FileUploadCompleteError"><code class="docutils literal notranslate"><span class="pre">FileUploadCompleteError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.ImplementionError"><code class="docutils literal notranslate"><span class="pre">ImplementionError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.InvalidCollectionMethod"><code class="docutils literal notranslate"><span class="pre">InvalidCollectionMethod</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.KeycloakUnavailableError"><code class="docutils literal notranslate"><span class="pre">KeycloakUnavailableError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.ManagerError"><code class="docutils literal notranslate"><span class="pre">ManagerError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.ManifestError"><code class="docutils literal notranslate"><span class="pre">ManifestError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.MissingDB"><code class="docutils literal notranslate"><span class="pre">MissingDB</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.MissingService"><code class="docutils literal notranslate"><span class="pre">MissingService</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.PartialIndex"><code class="docutils literal notranslate"><span class="pre">PartialIndex</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.PayloadEmptyError"><code class="docutils literal notranslate"><span class="pre">PayloadEmptyError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.PayloadJSONDecodingError"><code class="docutils literal notranslate"><span class="pre">PayloadJSONDecodingError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.PostgresUnavailableError"><code class="docutils literal notranslate"><span class="pre">PostgresUnavailableError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.QueryError"><code class="docutils literal notranslate"><span class="pre">QueryError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.ReleaseVersionError"><code class="docutils literal notranslate"><span class="pre">ReleaseVersionError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.RequestError"><code class="docutils literal notranslate"><span class="pre">RequestError</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.RequestError.detail"><code class="docutils literal notranslate"><span class="pre">RequestError.detail</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.SchemaError"><code class="docutils literal notranslate"><span class="pre">SchemaError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.TokenDecodingError"><code class="docutils literal notranslate"><span class="pre">TokenDecodingError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.UnauthorizedError"><code class="docutils literal notranslate"><span class="pre">UnauthorizedError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.exceptions.html#biodm.exceptions.UpdateVersionedError"><code class="docutils literal notranslate"><span class="pre">UpdateVersionedError</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="biodm.routing.html">biodm.routing module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="biodm.routing.html#biodm.routing.PublicRoute"><code class="docutils literal notranslate"><span class="pre">PublicRoute</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.routing.html#biodm.routing.RequireAuthMiddleware"><code class="docutils literal notranslate"><span class="pre">RequireAuthMiddleware</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.routing.html#biodm.routing.RequireAuthMiddleware.dispatch"><code class="docutils literal notranslate"><span class="pre">RequireAuthMiddleware.dispatch()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="biodm.routing.html#biodm.routing.Route"><code class="docutils literal notranslate"><span class="pre">Route</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="biodm.scope.html">biodm.scope module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="biodm.scope.html#biodm.scope.Scope"><code class="docutils literal notranslate"><span class="pre">Scope</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="biodm.scope.html#biodm.scope.Scope.DEBUG"><code class="docutils literal notranslate"><span class="pre">Scope.DEBUG</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.scope.html#biodm.scope.Scope.PROD"><code class="docutils literal notranslate"><span class="pre">Scope.PROD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.scope.html#biodm.scope.Scope.TEST"><code class="docutils literal notranslate"><span class="pre">Scope.TEST</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="module-biodm">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-biodm" title="Link to this heading"></a></h2>
+<p>BioDM framework.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="modules.html" class="btn btn-neutral float-left" title="API Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="biodm.basics.html" class="btn btn-neutral float-right" title="biodm.basics package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

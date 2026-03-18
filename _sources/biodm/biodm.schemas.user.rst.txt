@@ -1,0 +1,7 @@
+biodm.schemas.user module
+=========================
+
+.. automodule:: biodm.schemas.user
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Versioning &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Tables and Schemas" href="table_schema.html" />
+    <link rel="prev" title="Permissions" href="permissions.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.9.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Developer Manual</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="index.html#basics">Basics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#concepts">Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#configuration">Configuration</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html#biodm-toolkit-guide">BioDM toolkit Guide</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="demo.html">Minimal Demo</a></li>
+<li class="toctree-l3"><a class="reference internal" href="s3conf.html">S3 Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="permissions.html">Permissions</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Versioning</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#deep-clones">Deep clones</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="table_schema.html">Tables and Schemas</a></li>
+<li class="toctree-l3"><a class="reference internal" href="doc_endpoints.html">Documenting endpoints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="advanced_use.html">Advanced Use</a></li>
+<li class="toctree-l3"><a class="reference internal" href="k8manifests.html">Kubernetes manifests</a></li>
+<li class="toctree-l3"><a class="reference internal" href="production.html">Preparing for production</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../biodm/modules.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Developer Manual</a></li>
+      <li class="breadcrumb-item active">Versioning</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/developer_manual/versioning.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="versioning">
+<h1>Versioning<a class="headerlink" href="#versioning" title="Link to this heading"></a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">BioDM</span></code> allows to decorate some tables with a <code class="docutils literal notranslate"><span class="pre">Versioned</span></code> mixin class populating an extra
+<code class="docutils literal notranslate"><span class="pre">version</span></code> field in the <code class="docutils literal notranslate"><span class="pre">primary_key</span></code>.</p>
+<p>A versioned entity gets an extra <code class="docutils literal notranslate"><span class="pre">/release</span></code> endpoint allowing to bump the version number,
+which is not editable via classical updates like all primary key fields.</p>
+<p>Other fields remain editable, to make versioned entities <cite>read-only</cite> you may use another mixin:
+<code class="docutils literal notranslate"><span class="pre">StrictVersioned</span></code> which shall raise errors upon updating associated entities.</p>
+<section id="deep-clones">
+<h2>Deep clones<a class="headerlink" href="#deep-clones" title="Link to this heading"></a></h2>
+<p>Since an entity is more than a single table row but an actual object with relationships
+releasing tries to accomodate passing on the object tree.</p>
+<p>Hence, some tied objects are recursively deep cloned according to the following policy
+in respect of the relationship directions with the object that gets released
+(or its deep cloned children):</p>
+<ul class="simple">
+<li><p><cite>MANYTOONE</cite></p></li>
+</ul>
+<p>Not cloned, released item will be added to the list of children</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Exception: permissions</p></li>
+</ul>
+</div></blockquote>
+<p>Technically permissions and attached list of allowed groups are <cite>MANYTOONE</cite>
+relationships, however those do get cloned to allow for independent evolution
+of relationships accross versions.</p>
+<ul class="simple">
+<li><p><cite>MANYTOMANY</cite></p></li>
+</ul>
+<p>Not cloned, released item will adop those same children</p>
+<ul class="simple">
+<li><p><cite>ONETOMANY</cite></p></li>
+</ul>
+<p>Cloned, released item will adopt those new children in place of former ones</p>
+<section id="primary-keys">
+<h3>Primary keys<a class="headerlink" href="#primary-keys" title="Link to this heading"></a></h3>
+<p>In case a child gets deep cloned, it needs some new primary keys.</p>
+<p><code class="docutils literal notranslate"><span class="pre">BioDM</span></code> will erase all parts of the key that have default values except the version
+and let SQLAlchemy session flush do the rest of the work.</p>
+<p>That works well in canonical cases such as leading autoincrement <code class="docutils literal notranslate"><span class="pre">id</span></code>, but be aware of
+that policy as it may not cover all use cases and possibly lead to errors if not careful
+during table building.</p>
+<p>Alternatively, to decide of a new primary key generation or relationship cloning behaviour
+have a look at the next section.</p>
+</section>
+<section id="custom-behaviour">
+<h3>Custom behaviour<a class="headerlink" href="#custom-behaviour" title="Link to this heading"></a></h3>
+<p>In case default behaviour is not satisfying your use case, you may override <code class="docutils literal notranslate"><span class="pre">Base.clone</span></code>
+method for any of your tables.</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="permissions.html" class="btn btn-neutral float-left" title="Permissions" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="table_schema.html" class="btn btn-neutral float-right" title="Tables and Schemas" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

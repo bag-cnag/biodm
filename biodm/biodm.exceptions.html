@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>biodm.exceptions module &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="biodm.routing module" href="biodm.routing.html" />
+    <link rel="prev" title="biodm.error module" href="biodm.error.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.9.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/index.html">Developer Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual.html">User Manual</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="biodm.html">biodm package</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="biodm.html#subpackages">Subpackages</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="biodm.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="biodm.api.html">biodm.api module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.component.html">biodm.component module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.config.html">biodm.config module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.error.html">biodm.error module</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">biodm.exceptions module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.routing.html">biodm.routing module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.scope.html">biodm.scope module</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.html#module-biodm">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="biodm.html">biodm package</a></li>
+      <li class="breadcrumb-item active">biodm.exceptions module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/biodm/biodm.exceptions.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-biodm.exceptions">
+<span id="biodm-exceptions-module"></span><h1>biodm.exceptions module<a class="headerlink" href="#module-biodm.exceptions" title="Link to this heading"></a></h1>
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.AsyncDBError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">AsyncDBError</span></span><a class="headerlink" href="#biodm.exceptions.AsyncDBError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.DBError" title="biodm.exceptions.DBError"><code class="xref py py-class docutils literal notranslate"><span class="pre">DBError</span></code></a></p>
+<p>Raised when asyncpg fails.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.DBError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DBError</span></span><a class="headerlink" href="#biodm.exceptions.DBError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></p>
+<p>Raised when DB related errors are catched.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="biodm.exceptions.DBError.sa_error">
+<span class="sig-name descname"><span class="pre">sa_error</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Exception</span></em><a class="headerlink" href="#biodm.exceptions.DBError.sa_error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.DataError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DataError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.DataError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when input data is incorrect.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.EndpointError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">EndpointError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.EndpointError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when an endpoint is reached with wrong attributes, parameters and so on.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.FailedCreate">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FailedCreate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.FailedCreate" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Could not create record.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.FailedDelete">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FailedDelete</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.FailedDelete" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when a delete operation is not successful.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.FailedRead">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FailedRead</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.FailedRead" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Requested record doesn’t exist.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.FailedUpdate">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FailedUpdate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.FailedUpdate" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when an update operation is not successful.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.FileNotUploadedError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FileNotUploadedError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.FileNotUploadedError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when trying to download a file that has not been uploaded yet.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.FileTooLargeError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FileTooLargeError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.FileTooLargeError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when trying to create a too large file.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.FileUploadCompleteError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FileUploadCompleteError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.FileUploadCompleteError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when file upload complete route is visted with bad information.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.ImplementionError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ImplementionError</span></span><a class="headerlink" href="#biodm.exceptions.ImplementionError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></p>
+<p>Raised when a wrong use of components is detected.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.InvalidCollectionMethod">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">InvalidCollectionMethod</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.InvalidCollectionMethod" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when a unit method is accesed as a collection.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.KeycloakUnavailableError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">KeycloakUnavailableError</span></span><a class="headerlink" href="#biodm.exceptions.KeycloakUnavailableError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></p>
+<p>Raised when Keycloak failed to initialize.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.ManagerError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ManagerError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.ManagerError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Holds errors raised by managers, converted in 5XX errors.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.ManifestError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ManifestError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.ManifestError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when a request requiring a manifest id fails to find it in instance.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.MissingDB">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">MissingDB</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.MissingDB" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>DB access attempted with no manager attached to the service.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.MissingService">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">MissingService</span></span><a class="headerlink" href="#biodm.exceptions.MissingService" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></p>
+<p>Raised when a controller expects a service that is not present.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.PartialIndex">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">PartialIndex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.PartialIndex" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when a method expecting entity primary key receives a partial index.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.PayloadEmptyError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">PayloadEmptyError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.PayloadEmptyError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when a route expecting a payload, is reached without one.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.PayloadJSONDecodingError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">PayloadJSONDecodingError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.PayloadJSONDecodingError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when payload data failed to be parsed in JSON format.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.PostgresUnavailableError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">PostgresUnavailableError</span></span><a class="headerlink" href="#biodm.exceptions.PostgresUnavailableError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></p>
+<p>Raised when Postgres failed to initialize.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.QueryError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">QueryError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.QueryError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when an endpoint is reached with wrong query parameters.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.ReleaseVersionError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ReleaseVersionError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.ReleaseVersionError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when releasing another version than the max is attempted.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.RequestError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">RequestError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.RequestError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="biodm.exceptions.RequestError.detail">
+<span class="sig-name descname"><span class="pre">detail</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#biodm.exceptions.RequestError.detail" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.SchemaError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">SchemaError</span></span><a class="headerlink" href="#biodm.exceptions.SchemaError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.ImplementionError" title="biodm.exceptions.ImplementionError"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImplementionError</span></code></a></p>
+<p>Raised when faulty schema pattern is detected.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.TokenDecodingError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">TokenDecodingError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.TokenDecodingError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when token decoding failed.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.UnauthorizedError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">UnauthorizedError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Authentication</span> <span class="pre">required.'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.UnauthorizedError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when a request on a group restricted route is sent by an unauthorized user.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="biodm.exceptions.UpdateVersionedError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">UpdateVersionedError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.exceptions.UpdateVersionedError" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#biodm.exceptions.RequestError" title="biodm.exceptions.RequestError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RequestError</span></code></a></p>
+<p>Raised when an attempt at updating a versioned resource is detected.</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="biodm.error.html" class="btn btn-neutral float-left" title="biodm.error module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="biodm.routing.html" class="btn btn-neutral float-right" title="biodm.routing module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

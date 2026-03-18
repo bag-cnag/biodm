@@ -1,0 +1,7 @@
+biodm.components.services.k8service module
+==========================================
+
+.. automodule:: biodm.components.services.k8service
+   :members:
+   :undoc-members:
+   :show-inheritance:

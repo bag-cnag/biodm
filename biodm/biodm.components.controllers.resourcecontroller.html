@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>biodm.components.controllers.resourcecontroller module &mdash; Python  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="biodm.components.controllers.s3controller module" href="biodm.components.controllers.s3controller.html" />
+    <link rel="prev" title="biodm.components.controllers.controller module" href="biodm.components.controllers.controller.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Python
+          </a>
+              <div class="version">
+                0.9.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/index.html">Developer Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual.html">User Manual</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="biodm.html">biodm package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="biodm.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="biodm.basics.html">biodm.basics package</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="biodm.components.html">biodm.components package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.managers.html">biodm.managers package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.schemas.html">biodm.schemas package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.tables.html">biodm.tables package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="biodm.utils.html">biodm.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="biodm.html#module-biodm">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../licence.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Python</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="biodm.html">biodm package</a></li>
+          <li class="breadcrumb-item"><a href="biodm.components.html">biodm.components package</a></li>
+          <li class="breadcrumb-item"><a href="biodm.components.controllers.html">biodm.components.controllers package</a></li>
+      <li class="breadcrumb-item active">biodm.components.controllers.resourcecontroller module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/biodm/biodm.components.controllers.resourcecontroller.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-biodm.components.controllers.resourcecontroller">
+<span id="biodm-components-controllers-resourcecontroller-module"></span><h1>biodm.components.controllers.resourcecontroller module<a class="headerlink" href="#module-biodm.components.controllers.resourcecontroller" title="Link to this heading"></a></h1>
+<p>Controller class for Tables acting as a Resource.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="biodm.components.controllers.resourcecontroller.ResourceController">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ResourceController</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">app</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="biodm.api.html#biodm.api.Api" title="biodm.api.Api"><span class="pre">Api</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">entity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="biodm.components.table.html#biodm.components.table.Base" title="biodm.components.table.Base"><span class="pre">Base</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="biodm.utils.biodm.html#biodm.utils.biodm.Schema" title="biodm.utils.biodm.Schema"><span class="pre">Schema</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.components.controllers.resourcecontroller.ResourceController" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="biodm.components.controllers.controller.html#biodm.components.controllers.controller.EntityController" title="biodm.components.controllers.controller.EntityController"><code class="xref py py-class docutils literal notranslate"><span class="pre">EntityController</span></code></a></p>
+<p>Class for controllers exposing routes constituting a ressource.</p>
+<p>Implements and exposes routes under a prefix named as the resource pluralized
+that act as a standard REST-to-CRUD interface.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>app</strong> (<a class="reference internal" href="biodm.api.html#biodm.api.Api" title="biodm.api.Api"><em>Api</em></a>) – running server</p></li>
+<li><p><strong>entity</strong> (<em>str</em><em>, </em><em>optional</em>) – entity name, defaults to None, inferred if None</p></li>
+<li><p><strong>table</strong> (<a class="reference internal" href="biodm.components.table.html#biodm.components.table.Base" title="biodm.components.table.Base"><em>Base</em></a><em>, </em><em>optional</em>) – entity table, defaults to None, inferred if None</p></li>
+<li><p><strong>schema</strong> (<a class="reference internal" href="biodm.utils.biodm.html#biodm.utils.biodm.Schema" title="biodm.utils.biodm.Schema"><em>Schema</em></a><em>, </em><em>optional</em>) – entity schema, defaults to None, inferred if None</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.controllers.resourcecontroller.ResourceController.create">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">create</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Request</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Response</span></span></span><a class="headerlink" href="#biodm.components.controllers.resourcecontroller.ResourceController.create" title="Link to this definition"></a></dt>
+<dd><p>CREATE.</p>
+<p>Does “UPSERTS” behind the hood.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<em>Request</em>) – incomming request</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>created object in JSON form</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Response</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.controllers.resourcecontroller.ResourceController.delete">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">delete</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Request</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Response</span></span></span><a class="headerlink" href="#biodm.components.controllers.resourcecontroller.ResourceController.delete" title="Link to this definition"></a></dt>
+<dd><p>Delete resource.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<em>Request</em>) – incomming request</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Deletion confirmation ‘Deleted.’</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Response</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.controllers.resourcecontroller.ResourceController.filter">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Request</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Response</span></span></span><a class="headerlink" href="#biodm.components.controllers.resourcecontroller.ResourceController.filter" title="Link to this definition"></a></dt>
+<dd><p>Returns all resources, accepting a querystring filter.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="biodm.components.controllers.resourcecontroller.ResourceController.prefix">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">prefix</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#biodm.components.controllers.resourcecontroller.ResourceController.prefix" title="Link to this definition"></a></dt>
+<dd><p>Computes route path prefix from entity name.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="biodm.components.controllers.resourcecontroller.ResourceController.qp_id">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">qp_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#biodm.components.controllers.resourcecontroller.ResourceController.qp_id" title="Link to this definition"></a></dt>
+<dd><p>Return primary key in queryparam form.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.controllers.resourcecontroller.ResourceController.read">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Request</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Response</span></span></span><a class="headerlink" href="#biodm.components.controllers.resourcecontroller.ResourceController.read" title="Link to this definition"></a></dt>
+<dd><p>Fetch associated entity matching id in the path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<em>Request</em>) – incomming request</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>JSON reprentation of the object</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Response</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.controllers.resourcecontroller.ResourceController.read_nested">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read_nested</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Request</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Response</span></span></span><a class="headerlink" href="#biodm.components.controllers.resourcecontroller.ResourceController.read_nested" title="Link to this definition"></a></dt>
+<dd><p>Fetch nested collection of entity matching id in the path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<em>Request</em>) – incomming request</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>JSON reprentation of the object</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Response</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.controllers.resourcecontroller.ResourceController.release">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">release</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Request</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Response</span></span></span><a class="headerlink" href="#biodm.components.controllers.resourcecontroller.ResourceController.release" title="Link to this definition"></a></dt>
+<dd><p>Releases a new version for a versioned resource.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.controllers.resourcecontroller.ResourceController.replace_method_docstrings">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">replace_method_docstrings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">doc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overloaded</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">self</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Self</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.components.controllers.resourcecontroller.ResourceController.replace_method_docstrings" title="Link to this definition"></a></dt>
+<dd><p>Set a proxy mirror function documented by input to replace that docstring</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>method</strong> (<em>str</em>) – method name</p></li>
+<li><p><strong>doc</strong> (<em>str</em>) – new documentation</p></li>
+<li><p><strong>overloaded</strong> (<em>bool</em><em>, </em><em>optional</em>) – overloaded flag, defaults to False</p></li>
+<li><p><strong>self</strong> (<em>Self</em>) – controller instance, defaults to None</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.controllers.resourcecontroller.ResourceController.routes">
+<span class="sig-name descname"><span class="pre">routes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">_</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">sr.Mount</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">sr.Route</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">sr.Mount</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">sr.Route</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#biodm.components.controllers.resourcecontroller.ResourceController.routes" title="Link to this definition"></a></dt>
+<dd><dl class="simple">
+<dt>Sets up standard RESTful endpoints.</dt><dd><p>child_routes: from children classes calling super().__init__().</p>
+</dd>
+</dl>
+<p>Relevant doc:
+- <a class="reference external" href="https://restfulapi.net/http-methods/">https://restfulapi.net/http-methods/</a></p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="biodm.components.controllers.resourcecontroller.ResourceController.update">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Request</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Response</span></span></span><a class="headerlink" href="#biodm.components.controllers.resourcecontroller.ResourceController.update" title="Link to this definition"></a></dt>
+<dd><p>UPDATE. Essentially calling create, as it perorm upserts.</p>
+<ul class="simple">
+<li><p>Excluded of versioned resources routes.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<em>Request</em>) – incomming request</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>updated object in JSON form</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Response</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="biodm.components.controllers.resourcecontroller.overload_docstring">
+<span class="sig-name descname"><span class="pre">overload_docstring</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#biodm.components.controllers.resourcecontroller.overload_docstring" title="Link to this definition"></a></dt>
+<dd><p>Decorator to allow for docstring overloading.</p>
+<p>To apply on a “c-like” preprocessor on controllers subclasses.
+Targeted at the REST-to-CRUD mapped endpoints in order to do a per-entity schema documentation.</p>
+<p>Necessary because docstring inheritance is managed a little bit weirdly
+behind the hood in python and depending on the version the .__doc__ attribute of a
+member function is not editable - Not the case as of python 3.11.2.</p>
+<p>Relevant SO posts:
+- <a class="reference external" href="https://stackoverflow.com/questions/38125271/extending-or-overwriting-a-docstring-when-composing-classes">https://stackoverflow.com/questions/38125271/extending-or-overwriting-a-docstring-when-composing-classes</a>
+- <a class="reference external" href="https://stackoverflow.com/questions/1782843/python-decorator-handling-docstrings">https://stackoverflow.com/questions/1782843/python-decorator-handling-docstrings</a>
+- <a class="reference external" href="https://stackoverflow.com/questions/13079299/dynamically-adding-methods-to-a-class">https://stackoverflow.com/questions/13079299/dynamically-adding-methods-to-a-class</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>f</strong> (<em>Callable</em>) – The method we overload the docstrings of</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="biodm.components.controllers.controller.html" class="btn btn-neutral float-left" title="biodm.components.controllers.controller module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="biodm.components.controllers.s3controller.html" class="btn btn-neutral float-right" title="biodm.components.controllers.s3controller module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

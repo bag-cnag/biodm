@@ -1,0 +1,7 @@
+biodm.components.services.dbservice module
+==========================================
+
+.. automodule:: biodm.components.services.dbservice
+   :members:
+   :undoc-members:
+   :show-inheritance:

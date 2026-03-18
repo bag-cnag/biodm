@@ -1,0 +1,7 @@
+biodm.tables.upload module
+==========================
+
+.. automodule:: biodm.tables.upload
+   :members:
+   :undoc-members:
+   :show-inheritance:
