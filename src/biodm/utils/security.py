@@ -25,6 +25,9 @@ if TYPE_CHECKING:
     from biodm.components import Base
     from biodm.managers import KeycloakManager
 
+GROUP_SEP = "__"
+def _is_descendant_path(node: str, ancestor: str) -> bool:
+    return node != ancestor and node.startswith(f"{ancestor}{GROUP_SEP}")
 
 class UserInfo(aobject, BaseUser):
     """Hold user info for a given request.
@@ -167,8 +170,10 @@ def group_required(groups: List[str]):
             # bound: args = (request, *other_args), unbound: (controller, request, *other_args)
             request = args[0] if is_bound else args[1]
             if request.user.is_authenticated and request.user.groups:
-                if any((ug in groups for ug in request.user.groups)):
-                    return await f(*args, **kwargs)
+                for ug in request.user.groups:
+                    for allowed in groups:
+                        if ug == allowed or _is_descendant_path(ug, allowed):
+                            return await f(*args, **kwargs)
 
             raise UnauthorizedError("Insufficient group privileges for this operation.")
 

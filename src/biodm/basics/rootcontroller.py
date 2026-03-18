@@ -133,16 +133,14 @@ class RootController(Controller):
         """
         return HTMLResponse(html)
 
-    def handshake(self) -> str:
+    @staticmethod
+    def handshake(request: Request) -> str:
         """Login handshake function.
 
         :return: Syn_Ack url
         :rtype: str
         """
-        return (
-            f"{self.app.scheme}://{config.SERVER_HOST}:"
-            f"{config.SERVER_PORT}/syn_ack"
-        )
+        return str(request.url_for("syn_ack"))
 
     async def login(self, request: Request) -> Response:
         """Login endpoint.
@@ -164,7 +162,7 @@ class RootController(Controller):
                         schema:
                             type: string
         """
-        redirect_uri = request.query_params.get('redirect_uri', self.handshake())
+        redirect_uri = request.query_params.get('redirect_uri', self.handshake(request))
         auth_url = await self.app.kc.auth_url(redirect_uri=redirect_uri)
         return PlainTextResponse(auth_url)
 
@@ -215,7 +213,7 @@ class RootController(Controller):
                         schema: ErrorSchema
         """
         code = request.query_params['code']
-        redirect_uri = request.query_params.get('redirect_uri', self.handshake())
+        redirect_uri = request.query_params.get('redirect_uri', self.handshake(request))
         token = await self.app.kc.redeem_code_for_token(code, redirect_uri=redirect_uri)
         return json_response({
             k:v

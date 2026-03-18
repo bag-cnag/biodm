@@ -62,8 +62,8 @@ services:
     depends_on:
       api-db:
         condition: service_healthy
-      s3bucket:
-        condition: service_healthy
+      s3bucket-init:
+        condition: service_completed_successfully
     healthcheck:
       test: python3 -c "import requests; exit(requests.get('http://test-s3-env:8000/live').text != 'live\n');"
       interval: 5s

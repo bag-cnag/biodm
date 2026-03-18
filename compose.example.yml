@@ -21,8 +21,8 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
-      s3bucket:
-        condition: service_healthy
+      s3bucket-init:
+        condition: service_completed_successfully
     stdin_open: true
     ports:
     - 8000:8000

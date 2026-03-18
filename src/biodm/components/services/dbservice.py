@@ -20,7 +20,7 @@ from biodm.exceptions import (
     ImplementionError, ReleaseVersionError, UpdateVersionedError, UnauthorizedError
 )
 from biodm.managers import DatabaseManager
-from biodm.tables import ListGroup, Group
+from biodm.tables import ListGroup, Group, User
 from biodm.tables.asso import asso_list_group
 from biodm.utils.security import UserInfo, PermissionLookupTables
 from biodm.utils.sqla import (
@@ -31,6 +31,7 @@ from biodm.utils.utils import unevalled_all, unevalled_or, to_it, partition
 
 NUM_OPERATORS = ("gt", "ge", "lt", "le")
 AGG_OPERATORS = ("min", "max", "min_v", "max_v", "min_a", "max_a")
+GROUP_SEP = "__"
 
 
 class DatabaseService(ApiService, metaclass=ABCMeta):
@@ -45,6 +46,27 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         return f"{self.__class__.__name__}({self.table.__name__})"
 
     @DatabaseManager.in_session
+    async def _ensure_request_user_row(
+        self,
+        user_info: UserInfo | None,
+        session: AsyncSession
+    ) -> None:
+        """Make sure authenticated request user exists in USER for submitter FK writes."""
+        if not self.table.has_submitter_username:
+            return
+        if not user_info or not user_info.is_authenticated:
+            return
+        username = user_info.display_name
+        if not username or username == "anon":
+            raise FailedCreate("Authenticated request has no valid username.")
+
+        try:
+            await session.merge(User(id=username, username=username))
+            await session.flush()
+        except SQLAlchemyError as se:
+            raise FailedCreate(f"Failed syncing USER({username}): {se.orig or se}")
+
+    @DatabaseManager.in_session
     async def _insert(
         self,
         stmt: UpsertStmtValuesHolder,
@@ -52,6 +74,7 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         session: AsyncSession
     ) -> Base:
         """INSERT one object into the DB, check token write permissions before commit."""
+        await self._ensure_request_user_row(user_info=user_info, session=session)
         await self._check_permissions("write", user_info, stmt)
         try:
             item = await session.scalar(stmt.to_stmt(self))
@@ -120,12 +143,15 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
         self.table.last_max_id = max_id
 
     @staticmethod
-    def _group_path_matching(allowed_groups: Set[str], user_groups: Set[str]):
-        """Performs path matching between allowed groups and requesting user groups as members of
-        children groups are also allowed from their parent groups."""
-        for allowedgroup in allowed_groups:
-            for usergroup in user_groups:
-                if allowedgroup in usergroup:
+    def _is_descendant_path(node: str, ancestor: str) -> bool:
+        return node != ancestor and node.startswith(f"{ancestor}{GROUP_SEP}")
+
+    @staticmethod
+    def _group_path_matching(allowed_groups: Set[str], user_groups: Set[str]) -> bool:
+        """Strict hierarchical match: ug == allowed OR ug starts with allowed + '__'."""
+        for allowed in allowed_groups:
+            for ug in user_groups:
+                if ug == allowed or DatabaseService._is_descendant_path(ug, allowed):
                     return True
         return False
 
@@ -299,8 +325,15 @@ class DatabaseService(ApiService, metaclass=ABCMeta):
                     .join(asso_list_group)
                     .join(Group)
                     .where(
-                        or_(*[ # Group path matching.
-                            literal(ugroup).contains(Group.path)
+                        or_(*[
+                            or_(
+                                literal(ugroup) == Group.path,
+                                func.substr(
+                                    literal(ugroup),
+                                    1,
+                                    func.length(Group.path) + len(GROUP_SEP),
+                                ) == (Group.path + GROUP_SEP),
+                            )
                             for ugroup in user_info.groups
                         ])
                     )
@@ -435,6 +468,9 @@ class UnaryEntityService(DatabaseService):
 
         auto-population of 'special columns' is handled here as well.
         """
+        if self.table.has_submitter_username and user_info and user_info.is_authenticated:
+            data["submitter_username"] = user_info.display_name
+
         pending_keys = data.keys() | set(futures)
         missing_data = self.table.required - pending_keys
 
@@ -1175,9 +1211,9 @@ class CompositeEntityService(UnaryEntityService):
 
         for key in parse_rel_keys:
             svc = self._svc_from_rel_name(key)
-            sub = data.pop(key, {}) # {} default value -> only happens for empty permissions.
+            sub = data.pop(key, {}) # {} default value -> only happens for empty permissions.
             rel = self.table.relationships[key]
-
+            
             # Infer fields that will get populated at insertion time (for error detection).
             nested_futures = []
             if rel.secondary is None:
