@@ -209,10 +209,9 @@ the API also needs admin credentials:
 
     docker run -e MINIO_ROOT_USER=admin \
             -e MINIO_ROOT_PASSWORD=12345678 \
-            -e MINIO_DEFAULT_BUCKETS=bucketdevel3tropal \
             -p 9000:9000 \
             -p 9001:9001 \
-            bitnami/minio:2024-debian-12
+            minio/minio:RELEASE.2025-09-07T16-13-09Z server /data --console-address ":9001"
 
 Then visit the administration interface at `localhost:9001`,
 generate a key and populate:

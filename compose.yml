@@ -84,8 +84,11 @@ services:
       - 9001:9001
     tty: True
     healthcheck:
-      test: |
-        curl -Is http://s3bucket:9000/minio/health/live | head -n 1 | grep 200
+      test:
+        - CMD
+        - mc
+        - ready
+        - local
       interval: 5s
       timeout: 5s
       retries: 10
